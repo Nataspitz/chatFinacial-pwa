@@ -11,3 +11,4 @@ dev-dist
 .vercel
 
 .env
+supabase/.temp
