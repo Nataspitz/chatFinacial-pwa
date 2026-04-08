@@ -1,6 +1,6 @@
 import type { User } from '@supabase/supabase-js'
 import { createContext, useContext, useEffect, useMemo, useState, type PropsWithChildren } from 'react'
-import { supabase } from '../lib/supabase'
+import { isSupabaseConfigured, supabase } from '../lib/supabase'
 
 interface AuthContextValue {
   user: User | null
@@ -18,6 +18,12 @@ export const AuthProvider = ({ children }: PropsWithChildren): JSX.Element => {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    if (!isSupabaseConfigured) {
+      setUser(null)
+      setLoading(false)
+      return
+    }
+
     let isMounted = true
 
     void supabase.auth.getSession().then(({ data, error }) => {
@@ -45,6 +51,10 @@ export const AuthProvider = ({ children }: PropsWithChildren): JSX.Element => {
   }, [])
 
   const signUp = async (email: string, password: string): Promise<void> => {
+    if (!isSupabaseConfigured) {
+      throw new Error('Supabase nao configurado no ambiente.')
+    }
+
     const { error } = await supabase.auth.signUp({ email, password })
     if (error) {
       throw error
@@ -52,6 +62,10 @@ export const AuthProvider = ({ children }: PropsWithChildren): JSX.Element => {
   }
 
   const signIn = async (email: string, password: string): Promise<void> => {
+    if (!isSupabaseConfigured) {
+      throw new Error('Supabase nao configurado no ambiente.')
+    }
+
     const { error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) {
       throw error
@@ -59,6 +73,10 @@ export const AuthProvider = ({ children }: PropsWithChildren): JSX.Element => {
   }
 
   const signOut = async (): Promise<void> => {
+    if (!isSupabaseConfigured) {
+      throw new Error('Supabase nao configurado no ambiente.')
+    }
+
     const { error } = await supabase.auth.signOut()
     if (error) {
       throw error
