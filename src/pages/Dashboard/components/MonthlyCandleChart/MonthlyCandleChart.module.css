@@ -1,0 +1,32 @@
+.chartWrap {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid color-mix(in srgb, var(--card-border) 86%, transparent);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--bg-secondary) 88%, transparent);
+  padding: var(--space-2);
+}
+
+.chartWrap :global(.apexcharts-canvas),
+.chartWrap :global(.apexcharts-svg) {
+  background: transparent !important;
+}
+
+.chartWrap :global(.apexcharts-gridline) {
+  stroke: var(--border-color);
+}
+
+.chartWrap :global(.apexcharts-tooltip) {
+  border: 1px solid var(--border-color) !important;
+  border-radius: 10px !important;
+  box-shadow: var(--shadow-sm) !important;
+}
+
+.empty {
+  margin: 0;
+  color: var(--text-secondary);
+  border: 1px dashed var(--border-color);
+  border-radius: 12px;
+  padding: var(--space-4);
+  background: color-mix(in srgb, var(--bg-secondary) 86%, transparent);
+}

@@ -1,0 +1,208 @@
+.page {
+  --dash-space-micro: var(--space-2);
+  --dash-space-base: var(--space-4);
+  --dash-space-section: var(--space-6);
+  --dash-transition: 180ms ease;
+  display: grid;
+  gap: var(--dash-space-section);
+  position: relative;
+  isolation: isolate;
+}
+
+.page::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: -1;
+  background:
+    radial-gradient(980px 460px at 12% -4%, color-mix(in srgb, var(--brand-500) 13%, transparent), transparent 62%),
+    radial-gradient(920px 420px at 96% 2%, color-mix(in srgb, var(--success-500) 9%, transparent), transparent 60%);
+}
+
+.pageHeader {
+  padding: 20px 0 22px;
+  border-bottom: 1px solid color-mix(in srgb, var(--border-color) 88%, transparent);
+  box-shadow: 0 6px 14px color-mix(in srgb, #000 7%, transparent);
+  gap: var(--dash-space-micro);
+}
+
+.pageHeader h1 {
+  font-size: clamp(1.6rem, 2.8vw, 2.15rem);
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+
+.pageHeader p {
+  color: var(--text-secondary);
+  opacity: 0.76;
+  font-size: var(--text-sm);
+}
+
+.layout {
+  display: grid;
+  gap: var(--dash-space-section);
+}
+
+.valueVisibilityButton {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--dash-space-micro);
+  white-space: nowrap;
+  min-height: 44px;
+  padding: var(--space-2) var(--space-3);
+  transition: transform var(--dash-transition), box-shadow var(--dash-transition), filter var(--dash-transition);
+}
+
+.valueVisibilityButton:hover {
+  transform: translateY(-1px);
+}
+
+.valueVisibilityButton:active {
+  transform: translateY(1px);
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: var(--dash-space-micro);
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.twoColumns {
+  display: grid;
+  gap: var(--dash-space-base);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.error {
+  margin: 0;
+  color: var(--danger-500);
+  font-weight: var(--font-weight-semibold);
+  border: 1px solid color-mix(in srgb, var(--danger-500) 28%, var(--border-color));
+  background: color-mix(in srgb, var(--danger-500) 8%, var(--bg-secondary));
+  border-radius: 14px;
+  padding: var(--dash-space-base);
+}
+
+.emptyState {
+  border: 1px dashed var(--card-border);
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--card-bg) 88%, transparent);
+  backdrop-filter: blur(3px);
+  padding: var(--dash-space-section);
+  display: grid;
+  gap: var(--dash-space-micro);
+  box-shadow: var(--shadow-sm);
+}
+
+.emptyState h2 {
+  margin: 0;
+  font-size: var(--text-xl);
+  line-height: 1.2;
+}
+
+.emptyState p {
+  margin: 0;
+  color: var(--text-secondary);
+  max-width: 60ch;
+}
+
+.roiFallback {
+  margin: 0;
+  color: var(--text-secondary);
+  font-weight: var(--font-weight-medium);
+  font-size: var(--text-sm);
+}
+
+.roiAlert {
+  border: 1px dashed var(--border-color);
+  border-radius: 14px;
+  padding: var(--dash-space-base);
+  background: color-mix(in srgb, var(--bg-secondary) 86%, transparent);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--dash-space-base);
+  flex-wrap: wrap;
+}
+
+.roiAlert p {
+  margin: 0;
+  color: var(--text-secondary);
+  max-width: 52ch;
+}
+
+.roiActionButton {
+  min-width: 190px;
+  min-height: 42px;
+}
+
+.helpFloatingButton {
+  position: fixed;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  right: clamp(var(--space-2), 3vw, var(--space-4));
+  bottom: clamp(var(--space-2), 3vw, var(--space-4));
+  width: 52px;
+  height: 52px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--brand-700) 45%, transparent);
+  background: linear-gradient(135deg, var(--brand-600), var(--brand-500));
+  color: var(--button-primary-text);
+  font-size: var(--text-xl);
+  font-weight: var(--font-weight-bold);
+  box-shadow: var(--shadow-md);
+  cursor: pointer;
+  text-decoration: none;
+  z-index: 90;
+  transition: transform var(--dash-transition), filter var(--dash-transition), box-shadow var(--dash-transition);
+}
+
+.helpFloatingButton:hover {
+  transform: translateY(-2px);
+  filter: brightness(1.08);
+  box-shadow: var(--shadow-lg);
+}
+
+.helpFloatingButton:active {
+  transform: translateY(1px);
+  filter: brightness(0.98);
+}
+
+.helpFloatingButton:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 var(--space-1) color-mix(in srgb, var(--brand-500) 35%, transparent), var(--shadow-md);
+}
+
+@media (max-width: 900px) {
+  .twoColumns {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .page {
+    gap: var(--dash-space-base);
+  }
+
+  .headerActions {
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .valueVisibilityButton {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .layout {
+    gap: var(--dash-space-base);
+  }
+
+  .emptyState {
+    padding: var(--dash-space-base);
+  }
+}

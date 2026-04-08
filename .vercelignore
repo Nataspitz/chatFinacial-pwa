@@ -1,0 +1,13 @@
+node_modules
+dist
+build
+dev-dist
+dist-electron
+release
+performance-results
+.git
+.github
+.env
+*.log
+context.md
+feats.md

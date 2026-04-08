@@ -1,0 +1,137 @@
+.grid {
+  display: grid;
+  gap: var(--space-3);
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+}
+
+.card {
+  border: 1px solid color-mix(in srgb, var(--card-border) 80%, transparent);
+  border-radius: 14px;
+  padding: var(--space-4);
+  display: grid;
+  align-content: start;
+  gap: var(--space-2);
+  min-width: 0;
+  box-shadow: 0 2px 8px color-mix(in srgb, #000 7%, transparent);
+  position: relative;
+  overflow: hidden;
+  transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
+}
+
+.card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 18px color-mix(in srgb, #000 11%, transparent);
+  border-color: color-mix(in srgb, var(--brand-500) 26%, var(--card-border));
+}
+
+.card:active {
+  transform: translateY(1px);
+}
+
+.card::after {
+  content: '';
+  position: absolute;
+  right: -18px;
+  top: -18px;
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  background: color-mix(in srgb, #ffffff 14%, transparent);
+}
+
+.card::before {
+  content: attr(data-tooltip);
+  position: absolute;
+  left: var(--space-2);
+  right: var(--space-2);
+  bottom: calc(100% + 8px);
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, var(--border-color) 90%, transparent);
+  background: color-mix(in srgb, var(--card-bg) 96%, transparent);
+  color: var(--text-primary);
+  font-size: var(--text-xs);
+  line-height: 1.35;
+  box-shadow: var(--shadow-md);
+  opacity: 0;
+  transform: translateY(4px);
+  pointer-events: none;
+  transition: opacity 180ms ease, transform 180ms ease;
+  z-index: 5;
+}
+
+.card:hover::before,
+.card:focus-within::before {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.balance {
+  background: linear-gradient(145deg, color-mix(in srgb, var(--brand-500) 26%, var(--bg-secondary)), var(--bg-secondary));
+}
+
+.revenue {
+  background: linear-gradient(145deg, color-mix(in srgb, var(--success-500) 24%, var(--bg-secondary)), var(--bg-secondary));
+}
+
+.expense {
+  background: linear-gradient(145deg, color-mix(in srgb, var(--danger-500) 20%, var(--bg-secondary)), var(--bg-secondary));
+}
+
+.margin {
+  background: linear-gradient(145deg, color-mix(in srgb, var(--brand-400) 20%, var(--bg-secondary)), var(--bg-secondary));
+}
+
+.variation {
+  background: linear-gradient(145deg, color-mix(in srgb, var(--warning-500) 22%, var(--bg-secondary)), var(--bg-secondary));
+}
+
+.label {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  position: relative;
+  z-index: 1;
+}
+
+.value {
+  display: block;
+  font-size: clamp(var(--text-xl), 2.4vw, var(--text-3xl));
+  line-height: 1.1;
+  letter-spacing: -0.015em;
+  position: relative;
+  z-index: 1;
+}
+
+.neutral {
+  color: var(--text-primary);
+}
+
+.positive {
+  color: var(--success-500);
+}
+
+.negative {
+  color: var(--danger-500);
+}
+
+@media (max-width: 640px) {
+  .grid {
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(220px, 82vw);
+    grid-template-columns: none;
+    overflow-x: auto;
+    overflow-y: hidden;
+    gap: var(--space-2);
+    padding-bottom: var(--space-1);
+    scroll-snap-type: x proximity;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .card {
+    padding: var(--space-3);
+    scroll-snap-align: start;
+  }
+}

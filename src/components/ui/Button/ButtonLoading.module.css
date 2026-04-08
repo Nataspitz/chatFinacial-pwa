@@ -1,0 +1,19 @@
+.buttonLoading {
+  position: relative;
+}
+
+.loading {
+  opacity: 0.85;
+}
+
+.loadingLabel {
+  visibility: hidden;
+}
+
+.spinnerSlot {
+  position: absolute;
+  inset: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}

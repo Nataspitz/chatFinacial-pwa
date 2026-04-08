@@ -1,0 +1,30 @@
+{
+  "name": "chatfinacial-pwa-mobile",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Mobile-first PWA project based on ChatFinacial",
+  "scripts": {
+    "dev": "vite --host",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.97.0",
+    "apexcharts": "^5.6.0",
+    "react": "19.2.4",
+    "react-apexcharts": "^2.0.1",
+    "react-dom": "19.2.4",
+    "react-icons": "^5.5.0",
+    "react-router-dom": "7.13.0",
+    "recharts": "^3.7.0"
+  },
+  "devDependencies": {
+    "@types/node": "25.3.0",
+    "@types/react": "19.2.14",
+    "@types/react-dom": "19.2.3",
+    "@vitejs/plugin-react": "5.1.4",
+    "typescript": "5.9.3",
+    "vite": "7.3.1",
+    "vite-plugin-pwa": "^1.2.0"
+  }
+}

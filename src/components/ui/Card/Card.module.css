@@ -1,0 +1,17 @@
+.card {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+.header {
+  padding: var(--space-4) var(--space-6);
+  color: var(--button-primary-text);
+  background: linear-gradient(135deg, var(--brand-500), var(--brand-700));
+}
+
+.content {
+  padding: var(--space-6);
+}

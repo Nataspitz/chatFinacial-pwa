@@ -1,0 +1,101 @@
+.panel {
+  position: fixed;
+  left: 50%;
+  bottom: 88px;
+  transform: translateX(-50%);
+  width: min(94vw, 460px);
+  max-height: min(76dvh, 640px);
+  border: 1px solid color-mix(in srgb, var(--card-border) 86%, transparent);
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--card-bg) 94%, transparent);
+  box-shadow: var(--shadow-lg);
+  backdrop-filter: blur(3px);
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  overflow: hidden;
+  z-index: 94;
+}
+
+.desktop {
+  left: 0;
+  top: 0;
+  bottom: auto;
+}
+
+.dragging {
+  box-shadow: 0 16px 34px color-mix(in srgb, #000 28%, transparent);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  border-bottom: 1px solid color-mix(in srgb, var(--card-border) 80%, transparent);
+  padding: var(--space-3) var(--space-4);
+}
+
+.header h2 {
+  margin: 0;
+  font-size: var(--text-md);
+  line-height: 1.2;
+  color: var(--text-primary);
+}
+
+.headerActions {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.dragHint {
+  border: 1px solid color-mix(in srgb, var(--brand-500) 32%, var(--border-color));
+  border-radius: 999px;
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+  padding: 2px var(--space-2);
+}
+
+.desktop .header {
+  cursor: grab;
+}
+
+.dragging .header {
+  cursor: grabbing;
+}
+
+.closeButton {
+  border: 1px solid color-mix(in srgb, var(--border-color) 90%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--bg-secondary) 84%, transparent);
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  font-weight: var(--font-weight-semibold);
+  min-height: 34px;
+  padding: 0 var(--space-2);
+  transition: border-color 180ms ease, color 180ms ease, background-color 180ms ease, transform 180ms ease;
+}
+
+.closeButton:hover {
+  border-color: color-mix(in srgb, var(--brand-500) 38%, var(--border-color));
+  color: var(--text-primary);
+  transform: translateY(-1px);
+}
+
+.closeButton:active {
+  transform: translateY(1px);
+}
+
+.content {
+  min-height: 0;
+  overflow: auto;
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  color: var(--text-secondary);
+}
+
+.content p {
+  margin: 0;
+  line-height: 1.45;
+}

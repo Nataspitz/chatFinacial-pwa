@@ -1,0 +1,23 @@
+.header {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.headerWithAction {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.description {
+  color: var(--text-secondary);
+  max-width: 72ch;
+}
+
+@media (max-width: 560px) {
+  .headerWithAction {
+    gap: var(--space-2);
+  }
+}

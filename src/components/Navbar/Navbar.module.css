@@ -1,0 +1,192 @@
+.sidebar {
+  width: 248px;
+  position: fixed;
+  inset: 0 auto 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-5) var(--space-4);
+  border-right: 1px solid var(--border-color);
+  background:
+    radial-gradient(120% 100% at 0% 0%, color-mix(in srgb, var(--brand-600) 22%, transparent), transparent 55%),
+    var(--bg-secondary);
+  z-index: 10;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2);
+}
+
+.brandIcon {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  font-weight: var(--font-weight-bold);
+  color: #fff;
+  background: linear-gradient(135deg, var(--brand-700), var(--brand-500));
+  box-shadow: var(--shadow-md);
+}
+
+.brandTitle {
+  display: block;
+  font-size: var(--text-sm);
+}
+
+.brandUser {
+  margin-top: var(--space-1);
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 160px;
+}
+
+.links {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.link {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  text-decoration: none;
+  color: var(--text-primary);
+  border: 1px solid transparent;
+  background: color-mix(in srgb, var(--bg-primary) 75%, transparent);
+  transition: border-color 0.2s ease, transform 0.15s ease;
+}
+
+.link:hover {
+  border-color: color-mix(in srgb, var(--brand-500) 36%, var(--border-color));
+  transform: translateY(-1px);
+}
+
+.active {
+  color: var(--brand-700);
+  border-color: color-mix(in srgb, var(--brand-500) 46%, var(--border-color));
+  background: color-mix(in srgb, var(--brand-100) 50%, var(--bg-secondary));
+}
+
+[data-theme='dark'] .active {
+  color: var(--brand-200);
+  background: color-mix(in srgb, var(--brand-900) 60%, var(--bg-secondary));
+}
+
+.actions {
+  margin-top: auto;
+  display: grid;
+  gap: var(--space-2);
+}
+
+.actionButton {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+.logoutButton {
+  color: #fff;
+  border-color: color-mix(in srgb, var(--danger-500) 45%, transparent);
+  background: linear-gradient(135deg, var(--danger-500), var(--brand-800));
+}
+
+.mobileTopBar {
+  display: none;
+}
+
+.mobileBottomNav {
+  display: none;
+}
+
+.mobileLink {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  color: var(--text-secondary);
+  text-decoration: none;
+  font-size: 0.75rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.mobileTopActions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.iconButton {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+}
+
+@media (max-width: 900px) {
+  .sidebar {
+    display: none;
+  }
+
+  .mobileTopBar {
+    position: sticky;
+    top: 0;
+    z-index: 25;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--space-3) var(--space-3);
+    border-bottom: 1px solid var(--border-color);
+    background: color-mix(in srgb, var(--bg-secondary) 92%, transparent);
+    backdrop-filter: blur(8px);
+  }
+
+  .mobileBottomNav {
+    position: fixed;
+    left: var(--space-3);
+    right: var(--space-3);
+    bottom: calc(var(--space-3) + env(safe-area-inset-bottom));
+    z-index: 30;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--space-2);
+    border-radius: 18px;
+    border: 1px solid color-mix(in srgb, var(--brand-500) 24%, var(--border-color));
+    background:
+      linear-gradient(145deg, color-mix(in srgb, var(--bg-secondary) 94%, transparent), color-mix(in srgb, var(--brand-100) 22%, var(--bg-secondary)));
+    box-shadow: var(--shadow-lg);
+  }
+
+  .mobileBottomNav .active {
+    color: var(--brand-700);
+    background: transparent;
+    border-color: transparent;
+  }
+
+  [data-theme='dark'] .mobileBottomNav .active {
+    color: var(--brand-100);
+  }
+}
+
+@media (max-width: 420px) {
+  .mobileLink {
+    font-size: 0.68rem;
+  }
+}

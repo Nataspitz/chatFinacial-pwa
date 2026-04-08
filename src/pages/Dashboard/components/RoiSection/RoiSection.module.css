@@ -1,0 +1,43 @@
+.grid {
+  display: grid;
+  gap: var(--space-3);
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.item {
+  border: 1px solid color-mix(in srgb, var(--card-border) 86%, transparent);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--bg-secondary) 90%, transparent);
+  padding: var(--space-4);
+  display: grid;
+  gap: var(--space-2);
+  box-shadow: var(--shadow-sm);
+  transition: border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+}
+
+.item:hover {
+  border-color: color-mix(in srgb, var(--brand-500) 24%, var(--card-border));
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
+}
+
+.label {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.value {
+  color: var(--text-primary);
+  font-size: clamp(var(--text-lg), 2.1vw, var(--text-2xl));
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+}
+
+.hint {
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  line-height: 1.35;
+}

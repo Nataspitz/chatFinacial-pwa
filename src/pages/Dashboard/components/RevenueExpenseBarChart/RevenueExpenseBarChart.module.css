@@ -1,0 +1,22 @@
+.chartWrap {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid color-mix(in srgb, var(--card-border) 86%, transparent);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--bg-secondary) 88%, transparent);
+  padding: var(--space-2);
+}
+
+.chartWrap :global(.recharts-layer.recharts-pie-labels text) {
+  fill: var(--text-secondary);
+  font-size: 11px;
+  font-weight: var(--font-weight-medium);
+}
+
+.chartWrap :global(.recharts-sector) {
+  transition: filter 180ms ease;
+}
+
+.chartWrap :global(.recharts-sector:hover) {
+  filter: brightness(1.04);
+}

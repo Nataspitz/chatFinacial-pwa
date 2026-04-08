@@ -1,0 +1,13 @@
+dist
+dist-electron
+release
+node_modules
+*.log
+*.err
+react_APP
+
+dev-dist
+
+.vercel
+
+.env

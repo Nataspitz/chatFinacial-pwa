@@ -1,0 +1,23 @@
+.container {
+  min-height: 100vh;
+  display: flex;
+  align-items: stretch;
+}
+
+.content {
+  flex: 1;
+  padding: var(--space-5);
+  min-width: 0;
+  margin-left: 248px;
+}
+
+@media (max-width: 900px) {
+  .container {
+    flex-direction: column;
+  }
+
+  .content {
+    padding: var(--space-3);
+    margin-left: 0;
+  }
+}
