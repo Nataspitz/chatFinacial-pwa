@@ -9,6 +9,4 @@ react_APP
 dev-dist
 
 .vercel
-
-.env
 supabase/.temp
