@@ -1,8 +1,11 @@
 import { financeService } from './finance.service'
+import { cfoAssistantService } from './cfo-assistant.service'
 import type { ChatQuickAction, ChatReply, ChatSessionState, GuidedOptionItem } from '../types/chat.types'
+import type { CfoAnalysisType } from '../types/cfo.types'
 import type { PaymentMethod, Transaction, TransactionType } from '../types/transaction.types'
 
 const MAX_OPTIONS = 10
+const CFO_ANALYSIS_PAGE_SIZE = 4
 
 const CMD = {
   menu: '/menu',
@@ -40,7 +43,13 @@ const CMD = {
   categoryCreate: '/category/create',
   categoryEdit: '/category/edit',
   categoryDelete: '/category/delete',
-  categoryList: '/category/list'
+  categoryList: '/category/list',
+  cfoMenu: '/cfo/menu',
+  cfoExecutiveSummary: '/cfo/executive-summary',
+  cfoForecast: '/cfo/forecast',
+  cfoAlerts: '/cfo/alerts',
+  cfoCosts: '/cfo/costs',
+  cfoAnalysisMenu: '/cfo/analysis/menu'
 } as const
 
 const MONTHS: Record<string, string> = {
@@ -56,6 +65,36 @@ const MONTHS: Record<string, string> = {
   '10': 'Outubro',
   '11': 'Novembro',
   '12': 'Dezembro'
+}
+
+const CFO_ANALYSIS_ITEMS: Array<{ type: CfoAnalysisType; label: string }> = [
+  { type: 'horizontal', label: 'Analise horizontal' },
+  { type: 'vertical', label: 'Analise vertical' },
+  { type: 'liquidity', label: 'Liquidez' },
+  { type: 'profitability', label: 'Rentabilidade' },
+  { type: 'debt', label: 'Endividamento' },
+  { type: 'break_even', label: 'Ponto de equilibrio' },
+  { type: 'cash_flow', label: 'Fluxo de caixa' },
+  { type: 'benchmarking', label: 'Benchmarking' },
+  { type: 'credit_5c', label: '5C de credito' },
+  { type: 'fpa', label: 'FP&A semanal' }
+]
+
+const toCfoAnalysisCommand = (analysisType: CfoAnalysisType): string => `/cfo/analysis/${analysisType}`
+const toCfoAnalysisPageCommand = (page: number): string => `/cfo/analysis/page/${page}`
+
+const parseCfoAnalysisCommand = (value: string): CfoAnalysisType | null => {
+  const match = value.match(/^\/cfo\/analysis\/([a-z0-9_]+)$/)
+  if (!match) return null
+  const analysisType = match[1] as CfoAnalysisType
+  return CFO_ANALYSIS_ITEMS.some((item) => item.type === analysisType) ? analysisType : null
+}
+
+const parseCfoAnalysisPageCommand = (value: string): number | null => {
+  const match = value.match(/^\/cfo\/analysis\/page\/(\d+)$/)
+  if (!match) return null
+  const page = Number(match[1])
+  return Number.isInteger(page) && page > 0 ? page : null
 }
 
 const normalize = (v: string): string =>
@@ -77,6 +116,8 @@ const yesterday = (): string => {
   d.setDate(d.getDate() - 1)
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
+
+const getCurrentDay = (): string => String(new Date().getDate()).padStart(2, '0')
 
 const parseDate = (raw: string, normalized: string): string | null => {
   if (raw === CMD.dateToday || normalized === 'hoje') return today()
@@ -146,10 +187,49 @@ const mainMenu = (content = 'O que voce quer fazer?'): ChatReply => ({
     asOption('Criar transacao', CMD.createTransaction),
     asOption('Editar transacao', CMD.editTransaction),
     asOption('Remover transacao', CMD.deleteTransaction),
-    asOption('Categorias', CMD.manageCategories)
+    asOption('Categorias', CMD.manageCategories),
+    asOption('CFO IA', CMD.cfoMenu)
   ],
   nextSession: { step: 'main_menu' }
 })
+
+const cfoMenu = (content = 'CFO IA: escolha uma leitura curta.'): ChatReply => ({
+  content,
+  actions: [
+    asOption('Resumo', CMD.cfoExecutiveSummary),
+    asOption('Fluxo caixa', CMD.cfoForecast),
+    asOption('Alertas', CMD.cfoAlerts),
+    asOption('Custos', CMD.cfoCosts),
+    asOption('Analises', CMD.cfoAnalysisMenu),
+    asOption('Menu geral', CMD.menu)
+  ],
+  nextSession: { step: 'main_menu' }
+})
+
+const cfoAnalysisMenu = (requestedPage = 1, content?: string): ChatReply => {
+  const totalPages = Math.max(1, Math.ceil(CFO_ANALYSIS_ITEMS.length / CFO_ANALYSIS_PAGE_SIZE))
+  const page = Math.min(Math.max(1, requestedPage), totalPages)
+  const start = (page - 1) * CFO_ANALYSIS_PAGE_SIZE
+  const pageItems = CFO_ANALYSIS_ITEMS.slice(start, start + CFO_ANALYSIS_PAGE_SIZE)
+  const actions: ChatQuickAction[] = pageItems.map((item) => asOption(item.label, toCfoAnalysisCommand(item.type)))
+
+  if (page > 1) actions.push(asOption('Pagina anterior', toCfoAnalysisPageCommand(page - 1)))
+  if (page < totalPages) actions.push(asOption('Mais analises', toCfoAnalysisPageCommand(page + 1)))
+  actions.push(asOption('Voltar CFO', CMD.cfoMenu))
+  actions.push(asOption('Menu geral', CMD.menu))
+
+  return {
+    content: content ?? `Analises CFO (${page}/${totalPages})`,
+    actions,
+    nextSession: { step: 'main_menu' }
+  }
+}
+
+const getCfoAnalysisPage = (analysisType: CfoAnalysisType): number => {
+  const index = CFO_ANALYSIS_ITEMS.findIndex((item) => item.type === analysisType)
+  if (index < 0) return 1
+  return Math.floor(index / CFO_ANALYSIS_PAGE_SIZE) + 1
+}
 
 const filterScopeMenu = (listType: 'all' | 'entrada' | 'saida'): ChatReply => ({
   content: 'Periodo:',
@@ -246,7 +326,56 @@ const continueFlow = async (raw: string, normalized: string, session: ChatSessio
         nextSession: { step: 'pick_action', entity: 'categoria' }
       }
     }
-    if (/(despesa|gasto).*(mes|m[eê]s)/.test(normalized)) {
+
+    if (raw === CMD.cfoMenu) {
+      return cfoMenu()
+    }
+
+    if (raw === CMD.cfoExecutiveSummary) {
+      const reply = await cfoAssistantService.getExecutiveSummary()
+      return cfoMenu(reply.message)
+    }
+
+    if (raw === CMD.cfoForecast) {
+      const reply = await cfoAssistantService.ask('projecao e fluxo de caixa')
+      return cfoMenu(reply.message)
+    }
+
+    if (raw === CMD.cfoAlerts) {
+      const reply = await cfoAssistantService.ask('alertas e riscos ativos')
+      return cfoMenu(reply.message)
+    }
+
+    if (raw === CMD.cfoCosts) {
+      const reply = await cfoAssistantService.ask('maiores despesas do periodo')
+      return cfoMenu(reply.message)
+    }
+
+    if (raw === CMD.cfoAnalysisMenu) {
+      return cfoAnalysisMenu(1)
+    }
+
+    const cfoAnalysisPage = parseCfoAnalysisPageCommand(raw)
+    if (cfoAnalysisPage !== null) {
+      return cfoAnalysisMenu(cfoAnalysisPage)
+    }
+
+    const cfoAnalysisType = parseCfoAnalysisCommand(raw)
+    if (cfoAnalysisType) {
+      const reply = await cfoAssistantService.getAnalysis(cfoAnalysisType)
+      return cfoAnalysisMenu(getCfoAnalysisPage(cfoAnalysisType), reply.message)
+    }
+
+    if (
+      normalized.includes('cfo')
+      || normalized.includes('resumo financeiro')
+      || normalized.includes('saude financeira')
+      || normalized.includes('como esta meu negocio')
+    ) {
+      const reply = await cfoAssistantService.ask(raw)
+      return cfoMenu(reply.message)
+    }
+    if (normalized.includes('despesa') && normalized.includes('mes')) {
       const now = new Date()
       return executeList({
         step: 'idle',

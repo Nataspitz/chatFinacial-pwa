@@ -41,6 +41,7 @@ Crie `.env` a partir de `.env.example` e use os mesmos valores do projeto origin
 - `VITE_SUPABASE_URL`
 - `VITE_SUPABASE_ANON_KEY`
 - `VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY` (fallback)
+- `VITE_CFO_AGENT_ENDPOINT` (opcional, endpoint HTTP para resposta de IA; sem ele usa fallback local)
 
 ## Estrategia para mover para outro repositorio
 
