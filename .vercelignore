@@ -7,7 +7,6 @@ release
 performance-results
 .git
 .github
-.env
 *.log
 context.md
 feats.md
