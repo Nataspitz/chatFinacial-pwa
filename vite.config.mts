@@ -7,6 +7,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
+      injectRegister: 'auto',
       includeAssets: [
         'favicon.ico',
         'favicon.svg',
@@ -17,15 +18,20 @@ export default defineConfig({
         'icons/apple-touch-icon.png'
       ],
       manifest: {
+        id: '/',
         name: 'ChatFinacial Mobile',
         short_name: 'CF Mobile',
         description: 'PWA mobile para chat, dashboard e calendario financeiro.',
         theme_color: '#254edb',
         background_color: '#f9fafb',
+        orientation: 'portrait',
         display: 'standalone',
+        display_override: ['standalone', 'minimal-ui', 'browser'],
         start_url: '/',
         scope: '/',
         lang: 'pt-BR',
+        categories: ['finance', 'business', 'productivity'],
+        prefer_related_applications: false,
         icons: [
           {
             src: '/icons/app-icon-192.png',
@@ -49,6 +55,44 @@ export default defineConfig({
             src: '/icons/app-icon.svg',
             sizes: 'any',
             type: 'image/svg+xml'
+          }
+        ]
+      },
+      workbox: {
+        navigateFallback: '/index.html',
+        cleanupOutdatedCaches: true,
+        skipWaiting: true,
+        clientsClaim: true,
+        runtimeCaching: [
+          {
+            urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
+            handler: 'StaleWhileRevalidate',
+            options: {
+              cacheName: 'google-fonts-stylesheets'
+            }
+          },
+          {
+            urlPattern: /^https:\/\/fonts\.gstatic\.com\/.*/i,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'google-fonts-webfonts',
+              expiration: {
+                maxEntries: 16,
+                maxAgeSeconds: 60 * 60 * 24 * 365
+              }
+            }
+          },
+          {
+            urlPattern: /^https:\/\/.*\.supabase\.co\/.*/i,
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'supabase-api',
+              networkTimeoutSeconds: 8,
+              expiration: {
+                maxEntries: 100,
+                maxAgeSeconds: 60 * 60 * 24
+              }
+            }
           }
         ]
       },
