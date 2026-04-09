@@ -1,9 +1,79 @@
 .wrapper {
   display: inline-flex;
   align-items: center;
-  gap: var(--space-2);
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-lg);
+  border: 1px solid color-mix(in srgb, var(--border-color) 78%, transparent);
+  background:
+    radial-gradient(120% 140% at 0% 0%, color-mix(in srgb, var(--brand-200) 24%, transparent), transparent 65%),
+    color-mix(in srgb, var(--bg-secondary) 92%, transparent);
+  box-shadow: var(--shadow-sm);
+}
+
+.visual {
+  position: relative;
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+}
+
+.orb {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, var(--brand-300), var(--brand-600));
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--brand-500) 24%, transparent);
+  animation: pulse 1.1s ease-in-out infinite;
+}
+
+.ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  border: 2px solid transparent;
+  border-top-color: color-mix(in srgb, var(--brand-500) 84%, #fff);
+  border-right-color: color-mix(in srgb, var(--brand-500) 44%, transparent);
+  animation: spin 1s linear infinite;
+}
+
+.bars {
+  position: absolute;
+  bottom: -3px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 10px;
+}
+
+.bars span {
+  width: 2px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--brand-500) 76%, var(--text-secondary));
+  animation: wave 0.9s ease-in-out infinite;
+}
+
+.bars span:nth-child(1) {
+  height: 5px;
+}
+
+.bars span:nth-child(2) {
+  height: 8px;
+  animation-delay: 0.12s;
+}
+
+.bars span:nth-child(3) {
+  height: 6px;
+  animation-delay: 0.24s;
+}
+
+.label {
   color: var(--text-secondary);
   font-weight: var(--font-weight-medium);
+  letter-spacing: 0.01em;
 }
 
 .centered {
@@ -11,4 +81,34 @@
   width: 100%;
   display: grid;
   place-items: center;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.18);
+  }
+}
+
+@keyframes wave {
+  0%,
+  100% {
+    transform: scaleY(0.78);
+    opacity: 0.6;
+  }
+
+  50% {
+    transform: scaleY(1.22);
+    opacity: 1;
+  }
 }

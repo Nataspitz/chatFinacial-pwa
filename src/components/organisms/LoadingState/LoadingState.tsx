@@ -1,4 +1,3 @@
-import { Spinner } from '../../ui/Spinner/Spinner'
 import styles from './LoadingState.module.css'
 
 interface LoadingStateProps {
@@ -9,8 +8,16 @@ interface LoadingStateProps {
 export const LoadingState = ({ label = 'Carregando...', centered = false }: LoadingStateProps): JSX.Element => {
   const content = (
     <div className={styles.wrapper} role="status" aria-live="polite">
-      <Spinner size="md" />
-      <span>{label}</span>
+      <div className={styles.visual} aria-hidden="true">
+        <span className={styles.orb} />
+        <span className={styles.ring} />
+        <div className={styles.bars}>
+          <span />
+          <span />
+          <span />
+        </div>
+      </div>
+      <span className={styles.label}>{label}</span>
     </div>
   )
 
