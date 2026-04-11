@@ -7,6 +7,7 @@
   background: color-mix(in srgb, var(--gray-900) 60%, transparent);
   backdrop-filter: blur(var(--space-1));
   z-index: 120;
+  overflow-y: auto;
 }
 
 .modal {
@@ -18,6 +19,7 @@
   box-shadow: var(--shadow-lg);
   padding: var(--space-6);
   display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
   gap: var(--space-4);
   overflow: hidden;
 }
@@ -44,10 +46,16 @@
   min-height: 0;
   overflow: auto;
   padding-right: 2px;
+  -webkit-overflow-scrolling: touch;
 }
 
 @media (max-width: 640px) {
+  .overlay {
+    place-items: start center;
+  }
+
   .modal {
+    width: 100%;
     padding: var(--space-4);
   }
 }

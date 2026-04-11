@@ -120,6 +120,102 @@ const isMissingConfirmedColumnError = (error: unknown): boolean => {
   return combined.includes('is_confirmed') && (combined.includes('column') || combined.includes('schema'))
 }
 
+const extractMissingColumnName = (error: unknown): string | null => {
+  if (!error || typeof error !== 'object') {
+    return null
+  }
+
+  const message = 'message' in error && typeof error.message === 'string' ? error.message : ''
+  const details = 'details' in error && typeof error.details === 'string' ? error.details : ''
+  const hint = 'hint' in error && typeof error.hint === 'string' ? error.hint : ''
+  const combined = `${message} ${details} ${hint}`
+  const normalized = combined.toLowerCase()
+
+  if (!(normalized.includes('column') && normalized.includes('does not exist'))) {
+    return null
+  }
+
+  const columnMatch = combined.match(/column\s+"?([a-zA-Z0-9_]+)"?\s+does not exist/i)
+  if (columnMatch?.[1]) {
+    return columnMatch[1].toLowerCase()
+  }
+
+  return null
+}
+
+const removeColumnFromPayload = (payload: Record<string, unknown>, column: string): Record<string, unknown> => {
+  if (!(column in payload)) {
+    return payload
+  }
+
+  const { [column]: _removed, ...nextPayload } = payload
+  return nextPayload
+}
+
+const insertTransactionsWithFallback = async (payload: Array<Record<string, unknown>>): Promise<void> => {
+  if (payload.length === 0) {
+    return
+  }
+
+  let workingPayload = payload
+  const MAX_ATTEMPTS = 8
+
+  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt += 1) {
+    const { error } = await supabase.from('transactions').insert(workingPayload)
+
+    if (!error) {
+      return
+    }
+
+    const missingColumn = extractMissingColumnName(error)
+    if (!missingColumn) {
+      throw error
+    }
+
+    if (!workingPayload.some((row) => missingColumn in row)) {
+      throw error
+    }
+
+    workingPayload = workingPayload.map((row) => removeColumnFromPayload(row, missingColumn))
+  }
+
+  throw new Error('Nao foi possivel salvar as transacoes por incompatibilidade de schema.')
+}
+
+const updateTransactionWithFallback = async (
+  payload: Record<string, unknown>,
+  transactionId: string,
+  userId: string
+): Promise<void> => {
+  let workingPayload = payload
+  const MAX_ATTEMPTS = 8
+
+  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt += 1) {
+    const { error } = await supabase
+      .from('transactions')
+      .update(workingPayload)
+      .eq('id', transactionId)
+      .eq('user_id', userId)
+
+    if (!error) {
+      return
+    }
+
+    const missingColumn = extractMissingColumnName(error)
+    if (!missingColumn) {
+      throw error
+    }
+
+    if (!(missingColumn in workingPayload)) {
+      throw error
+    }
+
+    workingPayload = removeColumnFromPayload(workingPayload, missingColumn)
+  }
+
+  throw new Error('Nao foi possivel editar a transacao por incompatibilidade de schema.')
+}
+
 export const financeService = {
   getTransactions: async (): Promise<Transaction[]> => {
     const userId = await getUserId()
@@ -166,15 +262,11 @@ export const financeService = {
 
     const userId = await getUserId()
     const payload = transactions.map((item) => toInsertPayload(item, userId))
-    const { error } = await supabase.from('transactions').insert(payload)
-
-    if (error) {
-      throw error
-    }
+    await insertTransactionsWithFallback(payload)
   },
 
   updateTransaction: async (transaction: Transaction): Promise<void> => {
-    await getUserId()
+    const userId = await getUserId()
 
     const payload = {
       type: transaction.type,
@@ -192,17 +284,13 @@ export const financeService = {
       is_installment: transaction.isInstallment
     }
 
-    const { error } = await supabase.from('transactions').update(payload).eq('id', transaction.id)
-
-    if (error) {
-      throw error
-    }
+    await updateTransactionWithFallback(payload, transaction.id, userId)
   },
 
   deleteTransaction: async (id: string): Promise<void> => {
-    await getUserId()
+    const userId = await getUserId()
 
-    const { error } = await supabase.from('transactions').delete().eq('id', id)
+    const { error } = await supabase.from('transactions').delete().eq('id', id).eq('user_id', userId)
 
     if (error) {
       throw error
