@@ -8,6 +8,7 @@ export type EditField =
   | 'isConfirmed'
   | 'isMonthlyCost'
   | 'paymentMethod'
+  | 'installmentCount'
 
 export interface TransactionsTableProps {
   title: string

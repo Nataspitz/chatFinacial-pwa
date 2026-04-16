@@ -1,12 +1,14 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react'
 import { FiFilter, FiSearch, FiX } from 'react-icons/fi'
 import { Button, ButtonLoading, ModalBase } from '../../../components/ui'
 import { LoadingState } from '../../../components/organisms/LoadingState/LoadingState'
 import { PageTemplate } from '../../../components/templates/PageTemplate/PageTemplate'
 import { useAuth } from '../../../contexts/AuthContext'
 import { financeService, type CategoryItem } from '../../../services/finance.service'
+import type { BackupFile } from '../../../types/backup.types'
 import type { ExportReportPdfPayload } from '../../../types/report-export.types'
 import type { PaymentMethod, Transaction, TransactionType } from '../../../types/transaction.types'
+import type { EditField } from './transactions-table.types'
 import { PageHeader } from './PageHeader'
 import { TransactionsTable } from './TransactionsTable'
 import styles from '../Report.module.css'
@@ -124,6 +126,80 @@ const initialCombinedFilterDraftState = (): CombinedFilterDraftState => ({
 
 const normalizeCategoryValue = (value: string): string => value.trim().replace(/\s+/g, ' ')
 
+const isValidTransactionType = (value: unknown): value is TransactionType => value === 'entrada' || value === 'saida'
+
+const isValidPaymentMethod = (value: unknown): value is PaymentMethod =>
+  value === 'credito' || value === 'debito' || value === 'pix' || value === 'dinheiro'
+
+const isBackupFile = (value: unknown): value is BackupFile => {
+  if (!value || typeof value !== 'object') {
+    return false
+  }
+
+  const candidate = value as Partial<BackupFile>
+  return candidate.version === 1 && candidate.source === 'chatfinacial-pwa' && Array.isArray(candidate.categories) && Array.isArray(candidate.transactions)
+}
+
+const sanitizeBackupTransaction = (value: unknown): Transaction | null => {
+  if (!value || typeof value !== 'object') {
+    return null
+  }
+
+  const candidate = value as Partial<Transaction>
+  if (
+    typeof candidate.id !== 'string' ||
+    !isValidTransactionType(candidate.type) ||
+    typeof candidate.category !== 'string' ||
+    typeof candidate.amount !== 'number' ||
+    typeof candidate.description !== 'string' ||
+    typeof candidate.date !== 'string' ||
+    typeof candidate.isConfirmed !== 'boolean' ||
+    typeof candidate.isMonthlyCost !== 'boolean' ||
+    !isValidPaymentMethod(candidate.paymentMethod) ||
+    typeof candidate.installmentNumber !== 'number' ||
+    typeof candidate.installmentCount !== 'number' ||
+    typeof candidate.totalAmount !== 'number' ||
+    typeof candidate.isInstallment !== 'boolean'
+  ) {
+    return null
+  }
+
+  return {
+    id: candidate.id,
+    type: candidate.type,
+    category: normalizeCategoryValue(candidate.category),
+    amount: candidate.amount,
+    description: candidate.description.trim(),
+    date: candidate.date,
+    createdAt: typeof candidate.createdAt === 'string' ? candidate.createdAt : undefined,
+    isConfirmed: candidate.isConfirmed,
+    isMonthlyCost: candidate.isMonthlyCost,
+    paymentMethod: candidate.paymentMethod,
+    installmentGroupId: typeof candidate.installmentGroupId === 'string' ? candidate.installmentGroupId : null,
+    installmentNumber: candidate.installmentNumber,
+    installmentCount: candidate.installmentCount,
+    totalAmount: candidate.totalAmount,
+    isInstallment: candidate.isInstallment
+  }
+}
+
+const sanitizeBackupCategory = (value: unknown): CategoryItem | null => {
+  if (!value || typeof value !== 'object') {
+    return null
+  }
+
+  const candidate = value as Partial<CategoryItem>
+  if (typeof candidate.id !== 'string' || !isValidTransactionType(candidate.type) || typeof candidate.name !== 'string') {
+    return null
+  }
+
+  return {
+    id: candidate.id,
+    type: candidate.type,
+    name: normalizeCategoryValue(candidate.name)
+  }
+}
+
 const addMonthsKeepingDay = (baseDate: Date, monthOffset: number): Date => {
   const year = baseDate.getFullYear()
   const month = baseDate.getMonth()
@@ -238,6 +314,7 @@ const MONTH_LABELS: Record<string, string> = {
 
 export const ReportPage = (): JSX.Element => {
   const { user } = useAuth()
+  const backupInputRef = useRef<HTMLInputElement | null>(null)
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string>('')
@@ -250,8 +327,10 @@ export const ReportPage = (): JSX.Element => {
   const [editingDraft, setEditingDraft] = useState<Transaction | null>(null)
   const [isSavingEdit, setIsSavingEdit] = useState(false)
   const [isExporting, setIsExporting] = useState(false)
+  const [isImportingBackup, setIsImportingBackup] = useState(false)
   const [isExportModalOpen, setIsExportModalOpen] = useState(false)
   const [exportFeedback, setExportFeedback] = useState('')
+  const [backupFeedback, setBackupFeedback] = useState('')
   const [exportForm, setExportForm] = useState<ExportFormState>(initialExportFormState)
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false)
@@ -549,9 +628,15 @@ export const ReportPage = (): JSX.Element => {
   }
 
   const handleEditStart = (transaction: Transaction): void => {
+    const installmentCount = transaction.paymentMethod === 'credito' ? Math.max(1, transaction.installmentCount) : 1
+
     setEditingId(transaction.id)
     setEditingDraft({
       ...transaction,
+      installmentCount,
+      installmentNumber: transaction.paymentMethod === 'credito' ? transaction.installmentNumber : 1,
+      installmentGroupId: transaction.paymentMethod === 'credito' && installmentCount > 1 ? transaction.installmentGroupId : null,
+      isInstallment: transaction.paymentMethod === 'credito' && installmentCount > 1,
       isConfirmed: Boolean(transaction.isConfirmed),
       isMonthlyCost: transaction.type === 'saida' ? Boolean(transaction.isMonthlyCost) : false
     })
@@ -582,10 +667,7 @@ export const ReportPage = (): JSX.Element => {
     setEditingDraft(null)
   }
 
-  const handleEditChange = (
-    field: 'date' | 'category' | 'description' | 'amount' | 'isConfirmed' | 'isMonthlyCost' | 'paymentMethod',
-    value: string | boolean
-  ): void => {
+  const handleEditChange = (field: EditField, value: string | boolean): void => {
     if (!editingDraft) return
 
     if (field === 'amount') {
@@ -612,13 +694,31 @@ export const ReportPage = (): JSX.Element => {
 
     if (field === 'paymentMethod') {
       const paymentMethod = value as PaymentMethod
+      const nextInstallmentCount = paymentMethod === 'credito' ? Math.max(1, editingDraft.installmentCount) : 1
       setEditingDraft({
         ...editingDraft,
         paymentMethod,
-        installmentCount: paymentMethod === 'credito' ? editingDraft.installmentCount : 1,
+        installmentCount: nextInstallmentCount,
         installmentNumber: paymentMethod === 'credito' ? editingDraft.installmentNumber : 1,
-        installmentGroupId: paymentMethod === 'credito' && editingDraft.installmentCount > 1 ? editingDraft.installmentGroupId : null,
-        isInstallment: paymentMethod === 'credito' && editingDraft.installmentCount > 1
+        installmentGroupId:
+          paymentMethod === 'credito' && nextInstallmentCount > 1
+            ? editingDraft.installmentGroupId ?? crypto.randomUUID()
+            : null,
+        isInstallment: paymentMethod === 'credito' && nextInstallmentCount > 1
+      })
+      return
+    }
+
+    if (field === 'installmentCount') {
+      const parsed = Number(value as string)
+      const nextInstallmentCount = Number.isInteger(parsed) ? Math.min(48, Math.max(1, parsed)) : 1
+
+      setEditingDraft({
+        ...editingDraft,
+        installmentCount: nextInstallmentCount,
+        installmentNumber: 1,
+        installmentGroupId: nextInstallmentCount > 1 ? editingDraft.installmentGroupId ?? crypto.randomUUID() : null,
+        isInstallment: nextInstallmentCount > 1
       })
       return
     }
@@ -631,6 +731,11 @@ export const ReportPage = (): JSX.Element => {
 
     if (!editingDraft.category.trim() || !editingDraft.description.trim() || editingDraft.amount <= 0 || !editingDraft.date) {
       setError('Preencha os campos da edicao com valores validos.')
+      return
+    }
+
+    if (editingDraft.paymentMethod === 'credito' && (!Number.isInteger(editingDraft.installmentCount) || editingDraft.installmentCount < 1 || editingDraft.installmentCount > 48)) {
+      setError('Informe uma quantidade de parcelas entre 1 e 48 para pagamento no credito.')
       return
     }
 
@@ -921,16 +1026,96 @@ export const ReportPage = (): JSX.Element => {
     setIsMobileActionsDrawerOpen(false)
   }
 
+  const handleExportBackup = (): void => {
+    const categories = [...categoryOptions.entrada, ...categoryOptions.saida]
+    const backup: BackupFile = {
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      source: 'chatfinacial-pwa',
+      categories,
+      transactions
+    }
+
+    const dateLabel = getTodayDate()
+    const fileName = `chatfinacial-backup-${dateLabel}.json`
+    const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' })
+    const objectUrl = URL.createObjectURL(blob)
+    const anchor = document.createElement('a')
+    anchor.href = objectUrl
+    anchor.download = fileName
+    document.body.appendChild(anchor)
+    anchor.click()
+    document.body.removeChild(anchor)
+    URL.revokeObjectURL(objectUrl)
+
+    setBackupFeedback(`Backup baixado como ${fileName}.`)
+    setIsMobileActionsDrawerOpen(false)
+  }
+
+  const handleImportBackupClick = (): void => {
+    setBackupFeedback('')
+    backupInputRef.current?.click()
+  }
+
+  const handleImportBackupFile = async (event: ChangeEvent<HTMLInputElement>): Promise<void> => {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+
+    if (!file) {
+      return
+    }
+
+    setIsImportingBackup(true)
+    setBackupFeedback('')
+    setError('')
+
+    try {
+      const rawContent = await file.text()
+      const parsed = JSON.parse(rawContent) as unknown
+
+      if (!isBackupFile(parsed)) {
+        throw new Error('Arquivo de backup invalido.')
+      }
+
+      const categories = parsed.categories.map(sanitizeBackupCategory).filter((item): item is CategoryItem => item !== null)
+      const backupTransactions = parsed.transactions
+        .map(sanitizeBackupTransaction)
+        .filter((item): item is Transaction => item !== null)
+
+      const existingTransactions = await financeService.getTransactions()
+      const existingIds = new Set(existingTransactions.map((item) => item.id))
+      const newTransactions = backupTransactions.filter((item) => !existingIds.has(item.id))
+
+      await Promise.all(categories.map((item) => financeService.saveCategory(item.name, item.type)))
+      await financeService.saveTransactions(newTransactions)
+      await Promise.all([loadTransactions(), loadCategories()])
+
+      setBackupFeedback(`Backup restaurado. ${newTransactions.length} transacoes novas foram importadas.`)
+      setIsMobileActionsDrawerOpen(false)
+    } catch (backupError) {
+      const message = backupError instanceof Error ? backupError.message : 'Nao foi possivel restaurar o backup.'
+      setBackupFeedback(message)
+    } finally {
+      setIsImportingBackup(false)
+    }
+  }
+
   return (
     <PageTemplate className={styles.page}>
+      <input ref={backupInputRef} type="file" accept="application/json,.json" hidden onChange={(event) => void handleImportBackupFile(event)} />
       <PageHeader
         onCreate={handleOpenCreateTransaction}
         onManageCategories={handleOpenCategories}
-        onExport={handleOpenExportModal}
+        onExportReport={handleOpenExportModal}
+        onExportBackup={handleExportBackup}
+        onImportBackup={handleImportBackupClick}
         onOpenMobileActions={() => setIsMobileActionsDrawerOpen(true)}
         isExporting={isExporting}
+        isImporting={isImportingBackup}
         disabled={isLoading}
       />
+
+      {backupFeedback ? <p className={styles.createFeedback}>{backupFeedback}</p> : null}
 
       {isMobileActionsDrawerOpen ? (
         <div className={styles.mobileActionsDrawerOverlay} onClick={() => setIsMobileActionsDrawerOpen(false)}>
@@ -958,6 +1143,18 @@ export const ReportPage = (): JSX.Element => {
               <Button type="button" variant="ghost" onClick={handleOpenCategories}>
                 Categorias
               </Button>
+              <Button type="button" variant="ghost" onClick={handleExportBackup} disabled={isLoading}>
+                Baixar backup
+              </Button>
+              <ButtonLoading
+                type="button"
+                variant="secondary"
+                loading={isImportingBackup}
+                disabled={isLoading}
+                onClick={handleImportBackupClick}
+              >
+                Restaurar backup
+              </ButtonLoading>
               <ButtonLoading
                 type="button"
                 variant="primary"

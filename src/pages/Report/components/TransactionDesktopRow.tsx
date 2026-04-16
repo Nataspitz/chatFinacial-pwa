@@ -105,7 +105,27 @@ export const TransactionDesktopRow = ({
           formatPaymentMethod(transaction.paymentMethod)
         )}
       </td>
-      <td>{transaction.installmentCount > 1 ? `${transaction.installmentNumber}/${transaction.installmentCount}` : '-'}</td>
+      <td>
+        {isEditing ? (
+          editingDraft.paymentMethod === 'credito' ? (
+            <input
+              type="number"
+              min="1"
+              max="48"
+              step="1"
+              className={styles.cellInput}
+              value={String(Math.max(1, editingDraft.installmentCount))}
+              onChange={(event) => onEditChange('installmentCount', event.target.value)}
+            />
+          ) : (
+            '-'
+          )
+        ) : transaction.paymentMethod === 'credito' ? (
+          `${Math.max(1, transaction.installmentNumber)}/${Math.max(1, transaction.installmentCount)}`
+        ) : (
+          '-'
+        )}
+      </td>
       <td>{getConfirmedValue(editingDraft, isEditing, onEditChange, transaction)}</td>
       <td>{getMonthlyCostValue(editingDraft, isEditing, onEditChange, transaction)}</td>
       <td className={styles.actionsCell}>

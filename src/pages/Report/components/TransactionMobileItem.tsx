@@ -108,9 +108,19 @@ export const TransactionMobileItem = ({
           <div className={styles.mobileRow}>
             <span className={styles.mobileLabel}>Parcela</span>
             <div className={styles.mobileValue}>
-              {transaction.installmentCount > 1
-                ? `${transaction.installmentNumber}/${transaction.installmentCount}`
-                : '-'}
+              {editingDraft.paymentMethod === 'credito' ? (
+                <input
+                  type="number"
+                  min="1"
+                  max="48"
+                  step="1"
+                  className={styles.cellInput}
+                  value={String(Math.max(1, editingDraft.installmentCount))}
+                  onChange={(event) => onEditChange('installmentCount', event.target.value)}
+                />
+              ) : (
+                '-'
+              )}
             </div>
           </div>
           <div className={styles.mobileRow}>
@@ -171,8 +181,8 @@ export const TransactionMobileItem = ({
               <div className={styles.mobileRow}>
                 <span className={styles.mobileLabel}>Parcela</span>
                 <div className={styles.mobileValue}>
-                  {transaction.installmentCount > 1
-                    ? `${transaction.installmentNumber}/${transaction.installmentCount}`
+                  {transaction.paymentMethod === 'credito'
+                    ? `${Math.max(1, transaction.installmentNumber)}/${Math.max(1, transaction.installmentCount)}`
                     : '-'}
                 </div>
               </div>
