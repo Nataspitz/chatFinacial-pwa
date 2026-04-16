@@ -18,7 +18,6 @@ const formatMessageTime = (value: string): string =>
 
 const TEXT_INPUT_STEPS = new Set<ChatSessionState['step']>([
   'collect_transaction_amount',
-  'collect_transaction_category',
   'collect_transaction_description',
   'collect_transaction_installment_count',
   'collect_transaction_custom_date',

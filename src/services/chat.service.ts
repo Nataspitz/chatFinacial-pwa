@@ -292,6 +292,16 @@ const optionsToActions = (options: GuidedOptionItem[]): ChatQuickAction[] => [
   asOption('Cancelar', CMD.cancel)
 ]
 
+const categoryOptionsForType = async (type: TransactionType): Promise<GuidedOptionItem[]> => {
+  const categories = await financeService.getCategoryItems(type)
+  return categories.slice(0, MAX_OPTIONS).map((category) => ({
+    id: category.id,
+    label: category.name,
+    entity: 'category' as const,
+    type
+  }))
+}
+
 const continueFlow = async (raw: string, normalized: string, session: ChatSessionState): Promise<ChatReply> => {
   if (session.step === 'main_menu') {
     if (raw === CMD.viewTransactions) return filterScopeMenu('all')
@@ -436,13 +446,31 @@ const continueFlow = async (raw: string, normalized: string, session: ChatSessio
   if (session.step === 'collect_transaction_amount') {
     const amount = parseAmount(raw)
     if (!amount) return { content: 'Valor invalido.', nextSession: session }
-    return { content: 'Categoria?', nextSession: { ...session, step: 'collect_transaction_category', draft: { ...session.draft, amount } } }
+    const type = session.draft?.transactionType
+    if (!type) return mainMenu('Tipo de transacao invalido.')
+    const options = await categoryOptionsForType(type)
+    if (options.length === 0) {
+      return mainMenu('Nao ha categorias para esse tipo. Cadastre uma categoria em "Categorias" e tente novamente.')
+    }
+
+    return {
+      content: 'Categoria:',
+      actions: optionsToActions(options),
+      nextSession: { ...session, step: 'pick_transaction_category', options, draft: { ...session.draft, amount } }
+    }
   }
 
-  if (session.step === 'collect_transaction_category') {
-    const category = clean(raw)
-    if (!category) return { content: 'Categoria invalida.', nextSession: session }
-    return { content: 'Descricao?', nextSession: { ...session, step: 'collect_transaction_description', draft: { ...session.draft, categoryName: category } } }
+  if (session.step === 'pick_transaction_category') {
+    const picked = selectOption(raw, normalized, session.options ?? [])
+    if (!picked) return { content: 'Selecione uma categoria.', actions: optionsToActions(session.options ?? []), nextSession: session }
+    return {
+      content: 'Descricao?',
+      nextSession: {
+        ...session,
+        step: 'collect_transaction_description',
+        draft: { ...session.draft, categoryName: clean(picked.label) }
+      }
+    }
   }
 
   if (session.step === 'collect_transaction_description') {
@@ -551,7 +579,42 @@ const continueFlow = async (raw: string, normalized: string, session: ChatSessio
     if (field === 'date') return { content: 'Nova data:', actions: dateActions(), nextSession: { ...session, step: 'collect_transaction_edit_value', draft: { ...session.draft, editField: field } } }
     if (field === 'paymentMethod') return { content: 'Novo pagamento:', actions: paymentActions(), nextSession: { ...session, step: 'pick_transaction_edit_payment_method', draft: { ...session.draft, editField: field } } }
     if (field === 'isMonthlyCost' || field === 'isConfirmed') return { content: 'Sim ou nao?', actions: boolActions(), nextSession: { ...session, step: 'collect_transaction_edit_value', draft: { ...session.draft, editField: field } } }
-    return { content: field === 'amount' ? 'Novo valor:' : field === 'category' ? 'Nova categoria:' : 'Nova descricao:', nextSession: { ...session, step: 'collect_transaction_edit_value', draft: { ...session.draft, editField: field } } }
+    if (field === 'category') {
+      const id = session.draft?.targetId
+      const all = await financeService.getTransactions()
+      const t = all.find((x) => x.id === id)
+      if (!t) return mainMenu('Transacao nao encontrada.')
+
+      const options = await categoryOptionsForType(t.type)
+      if (options.length === 0) {
+        return mainMenu('Nao ha categorias para esse tipo. Cadastre uma categoria em "Categorias" e tente novamente.')
+      }
+
+      return {
+        content: 'Nova categoria:',
+        actions: optionsToActions(options),
+        nextSession: { ...session, step: 'pick_transaction_edit_category', options, draft: { ...session.draft, editField: field } }
+      }
+    }
+
+    return { content: field === 'amount' ? 'Novo valor:' : 'Nova descricao:', nextSession: { ...session, step: 'collect_transaction_edit_value', draft: { ...session.draft, editField: field } } }
+  }
+
+  if (session.step === 'pick_transaction_edit_category') {
+    const id = session.draft?.targetId
+    const all = await financeService.getTransactions()
+    const t = all.find((x) => x.id === id)
+    if (!t) return mainMenu('Transacao nao encontrada.')
+
+    const picked = selectOption(raw, normalized, session.options ?? [])
+    if (!picked) return { content: 'Selecione uma categoria.', actions: optionsToActions(session.options ?? []), nextSession: session }
+
+    const value = clean(picked.label)
+    if (!value) return { content: 'Categoria invalida.', actions: optionsToActions(session.options ?? []), nextSession: session }
+
+    await financeService.saveCategory(value, t.type)
+    await financeService.updateTransaction({ ...t, category: value })
+    return mainMenu('Transacao atualizada.')
   }
 
   if (session.step === 'pick_transaction_edit_payment_method') {

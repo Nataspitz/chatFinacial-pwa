@@ -16,7 +16,8 @@
     "react-dom": "19.2.4",
     "react-icons": "^5.5.0",
     "react-router-dom": "7.13.0",
-    "recharts": "^3.7.0"
+    "recharts": "^3.7.0",
+    "supabase": "^2.91.3"
   },
   "devDependencies": {
     "@types/node": "25.3.0",
