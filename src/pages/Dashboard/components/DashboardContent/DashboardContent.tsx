@@ -2,24 +2,25 @@ import { Button } from '../../../../components/ui'
 import { ExecutiveCards } from '../ExecutiveCards/ExecutiveCards'
 import { GrowthLineChart } from '../GrowthLineChart/GrowthLineChart'
 import { HealthIndicators } from '../HealthIndicators/HealthIndicators'
-import { MonthlyCandleChart } from '../MonthlyCandleChart/MonthlyCandleChart'
+import { PerformanceOverviewChart } from '../PerformanceOverviewChart/PerformanceOverviewChart'
 import { RevenueExpenseBarChart } from '../RevenueExpenseBarChart/RevenueExpenseBarChart'
 import { RoiSection } from '../RoiSection/RoiSection'
 import { SectionContainer } from '../SectionContainer/SectionContainer'
 import { TrendIndicators } from '../TrendIndicators/TrendIndicators'
-import type { CandleDatum, DashboardViewMode, TimePoint } from '../../types'
+import type { PerformanceOverviewPoint, TimePoint } from '../../types'
 import styles from '../../Dashboard.module.css'
 
 interface DashboardContentProps {
   periodLabel: string
-  mode: DashboardViewMode
   revenue: number
   expense: number
   executiveProfit: number
   executiveMargin: number | null
-  variation: number | null
-  candleSeries: CandleDatum[]
-  hasDataInSelection: boolean
+  variationAmount: number
+  variationPercent: number | null
+  performanceOverviewCurrentYearSeries: PerformanceOverviewPoint[]
+  performanceOverviewTotalAnnualSeries: PerformanceOverviewPoint[]
+  performanceOverviewCurrentYear: number
   lineSeries: TimePoint[]
   healthSnapshot: {
     averageProfitLast3: number
@@ -41,14 +42,15 @@ interface DashboardContentProps {
 
 export const DashboardContent = ({
   periodLabel,
-  mode,
   revenue,
   expense,
   executiveProfit,
   executiveMargin,
-  variation,
-  candleSeries,
-  hasDataInSelection,
+  variationAmount,
+  variationPercent,
+  performanceOverviewCurrentYearSeries,
+  performanceOverviewTotalAnnualSeries,
+  performanceOverviewCurrentYear,
   lineSeries,
   healthSnapshot,
   businessSettingsFailed,
@@ -61,6 +63,8 @@ export const DashboardContent = ({
   withPrivacyMask,
   onOpenCompanySettings
 }: DashboardContentProps): JSX.Element => {
+  const variationAmountLabel = `${variationAmount >= 0 ? '+' : '-'}${formatCurrency(Math.abs(variationAmount))}`
+
   return (
     <div className={styles.layout}>
       <SectionContainer title="Resumo executivo" description={`Periodo selecionado: ${periodLabel}`}>
@@ -69,13 +73,20 @@ export const DashboardContent = ({
           expense={withPrivacyMask(formatCurrency(expense))}
           profit={withPrivacyMask(formatCurrency(executiveProfit))}
           margin={withPrivacyMask(formatPercent(executiveMargin))}
-          variation={withPrivacyMask(formatPercent(variation))}
-          variationPositive={(variation ?? 0) >= 0}
+          variation={withPrivacyMask(variationAmountLabel)}
+          variationPositive={variationAmount >= 0}
         />
       </SectionContainer>
 
-      <SectionContainer title="Grafico de vela" description="Open, High, Low e Close do lucro acumulado no periodo.">
-        <MonthlyCandleChart data={candleSeries} mode={mode} hasData={hasDataInSelection} />
+      <SectionContainer
+        title="Visao geral de desempenho"
+        description="Saldo em conta por periodo (acumulado), sem considerar lancamentos futuros."
+      >
+        <PerformanceOverviewChart
+          currentYear={performanceOverviewCurrentYear}
+          currentYearData={performanceOverviewCurrentYearSeries}
+          totalAnnualData={performanceOverviewTotalAnnualSeries}
+        />
       </SectionContainer>
 
       <div className={styles.twoColumns}>
@@ -128,7 +139,7 @@ export const DashboardContent = ({
         </SectionContainer>
 
         <SectionContainer title="Tendencia e direcao" description="Leitura rapida de aceleracao ou desaceleracao.">
-          <TrendIndicators variation={variation} trend={healthSnapshot.trend} valuesVisible={valuesVisible} />
+          <TrendIndicators variation={variationPercent} trend={healthSnapshot.trend} valuesVisible={valuesVisible} />
         </SectionContainer>
       </div>
     </div>

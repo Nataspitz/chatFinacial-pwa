@@ -1,4 +1,4 @@
-﻿import type { NormalizedTransaction, CandleDatum, PeriodTotals, TimePoint } from './types'
+import type { NormalizedTransaction, CandleDatum, PeriodTotals, PerformanceOverviewPoint, TimePoint } from './types'
 
 export const parseTransactionDate = (value: string): Date | null => {
   const normalized = value.match(/^\d{4}-\d{2}-\d{2}/)?.[0]
@@ -162,7 +162,41 @@ export const getPeriodTransactions = (
     return transactions.filter((item) => item.year === year)
   }
 
-  return transactions.filter((item) => item.year === year && item.month === month)
+  return transactions.flatMap((item) => {
+    if (item.year === year && item.month === month) {
+      return [item]
+    }
+
+    if (item.type !== 'saida' || !item.isMonthlyCost) {
+      return []
+    }
+
+    const baseDate = item.parsedDate
+    const isAfterStartMonth = year > item.year || (year === item.year && month >= item.month)
+    if (!isAfterStartMonth) {
+      return []
+    }
+
+    const targetMonthDate = new Date(year, month - 1, 1)
+    const isOriginalMonth = targetMonthDate.getFullYear() === baseDate.getFullYear() && targetMonthDate.getMonth() === baseDate.getMonth()
+    if (isOriginalMonth) {
+      return []
+    }
+
+    const lastDayInTargetMonth = new Date(year, month, 0).getDate()
+    const adjustedDay = Math.min(baseDate.getDate(), lastDayInTargetMonth)
+    const generatedDate = new Date(year, month - 1, adjustedDay)
+
+    return [
+      {
+        ...item,
+        parsedDate: generatedDate,
+        year,
+        month,
+        day: adjustedDay
+      }
+    ]
+  })
 }
 
 export const getPreviousPeriod = (
@@ -229,3 +263,65 @@ export const buildLastNPeriodProfits = (
 
   return values
 }
+
+const MONTH_NAMES_SHORT = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
+
+export const buildPerformanceOverviewSeries = (
+  transactions: NormalizedTransaction[],
+  mode: 'annual' | 'monthly',
+  selectedYear: number,
+  options?: { zeroFutureMonthsAfter?: number; cutoffTime?: number | null }
+): PerformanceOverviewPoint[] => {
+  if (mode === 'monthly') {
+    let cumulativeProfit = 0
+    const zeroFutureMonthsAfter = options?.zeroFutureMonthsAfter ?? null
+    const cutoffTime = options?.cutoffTime ?? null
+
+    return Array.from({ length: 12 }, (_, index) => index + 1).map((month) => {
+      if (zeroFutureMonthsAfter !== null && month > zeroFutureMonthsAfter) {
+        return {
+          label: MONTH_NAMES_SHORT[month - 1],
+          revenue: 0,
+          expense: 0,
+          profit: 0,
+          cumulativeProfit: 0
+        }
+      }
+
+      const monthlyTransactions = getPeriodTransactions(transactions, 'monthly', selectedYear, month).filter((item) =>
+        cutoffTime === null ? true : item.parsedDate.getTime() <= cutoffTime
+      )
+      const totals = calculatePeriodTotals(monthlyTransactions)
+      cumulativeProfit += totals.profit
+
+      return {
+        label: MONTH_NAMES_SHORT[month - 1],
+        revenue: totals.revenue,
+        expense: totals.expense,
+        profit: totals.profit,
+        cumulativeProfit
+      }
+    })
+  }
+
+  const years = Array.from(new Set(transactions.map((item) => item.year))).sort((a, b) => a - b)
+  let cumulativeProfit = 0
+  const cutoffTime = options?.cutoffTime ?? null
+
+  return years.map((year) => {
+    const annualTransactions = Array.from({ length: 12 }, (_, index) => index + 1)
+      .flatMap((month) => getPeriodTransactions(transactions, 'monthly', year, month))
+      .filter((item) => (cutoffTime === null ? true : item.parsedDate.getTime() <= cutoffTime))
+    const totals = calculatePeriodTotals(annualTransactions)
+    cumulativeProfit += totals.profit
+
+    return {
+      label: String(year),
+      revenue: totals.revenue,
+      expense: totals.expense,
+      profit: totals.profit,
+      cumulativeProfit
+    }
+  })
+}
+

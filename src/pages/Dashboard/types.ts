@@ -20,6 +20,14 @@ export interface CandleDatum {
   y: [number, number, number, number]
 }
 
+export interface PerformanceOverviewPoint {
+  label: string
+  revenue: number
+  expense: number
+  profit: number
+  cumulativeProfit: number
+}
+
 export interface TimePoint {
   label: string
   revenue: number

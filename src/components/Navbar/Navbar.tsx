@@ -1,6 +1,5 @@
-import { useEffect, useState } from 'react'
 import { NavLink } from 'react-router-dom'
-import { FiCalendar, FiClipboard, FiFileText, FiLogOut, FiMessageCircle, FiMoon, FiSun } from 'react-icons/fi'
+import { FiCalendar, FiClipboard, FiFileText, FiLogOut, FiMessageCircle, FiSettings } from 'react-icons/fi'
 import { useAuth } from '../../contexts/AuthContext'
 import styles from './Navbar.module.css'
 
@@ -12,15 +11,6 @@ const getMobileLinkClassName = ({ isActive }: { isActive: boolean }): string =>
 
 export const Navbar = (): JSX.Element => {
   const { user, signOut } = useAuth()
-  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
-    const currentTheme = document.documentElement.getAttribute('data-theme')
-    return currentTheme === 'dark' ? 'dark' : 'light'
-  })
-
-  useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme)
-    window.localStorage.setItem('theme', theme)
-  }, [theme])
 
   const fullName = typeof user?.user_metadata?.full_name === 'string' ? user.user_metadata.full_name.trim() : ''
   const greetingLabel = fullName || user?.email || 'Painel financeiro'
@@ -56,10 +46,10 @@ export const Navbar = (): JSX.Element => {
         </nav>
 
         <div className={styles.actions}>
-          <button type="button" className={styles.actionButton} onClick={() => setTheme((prev) => (prev === 'light' ? 'dark' : 'light'))}>
-            {theme === 'light' ? <FiMoon aria-hidden /> : <FiSun aria-hidden />}
-            <span>{theme === 'light' ? 'Modo escuro' : 'Modo claro'}</span>
-          </button>
+          <NavLink to="/settings" className={getLinkClassName}>
+            <FiSettings aria-hidden />
+            <span>Configuracoes</span>
+          </NavLink>
           <button type="button" className={`${styles.actionButton} ${styles.logoutButton}`} onClick={() => void signOut()}>
             <FiLogOut aria-hidden />
             <span>Sair</span>
@@ -70,9 +60,9 @@ export const Navbar = (): JSX.Element => {
       <header className={styles.mobileTopBar}>
         <strong>ChatFinacial</strong>
         <div className={styles.mobileTopActions}>
-          <button type="button" className={styles.iconButton} onClick={() => setTheme((prev) => (prev === 'light' ? 'dark' : 'light'))}>
-            {theme === 'light' ? <FiMoon aria-hidden /> : <FiSun aria-hidden />}
-          </button>
+          <NavLink to="/settings" className={styles.iconButton} aria-label="Abrir configuracoes">
+            <FiSettings aria-hidden />
+          </NavLink>
           <button type="button" className={styles.iconButton} onClick={() => void signOut()}>
             <FiLogOut aria-hidden />
           </button>

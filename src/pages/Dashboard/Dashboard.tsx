@@ -70,14 +70,15 @@ export const Dashboard = (): JSX.Element => {
       {dashboard.shouldShowLoadedContent ? (
         <DashboardContent
           periodLabel={dashboard.periodLabel}
-          mode={dashboard.mode}
           revenue={dashboard.currentTotals.revenue}
           expense={dashboard.currentTotals.expense}
           executiveProfit={dashboard.executiveCurrentTotals.profit}
           executiveMargin={dashboard.executiveMargin}
-          variation={dashboard.profitVariation}
-          candleSeries={dashboard.candleSeries}
-          hasDataInSelection={dashboard.hasDataInSelection}
+          variationAmount={dashboard.profitVariationAmount}
+          variationPercent={dashboard.profitVariation}
+          performanceOverviewCurrentYearSeries={dashboard.performanceOverviewCurrentYearSeries}
+          performanceOverviewTotalAnnualSeries={dashboard.performanceOverviewTotalAnnualSeries}
+          performanceOverviewCurrentYear={dashboard.performanceOverviewCurrentYear}
           lineSeries={dashboard.lineSeries}
           healthSnapshot={dashboard.healthSnapshot}
           businessSettingsFailed={dashboard.businessSettingsFailed}

@@ -48,7 +48,7 @@ export const ExecutiveCards = ({ revenue, expense, profit, margin, variation, va
       variant: 'margin'
     },
     {
-      explanation: 'Quanto o lucro variou em relacao ao periodo anterior.',
+      explanation: 'Diferenca em reais do lucro em relacao ao periodo anterior.',
       label: 'Variacao vs periodo anterior',
       value: variation,
       tone: variationPositive ? 'positive' : 'negative',

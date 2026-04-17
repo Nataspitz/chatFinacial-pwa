@@ -1,4 +1,5 @@
 import type { TransactionType } from './transaction.types'
+import type { TransactionSettings } from './transaction-settings.types'
 
 export type ChatMessageRole = 'user' | 'assistant'
 
@@ -76,6 +77,7 @@ export interface GuidedDraft {
   targetId?: string
   targetLabel?: string
   editField?: 'amount' | 'category' | 'description' | 'date' | 'paymentMethod' | 'isMonthlyCost' | 'isConfirmed'
+  transactionSettings?: TransactionSettings
 }
 
 export interface ChatSessionState {

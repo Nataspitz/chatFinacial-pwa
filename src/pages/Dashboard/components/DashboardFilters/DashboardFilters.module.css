@@ -1,7 +1,38 @@
 .filters {
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
   align-items: center;
+  gap: var(--space-3);
+}
+
+.activeFilterBadge {
+  min-height: 46px;
+  border: 1px solid color-mix(in srgb, var(--brand-500) 32%, var(--border-color));
+  border-radius: 14px;
+  background: linear-gradient(
+    145deg,
+    color-mix(in srgb, var(--brand-500) 12%, var(--bg-secondary)),
+    color-mix(in srgb, var(--bg-secondary) 92%, transparent)
+  );
+  padding: var(--space-2) var(--space-3);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.activeFilterLabel {
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-secondary);
+  font-weight: var(--font-weight-semibold);
+}
+
+.activeFilterValue {
+  color: var(--text-primary);
+  font-size: var(--text-sm);
+  font-weight: var(--font-weight-semibold);
 }
 
 .filterIconButton {
@@ -126,6 +157,16 @@
 }
 
 @media (max-width: 640px) {
+  .filters {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .activeFilterBadge {
+    width: 100%;
+    justify-content: space-between;
+  }
+
   .fieldsGrid {
     grid-template-columns: 1fr;
     gap: var(--space-2);

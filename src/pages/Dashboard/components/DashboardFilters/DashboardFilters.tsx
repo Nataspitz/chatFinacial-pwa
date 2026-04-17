@@ -29,6 +29,15 @@ const MONTH_OPTIONS = [
   { value: 12, label: 'Dez' }
 ]
 
+const getActiveFilterLabel = (mode: DashboardViewMode, year: number, month: number): string => {
+  if (mode === 'annual') {
+    return `Anual · ${year}`
+  }
+
+  const monthLabel = MONTH_OPTIONS.find((item) => item.value === month)?.label ?? String(month).padStart(2, '0')
+  return `Mensal · ${monthLabel}/${year}`
+}
+
 export const DashboardFilters = ({
   selectedYear,
   selectedMonth,
@@ -60,9 +69,16 @@ export const DashboardFilters = ({
     setIsOpen(false)
   }
 
+  const activeFilterLabel = getActiveFilterLabel(mode, selectedYear, selectedMonth)
+
   return (
     <>
       <section className={styles.filters} aria-label="Filtros da dashboard">
+        <div className={styles.activeFilterBadge} aria-live="polite">
+          <span className={styles.activeFilterLabel}>Filtro ativo</span>
+          <strong className={styles.activeFilterValue}>{activeFilterLabel}</strong>
+        </div>
+
         <button
           type="button"
           className={`${styles.filterIconButton} ${isOpen ? styles.filterIconButtonActive : ''}`.trim()}

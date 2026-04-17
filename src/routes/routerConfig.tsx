@@ -7,6 +7,7 @@ import { Chat } from '../pages/Chat/Chat'
 import { Dashboard } from '../pages/Dashboard/Dashboard'
 import { Login } from '../pages/Login/Login'
 import { Report } from '../pages/Report/Report'
+import { Settings } from '../pages/Settings/Settings'
 import { ProtectedRoute } from './ProtectedRoute'
 
 const RootRedirect = (): JSX.Element => {
@@ -49,6 +50,10 @@ const routes: RouteObject[] = [
           {
             path: '/calendario',
             element: <Calendario />
+          },
+          {
+            path: '/settings',
+            element: <Settings />
           }
         ]
       }

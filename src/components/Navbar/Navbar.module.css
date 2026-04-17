@@ -133,10 +133,14 @@
 .iconButton {
   width: 36px;
   height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   border-radius: 10px;
   background: var(--bg-tertiary);
   border: 1px solid var(--border-color);
   color: var(--text-primary);
+  text-decoration: none;
 }
 
 @media (max-width: 900px) {

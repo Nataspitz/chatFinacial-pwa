@@ -7,11 +7,8 @@ interface PageHeaderProps {
   onCreate: () => void
   onManageCategories: () => void
   onExportReport: () => void
-  onExportBackup: () => void
-  onImportBackup: () => void
   onOpenMobileActions: () => void
   isExporting: boolean
-  isImporting: boolean
   disabled: boolean
 }
 
@@ -19,11 +16,8 @@ export const PageHeader = ({
   onCreate,
   onManageCategories,
   onExportReport,
-  onExportBackup,
-  onImportBackup,
   onOpenMobileActions,
   isExporting,
-  isImporting,
   disabled
 }: PageHeaderProps): JSX.Element => {
   return (
@@ -40,19 +34,6 @@ export const PageHeader = ({
             <Button type="button" variant="ghost" className={styles.addButton} onClick={onManageCategories}>
               Categorias
             </Button>
-            <Button type="button" variant="ghost" className={styles.addButton} onClick={onExportBackup} disabled={disabled}>
-              Baixar backup
-            </Button>
-            <ButtonLoading
-              type="button"
-              variant="secondary"
-              className={styles.addButton}
-              loading={isImporting}
-              disabled={disabled}
-              onClick={onImportBackup}
-            >
-              Restaurar backup
-            </ButtonLoading>
             <ButtonLoading
               type="button"
               variant="primary"

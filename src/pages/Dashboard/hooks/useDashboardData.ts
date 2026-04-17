@@ -2,10 +2,9 @@ import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from
 import { businessService, type BusinessSettings } from '../../../services/business.service'
 import { financeService } from '../../../services/finance.service'
 import {
-  buildAnnualCandles,
+  buildPerformanceOverviewSeries,
   buildLast12MonthsSeries,
   buildLastNPeriodProfits,
-  buildMonthlyCandles,
   calculateAccumulatedProfit,
   calculateGrowthPercent,
   calculateMargin,
@@ -40,7 +39,9 @@ interface UseDashboardDataResult {
   availableYears: number[]
   businessSettings: BusinessSettings | null
   businessSettingsFailed: boolean
-  candleSeries: ReturnType<typeof buildMonthlyCandles> | ReturnType<typeof buildAnnualCandles>
+  performanceOverviewCurrentYearSeries: ReturnType<typeof buildPerformanceOverviewSeries>
+  performanceOverviewTotalAnnualSeries: ReturnType<typeof buildPerformanceOverviewSeries>
+  performanceOverviewCurrentYear: number
   currentTotals: ReturnType<typeof calculatePeriodTotals>
   error: string
   executiveCurrentTotals: ReturnType<typeof calculatePeriodTotals>
@@ -56,6 +57,7 @@ interface UseDashboardDataResult {
   lineSeries: ReturnType<typeof buildLast12MonthsSeries>
   mode: DashboardViewMode
   periodLabel: string
+  profitVariationAmount: number
   profitVariation: number | null
   revenueGrowth: number | null
   roi: number | null
@@ -188,30 +190,19 @@ export const useDashboardData = (): UseDashboardDataResult => {
     [previousPeriodTransactions]
   )
 
-  const executiveProfitCutoff = useMemo(() => {
-    const cutoff = new Date()
-    cutoff.setHours(23, 59, 59, 999)
-    return cutoff.getTime()
-  }, [])
-
-  const currentExecutiveTransactions = useMemo(
-    () => currentPeriodTransactions.filter((item) => item.parsedDate.getTime() <= executiveProfitCutoff),
-    [currentPeriodTransactions, executiveProfitCutoff]
-  )
-
-  const previousExecutiveTransactions = useMemo(
-    () => previousPeriodTransactions.filter((item) => item.parsedDate.getTime() <= executiveProfitCutoff),
-    [previousPeriodTransactions, executiveProfitCutoff]
-  )
-
   const executiveCurrentTotals = useMemo(
-    () => calculatePeriodTotals(currentExecutiveTransactions),
-    [currentExecutiveTransactions]
+    () => currentTotals,
+    [currentTotals]
   )
 
   const executivePreviousTotals = useMemo(
-    () => calculatePeriodTotals(previousExecutiveTransactions),
-    [previousExecutiveTransactions]
+    () => previousTotals,
+    [previousTotals]
+  )
+
+  const profitVariationAmount = useMemo(
+    () => executiveCurrentTotals.profit - executivePreviousTotals.profit,
+    [executiveCurrentTotals.profit, executivePreviousTotals.profit]
   )
 
   const profitVariation = useMemo(
@@ -229,21 +220,41 @@ export const useDashboardData = (): UseDashboardDataResult => {
     [currentTotals.expense, previousTotals.expense]
   )
 
-  const candleSeries = useMemo(() => {
-    if (mode === 'annual') {
-      return buildAnnualCandles(transactions, selectedYear)
-    }
+  const performanceCutoffTime = useMemo(() => {
+    const today = new Date()
+    today.setHours(23, 59, 59, 999)
+    return today.getTime()
+  }, [])
 
-    return buildMonthlyCandles(transactions, selectedYear, selectedMonth)
-  }, [transactions, mode, selectedYear, selectedMonth])
+  const performanceOverviewTransactions = useMemo(
+    () => transactions.filter((item) => item.parsedDate.getTime() <= performanceCutoffTime),
+    [transactions, performanceCutoffTime]
+  )
+
+  const performanceOverviewCurrentYearSeries = useMemo(
+    () =>
+      buildPerformanceOverviewSeries(performanceOverviewTransactions, 'monthly', currentYear, {
+        zeroFutureMonthsAfter: currentMonth,
+        cutoffTime: performanceCutoffTime
+      }),
+    [performanceOverviewTransactions, currentYear, currentMonth, performanceCutoffTime]
+  )
+
+  const performanceOverviewTotalAnnualSeries = useMemo(
+    () =>
+      buildPerformanceOverviewSeries(performanceOverviewTransactions, 'annual', currentYear, {
+        cutoffTime: performanceCutoffTime
+      }),
+    [performanceOverviewTransactions, currentYear, performanceCutoffTime]
+  )
 
   const hasDataInSelection = useMemo(() => {
     if (mode === 'annual') {
-      return transactions.some((item) => item.year === selectedYear)
+      return transactions.length > 0
     }
 
-    return transactions.some((item) => item.year === selectedYear && item.month === selectedMonth)
-  }, [transactions, mode, selectedYear, selectedMonth])
+    return transactions.some((item) => item.year === selectedYear)
+  }, [transactions, mode, selectedYear])
 
   const lineSeries = useMemo(() => {
     const endMonth = mode === 'annual' ? 12 : selectedMonth
@@ -292,8 +303,8 @@ export const useDashboardData = (): UseDashboardDataResult => {
   )
 
   const executiveMargin = useMemo(
-    () => calculateMargin(currentTotals.revenue, executiveCurrentTotals.profit),
-    [currentTotals.revenue, executiveCurrentTotals.profit]
+    () => calculateMargin(executiveCurrentTotals.revenue, executiveCurrentTotals.profit),
+    [executiveCurrentTotals.revenue, executiveCurrentTotals.profit]
   )
 
   const periodLabel = useMemo(() => {
@@ -321,7 +332,9 @@ export const useDashboardData = (): UseDashboardDataResult => {
     availableYears,
     businessSettings,
     businessSettingsFailed,
-    candleSeries,
+    performanceOverviewCurrentYearSeries,
+    performanceOverviewTotalAnnualSeries,
+    performanceOverviewCurrentYear: currentYear,
     currentTotals,
     error,
     executiveCurrentTotals,
@@ -337,6 +350,7 @@ export const useDashboardData = (): UseDashboardDataResult => {
     lineSeries,
     mode,
     periodLabel,
+    profitVariationAmount,
     profitVariation,
     revenueGrowth,
     roi,

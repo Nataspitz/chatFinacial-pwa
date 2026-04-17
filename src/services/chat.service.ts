@@ -1,7 +1,16 @@
 import { financeService } from './finance.service'
 import { cfoAssistantService } from './cfo-assistant.service'
+import { transactionSettingsService } from './transaction-settings.service'
 import type { ChatQuickAction, ChatReply, ChatSessionState, GuidedOptionItem } from '../types/chat.types'
 import type { CfoAnalysisType } from '../types/cfo.types'
+import {
+  DEFAULT_TRANSACTION_SETTINGS,
+  getDefaultConfirmedByType,
+  getDefaultPaymentMethodByType,
+  normalizeTransactionBySettings,
+  validateTransactionBySettings,
+  type TransactionSettings
+} from '../types/transaction-settings.types'
 import type { PaymentMethod, Transaction, TransactionType } from '../types/transaction.types'
 
 const MAX_OPTIONS = 10
@@ -177,6 +186,32 @@ const addMonthsKeepingDay = (base: Date, offset: number): Date => {
   const first = new Date(base.getFullYear(), base.getMonth() + offset, 1)
   const maxDay = new Date(first.getFullYear(), first.getMonth() + 1, 0).getDate()
   return new Date(first.getFullYear(), first.getMonth(), Math.min(base.getDate(), maxDay))
+}
+
+const getTransactionSettingsFromSession = (session: ChatSessionState) =>
+  session.draft?.transactionSettings ?? null
+
+const resolveTransactionSettings = async (session: ChatSessionState): Promise<TransactionSettings> => {
+  const fromSession = getTransactionSettingsFromSession(session)
+  if (fromSession) {
+    return fromSession
+  }
+
+  return transactionSettingsService.getSettings().catch(() => DEFAULT_TRANSACTION_SETTINGS)
+}
+
+const saveTransactionWithSettings = async (
+  transaction: Transaction,
+  settings: TransactionSettings | undefined
+): Promise<string | null> => {
+  const normalized = normalizeTransactionBySettings(transaction, settings ?? DEFAULT_TRANSACTION_SETTINGS)
+  const validationMessage = validateTransactionBySettings(normalized, settings ?? DEFAULT_TRANSACTION_SETTINGS)
+  if (validationMessage) {
+    return validationMessage
+  }
+
+  await financeService.updateTransaction(normalized)
+  return null
 }
 
 const mainMenu = (content = 'O que voce quer fazer?'): ChatReply => ({
@@ -440,7 +475,21 @@ const continueFlow = async (raw: string, normalized: string, session: ChatSessio
   if (session.step === 'pick_transaction_type') {
     const type = raw === CMD.typeEntrada ? 'entrada' : raw === CMD.typeSaida ? 'saida' : null
     if (!type) return { content: 'Escolha Entrada ou Saida.', actions: [asOption('Entrada', CMD.typeEntrada), asOption('Saida', CMD.typeSaida), asOption('Cancelar', CMD.cancel)], nextSession: session }
-    return { content: 'Valor total?', nextSession: { ...session, step: 'collect_transaction_amount', draft: { ...session.draft, transactionType: type } } }
+    const transactionSettings = await transactionSettingsService.getSettings().catch(() => DEFAULT_TRANSACTION_SETTINGS)
+    return {
+      content: 'Valor total?',
+      nextSession: {
+        ...session,
+        step: 'collect_transaction_amount',
+        draft: {
+          ...session.draft,
+          transactionType: type,
+          paymentMethod: getDefaultPaymentMethodByType(transactionSettings, type),
+          isMonthlyCost: type === 'saida' ? transactionSettings.defaultMonthlyCostSaida : false,
+          transactionSettings
+        }
+      }
+    }
   }
 
   if (session.step === 'collect_transaction_amount') {
@@ -480,17 +529,22 @@ const continueFlow = async (raw: string, normalized: string, session: ChatSessio
   }
 
   if (session.step === 'pick_transaction_payment_method') {
+    const transactionSettings = await resolveTransactionSettings(session)
     const method: PaymentMethod | null =
       raw === CMD.paymentPix ? 'pix' : raw === CMD.paymentDebito ? 'debito' : raw === CMD.paymentDinheiro ? 'dinheiro' : raw === CMD.paymentCredito ? 'credito' : null
     if (!method) return { content: 'Escolha o pagamento.', actions: paymentActions(), nextSession: session }
     if (method === 'credito') return { content: 'Parcelas (1 a 48)?', nextSession: { ...session, step: 'collect_transaction_installment_count', draft: { ...session.draft, paymentMethod: method } } }
-    if (session.draft?.transactionType === 'saida') return { content: 'Custo mensal?', actions: boolActions(), nextSession: { ...session, step: 'pick_transaction_monthly_cost', draft: { ...session.draft, paymentMethod: method, installmentCount: 1 } } }
-    return { content: 'Data?', actions: dateActions(), nextSession: { ...session, step: 'pick_transaction_date', draft: { ...session.draft, paymentMethod: method, installmentCount: 1 } } }
+    if (session.draft?.transactionType === 'saida') return { content: 'Custo mensal?', actions: boolActions(), nextSession: { ...session, step: 'pick_transaction_monthly_cost', draft: { ...session.draft, paymentMethod: method, installmentCount: 1, transactionSettings } } }
+    return { content: 'Data?', actions: dateActions(), nextSession: { ...session, step: 'pick_transaction_date', draft: { ...session.draft, paymentMethod: method, installmentCount: 1, transactionSettings } } }
   }
 
   if (session.step === 'collect_transaction_installment_count') {
+    const transactionSettings = await resolveTransactionSettings(session)
     const count = parseIntSafe(raw)
     if (!count || count < 1 || count > 48) return { content: 'Parcelas entre 1 e 48.', nextSession: session }
+    if (!transactionSettings.allowCreditWithoutInstallments && count <= 1) {
+      return { content: 'Credito precisa de ao menos 2 parcelas nas regras atuais.', nextSession: session }
+    }
     return { content: 'Data da primeira parcela?', actions: dateActions(), nextSession: { ...session, step: 'pick_transaction_date', draft: { ...session.draft, installmentCount: count, isMonthlyCost: false } } }
   }
 
@@ -504,6 +558,7 @@ const continueFlow = async (raw: string, normalized: string, session: ChatSessio
     const parsedDate = parseDate(raw, normalized)
     if (!parsedDate) return { content: 'Data invalida.', actions: dateActions(), nextSession: session.step === 'collect_transaction_custom_date' ? { ...session, step: 'collect_transaction_custom_date' } : session }
 
+    const transactionSettings = await resolveTransactionSettings(session)
     const type = session.draft?.transactionType
     const amount = session.draft?.amount
     const category = session.draft?.categoryName
@@ -527,7 +582,7 @@ const continueFlow = async (raw: string, normalized: string, session: ChatSessio
         date,
         category,
         description,
-        isConfirmed: date <= today(),
+        isConfirmed: getDefaultConfirmedByType(transactionSettings, type, date),
         isMonthlyCost,
         paymentMethod,
         installmentGroupId: groupId,
@@ -537,7 +592,14 @@ const continueFlow = async (raw: string, normalized: string, session: ChatSessio
         isInstallment
       }
     })
-    await financeService.saveTransactions(rows)
+    const normalizedRows = rows.map((item) => normalizeTransactionBySettings(item, transactionSettings))
+    const invalidMessage = normalizedRows
+      .map((item) => validateTransactionBySettings(item, transactionSettings))
+      .find((message) => Boolean(message))
+    if (invalidMessage) {
+      return { content: invalidMessage ?? 'Dados invalidos para criar transacao.', nextSession: session }
+    }
+    await financeService.saveTransactions(normalizedRows)
     await financeService.saveCategory(category, type)
     return mainMenu('Transacao criada.')
   }
@@ -601,6 +663,7 @@ const continueFlow = async (raw: string, normalized: string, session: ChatSessio
   }
 
   if (session.step === 'pick_transaction_edit_category') {
+    const transactionSettings = await resolveTransactionSettings(session)
     const id = session.draft?.targetId
     const all = await financeService.getTransactions()
     const t = all.find((x) => x.id === id)
@@ -613,11 +676,13 @@ const continueFlow = async (raw: string, normalized: string, session: ChatSessio
     if (!value) return { content: 'Categoria invalida.', actions: optionsToActions(session.options ?? []), nextSession: session }
 
     await financeService.saveCategory(value, t.type)
-    await financeService.updateTransaction({ ...t, category: value })
+    const error = await saveTransactionWithSettings({ ...t, category: value }, transactionSettings)
+    if (error) return { content: error, nextSession: session }
     return mainMenu('Transacao atualizada.')
   }
 
   if (session.step === 'pick_transaction_edit_payment_method') {
+    const transactionSettings = await resolveTransactionSettings(session)
     const method: PaymentMethod | null =
       raw === CMD.paymentPix ? 'pix' : raw === CMD.paymentDebito ? 'debito' : raw === CMD.paymentDinheiro ? 'dinheiro' : raw === CMD.paymentCredito ? 'credito' : null
     if (!method) return { content: 'Escolha o pagamento.', actions: paymentActions(), nextSession: session }
@@ -626,22 +691,29 @@ const continueFlow = async (raw: string, normalized: string, session: ChatSessio
     const all = await financeService.getTransactions()
     const t = all.find((x) => x.id === id)
     if (!t) return mainMenu('Transacao nao encontrada.')
-    await financeService.updateTransaction({ ...t, paymentMethod: method, installmentCount: 1, installmentNumber: 1, installmentGroupId: null, isInstallment: false, totalAmount: t.amount })
+    const error = await saveTransactionWithSettings({ ...t, paymentMethod: method, installmentCount: 1, installmentNumber: 1, installmentGroupId: null, isInstallment: false, totalAmount: t.amount }, transactionSettings)
+    if (error) return { content: error, nextSession: session }
     return mainMenu('Transacao atualizada.')
   }
 
   if (session.step === 'collect_transaction_edit_installment_count') {
+    const transactionSettings = await resolveTransactionSettings(session)
     const count = parseIntSafe(raw)
     if (!count || count < 1 || count > 48) return { content: 'Parcelas entre 1 e 48.', nextSession: session }
+    if (!transactionSettings.allowCreditWithoutInstallments && count <= 1) {
+      return { content: 'Credito precisa de ao menos 2 parcelas nas regras atuais.', nextSession: session }
+    }
     const id = session.draft?.targetId
     const all = await financeService.getTransactions()
     const t = all.find((x) => x.id === id)
     if (!t) return mainMenu('Transacao nao encontrada.')
-    await financeService.updateTransaction({ ...t, paymentMethod: 'credito', installmentCount: count, installmentNumber: Math.min(t.installmentNumber, count), installmentGroupId: count > 1 ? t.installmentGroupId ?? crypto.randomUUID() : null, isInstallment: count > 1, totalAmount: count > 1 ? Math.max(t.totalAmount, t.amount) : t.amount })
+    const error = await saveTransactionWithSettings({ ...t, paymentMethod: 'credito', installmentCount: count, installmentNumber: Math.min(t.installmentNumber, count), installmentGroupId: count > 1 ? t.installmentGroupId ?? crypto.randomUUID() : null, isInstallment: count > 1, totalAmount: count > 1 ? Math.max(t.totalAmount, t.amount) : t.amount }, transactionSettings)
+    if (error) return { content: error, nextSession: session }
     return mainMenu('Transacao atualizada.')
   }
 
   if (session.step === 'collect_transaction_edit_value') {
+    const transactionSettings = await resolveTransactionSettings(session)
     const id = session.draft?.targetId
     const field = session.draft?.editField
     const all = await financeService.getTransactions()
@@ -650,36 +722,42 @@ const continueFlow = async (raw: string, normalized: string, session: ChatSessio
     if (field === 'amount') {
       const value = parseAmount(raw)
       if (!value) return { content: 'Valor invalido.', nextSession: session }
-      await financeService.updateTransaction({ ...t, amount: value, totalAmount: t.isInstallment ? Math.max(t.totalAmount, value) : value })
+      const error = await saveTransactionWithSettings({ ...t, amount: value, totalAmount: t.isInstallment ? Math.max(t.totalAmount, value) : value }, transactionSettings)
+      if (error) return { content: error, nextSession: session }
       return mainMenu('Transacao atualizada.')
     }
     if (field === 'category') {
       const value = clean(raw)
       if (!value) return { content: 'Categoria invalida.', nextSession: session }
       await financeService.saveCategory(value, t.type)
-      await financeService.updateTransaction({ ...t, category: value })
+      const error = await saveTransactionWithSettings({ ...t, category: value }, transactionSettings)
+      if (error) return { content: error, nextSession: session }
       return mainMenu('Transacao atualizada.')
     }
     if (field === 'description') {
       const value = clean(raw)
       if (!value) return { content: 'Descricao invalida.', nextSession: session }
-      await financeService.updateTransaction({ ...t, description: value })
+      const error = await saveTransactionWithSettings({ ...t, description: value }, transactionSettings)
+      if (error) return { content: error, nextSession: session }
       return mainMenu('Transacao atualizada.')
     }
     if (field === 'date') {
       const value = parseDate(raw, normalized)
       if (!value) return { content: 'Data invalida.', actions: dateActions(), nextSession: session }
-      await financeService.updateTransaction({ ...t, date: value, isConfirmed: value <= today() })
+      const error = await saveTransactionWithSettings({ ...t, date: value, isConfirmed: getDefaultConfirmedByType(transactionSettings, t.type, value) }, transactionSettings)
+      if (error) return { content: error, nextSession: session }
       return mainMenu('Transacao atualizada.')
     }
     if (field === 'isMonthlyCost') {
       if (raw !== CMD.boolYes && raw !== CMD.boolNo) return { content: 'Escolha Sim ou Nao.', actions: boolActions(), nextSession: session }
-      await financeService.updateTransaction({ ...t, isMonthlyCost: t.type === 'saida' ? raw === CMD.boolYes : false })
+      const error = await saveTransactionWithSettings({ ...t, isMonthlyCost: t.type === 'saida' ? raw === CMD.boolYes : false }, transactionSettings)
+      if (error) return { content: error, nextSession: session }
       return mainMenu('Transacao atualizada.')
     }
     if (field === 'isConfirmed') {
       if (raw !== CMD.boolYes && raw !== CMD.boolNo) return { content: 'Escolha Sim ou Nao.', actions: boolActions(), nextSession: session }
-      await financeService.updateTransaction({ ...t, isConfirmed: raw === CMD.boolYes })
+      const error = await saveTransactionWithSettings({ ...t, isConfirmed: raw === CMD.boolYes }, transactionSettings)
+      if (error) return { content: error, nextSession: session }
       return mainMenu('Transacao atualizada.')
     }
   }
