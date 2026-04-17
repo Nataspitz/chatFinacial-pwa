@@ -1,4 +1,3 @@
-import { Button } from '../../../../components/ui'
 import { ExecutiveCards } from '../ExecutiveCards/ExecutiveCards'
 import { GrowthLineChart } from '../GrowthLineChart/GrowthLineChart'
 import { HealthIndicators } from '../HealthIndicators/HealthIndicators'
@@ -37,7 +36,6 @@ interface DashboardContentProps {
   formatCurrency: (value: number) => string
   formatPercent: (value: number | null) => string
   withPrivacyMask: (value: string) => string
-  onOpenCompanySettings: () => void
 }
 
 export const DashboardContent = ({
@@ -60,8 +58,7 @@ export const DashboardContent = ({
   valuesVisible,
   formatCurrency,
   formatPercent,
-  withPrivacyMask,
-  onOpenCompanySettings
+  withPrivacyMask
 }: DashboardContentProps): JSX.Element => {
   const variationAmountLabel = `${variationAmount >= 0 ? '+' : '-'}${formatCurrency(Math.abs(variationAmount))}`
 
@@ -90,7 +87,7 @@ export const DashboardContent = ({
       </SectionContainer>
 
       <div className={styles.twoColumns}>
-        <SectionContainer title="Evolucao do lucro" description="Ultimos 12 meses.">
+        <SectionContainer title="Evolucao da receita" description="Faturamento por periodo (mes ou ano).">
           <GrowthLineChart data={lineSeries} />
         </SectionContainer>
 
@@ -115,20 +112,6 @@ export const DashboardContent = ({
         <SectionContainer title="ROI e acumulado" description="Base para estrategia de investimento.">
           {businessSettingsFailed ? (
             <p className={styles.roiFallback}>Nao foi possivel carregar as configuracoes empresariais no momento.</p>
-          ) : null}
-
-          {investmentAmount === null ? (
-            <div className={styles.roiAlert}>
-              <p>Configure o investimento inicial para calcular ROI.</p>
-              <Button
-                type="button"
-                variant="secondary"
-                className={styles.roiActionButton}
-                onClick={onOpenCompanySettings}
-              >
-                Configurar investimento
-              </Button>
-            </div>
           ) : null}
 
           <RoiSection

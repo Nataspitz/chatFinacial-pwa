@@ -126,6 +126,16 @@
   background: var(--bg-secondary);
 }
 
+.field input {
+  min-height: 36px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 0 var(--space-2);
+  font: inherit;
+  color: var(--text-primary);
+  background: var(--bg-secondary);
+}
+
 .checkField {
   display: flex;
   gap: var(--space-2);
@@ -170,6 +180,25 @@
 
 .muted {
   color: var(--text-secondary);
+}
+
+.accountForm {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.feedbackSuccess {
+  margin: 0;
+  color: var(--brand-700);
+}
+
+[data-theme='dark'] .feedbackSuccess {
+  color: var(--brand-200);
+}
+
+.feedbackError {
+  margin: 0;
+  color: var(--danger-500);
 }
 
 .dangerAction {

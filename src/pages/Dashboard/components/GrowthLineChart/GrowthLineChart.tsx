@@ -35,11 +35,11 @@ export const GrowthLineChart = ({ data }: GrowthLineChartProps): JSX.Element => 
           />
           <Line
             type="monotone"
-            dataKey="profit"
-            stroke="#3366ff"
+            dataKey="revenue"
+            stroke="#16c784"
             strokeWidth={2.4}
             dot={false}
-            activeDot={{ r: 4, stroke: '#3366ff', strokeWidth: 2, fill: 'var(--bg-secondary)' }}
+            activeDot={{ r: 4, stroke: '#16c784', strokeWidth: 2, fill: 'var(--bg-secondary)' }}
           />
         </LineChart>
       </ResponsiveContainer>

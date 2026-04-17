@@ -242,6 +242,30 @@ export const buildLast12MonthsSeries = (
   return result
 }
 
+export const buildLastNYearsSeries = (
+  transactions: NormalizedTransaction[],
+  endYear: number,
+  count: number
+): TimePoint[] => {
+  const result: TimePoint[] = []
+
+  for (let year = endYear - count + 1; year <= endYear; year += 1) {
+    const annual = transactions.filter((item) => item.year === year)
+    const totals = calculatePeriodTotals(annual)
+
+    result.push({
+      label: String(year),
+      revenue: totals.revenue,
+      expense: totals.expense,
+      profit: totals.profit,
+      year,
+      month: 12
+    })
+  }
+
+  return result
+}
+
 export const buildLastNPeriodProfits = (
   transactions: NormalizedTransaction[],
   mode: 'annual' | 'monthly',

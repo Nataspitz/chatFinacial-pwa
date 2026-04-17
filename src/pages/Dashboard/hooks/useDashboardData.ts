@@ -3,6 +3,7 @@ import { businessService, type BusinessSettings } from '../../../services/busine
 import { financeService } from '../../../services/finance.service'
 import {
   buildPerformanceOverviewSeries,
+  buildLastNYearsSeries,
   buildLast12MonthsSeries,
   buildLastNPeriodProfits,
   calculateAccumulatedProfit,
@@ -37,7 +38,6 @@ const formatPercent = (value: number | null): string => {
 interface UseDashboardDataResult {
   accumulatedProfit: number
   availableYears: number[]
-  businessSettings: BusinessSettings | null
   businessSettingsFailed: boolean
   performanceOverviewCurrentYearSeries: ReturnType<typeof buildPerformanceOverviewSeries>
   performanceOverviewTotalAnnualSeries: ReturnType<typeof buildPerformanceOverviewSeries>
@@ -50,7 +50,6 @@ interface UseDashboardDataResult {
   hasDataInSelection: boolean
   healthSnapshot: HealthSnapshot
   investmentAmount: number | null
-  isCompanySettingsModalOpen: boolean
   isHelpPanelOpen: boolean
   isLoading: boolean
   isValuesVisible: boolean
@@ -70,11 +69,8 @@ interface UseDashboardDataResult {
   setSelectedYear: (value: number) => void
   setSelectedMonth: (value: number) => void
   setIsValuesVisible: Dispatch<SetStateAction<boolean>>
-  openCompanySettingsModal: () => void
-  closeCompanySettingsModal: () => void
   toggleHelpPanel: () => void
   closeHelpPanel: () => void
-  handleBusinessSettingsSaved: (settings: BusinessSettings) => void
   formatCurrency: (value: number) => string
   formatPercent: (value: number | null) => string
 }
@@ -91,7 +87,6 @@ export const useDashboardData = (): UseDashboardDataResult => {
   const [isBusinessLoading, setIsBusinessLoading] = useState(true)
   const [error, setError] = useState('')
   const [businessSettingsFailed, setBusinessSettingsFailed] = useState(false)
-  const [isCompanySettingsModalOpen, setIsCompanySettingsModalOpen] = useState(false)
   const [isHelpPanelOpen, setIsHelpPanelOpen] = useState(false)
   const [isValuesVisible, setIsValuesVisible] = useState(true)
 
@@ -257,8 +252,11 @@ export const useDashboardData = (): UseDashboardDataResult => {
   }, [transactions, mode, selectedYear])
 
   const lineSeries = useMemo(() => {
-    const endMonth = mode === 'annual' ? 12 : selectedMonth
-    return buildLast12MonthsSeries(transactions, selectedYear, endMonth)
+    if (mode === 'annual') {
+      return buildLastNYearsSeries(transactions, selectedYear, 6)
+    }
+
+    return buildLast12MonthsSeries(transactions, selectedYear, selectedMonth)
   }, [transactions, mode, selectedYear, selectedMonth])
 
   const healthSnapshot = useMemo<HealthSnapshot>(() => {
@@ -330,7 +328,6 @@ export const useDashboardData = (): UseDashboardDataResult => {
   return {
     accumulatedProfit,
     availableYears,
-    businessSettings,
     businessSettingsFailed,
     performanceOverviewCurrentYearSeries,
     performanceOverviewTotalAnnualSeries,
@@ -343,7 +340,6 @@ export const useDashboardData = (): UseDashboardDataResult => {
     hasDataInSelection,
     healthSnapshot,
     investmentAmount,
-    isCompanySettingsModalOpen,
     isHelpPanelOpen,
     isLoading,
     isValuesVisible,
@@ -363,14 +359,8 @@ export const useDashboardData = (): UseDashboardDataResult => {
     setSelectedYear,
     setSelectedMonth,
     setIsValuesVisible,
-    openCompanySettingsModal: () => setIsCompanySettingsModalOpen(true),
-    closeCompanySettingsModal: () => setIsCompanySettingsModalOpen(false),
     toggleHelpPanel: () => setIsHelpPanelOpen((prev) => !prev),
     closeHelpPanel: () => setIsHelpPanelOpen(false),
-    handleBusinessSettingsSaved: (settings: BusinessSettings) => {
-      setBusinessSettings(settings)
-      setBusinessSettingsFailed(false)
-    },
     formatCurrency,
     formatPercent
   }

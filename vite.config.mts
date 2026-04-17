@@ -1,4 +1,4 @@
-import { defineConfig } from 'vite'
+import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 
@@ -104,5 +104,16 @@ export default defineConfig({
   server: {
     port: 5173,
     strictPort: true
+  },
+  test: {
+    globals: true,
+    environment: 'jsdom',
+    css: true,
+    setupFiles: ['./__test__/setup.ts'],
+    include: ['__test__/**/*.{test,spec}.{ts,tsx}'],
+    coverage: {
+      reporter: ['text', 'html'],
+      reportsDirectory: './coverage'
+    }
   }
 })

@@ -10,16 +10,5 @@ export const isAccountSetupComplete = (user: UserMetaCarrier | null): boolean =>
   const companyName = typeof meta.company_name === 'string' ? meta.company_name.trim() : ''
   const preferredCurrency = typeof meta.preferred_currency === 'string' ? meta.preferred_currency.trim() : ''
 
-  const noInitialInvestment = Boolean(meta.no_initial_investment)
-  const investmentBase =
-    typeof meta.investment_base_amount === 'number'
-      ? meta.investment_base_amount
-      : typeof meta.investment_base_amount === 'string'
-        ? Number(meta.investment_base_amount.replace(',', '.'))
-        : Number.NaN
-
-  const hasValidInvestmentBase = Number.isFinite(investmentBase) && investmentBase >= 0
-  const investmentConfigured = noInitialInvestment || hasValidInvestmentBase
-
-  return Boolean(fullName && phone && companyName && preferredCurrency.length === 3 && investmentConfigured)
+  return Boolean(fullName && phone && companyName && preferredCurrency.length === 3)
 }

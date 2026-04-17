@@ -494,11 +494,11 @@ export const ReportPage = (): JSX.Element => {
   const todayDate = getTodayDate()
 
   const mainTransactions = useMemo(
-    () => displayedTransactions.filter((item) => item.isConfirmed || !isTransactionInFuture(item, todayDate)),
+    () => displayedTransactions.filter((item) => !isTransactionInFuture(item, todayDate)),
     [displayedTransactions, todayDate]
   )
   const futureTransactions = useMemo(
-    () => displayedTransactions.filter((item) => !item.isConfirmed && isTransactionInFuture(item, todayDate)),
+    () => displayedTransactions.filter((item) => isTransactionInFuture(item, todayDate)),
     [displayedTransactions, todayDate]
   )
 

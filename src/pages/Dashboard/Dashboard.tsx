@@ -2,7 +2,6 @@ import { FiEye, FiEyeOff } from 'react-icons/fi'
 import { PageIntro } from '../../components/molecules/PageIntro/PageIntro'
 import { PageTemplate } from '../../components/templates/PageTemplate/PageTemplate'
 import { Button } from '../../components/ui'
-import { CompanySettingsModal } from './components/CompanySettingsModal/CompanySettingsModal'
 import { DashboardContent } from './components/DashboardContent/DashboardContent'
 import { DashboardFilters } from './components/DashboardFilters/DashboardFilters'
 import { DashboardSkeleton } from './components/DashboardSkeleton/DashboardSkeleton'
@@ -89,16 +88,8 @@ export const Dashboard = (): JSX.Element => {
           formatCurrency={dashboard.formatCurrency}
           formatPercent={dashboard.formatPercent}
           withPrivacyMask={dashboard.withPrivacyMask}
-          onOpenCompanySettings={dashboard.openCompanySettingsModal}
         />
       ) : null}
-
-      <CompanySettingsModal
-        open={dashboard.isCompanySettingsModalOpen}
-        initialSettings={dashboard.businessSettings}
-        onClose={dashboard.closeCompanySettingsModal}
-        onSaved={dashboard.handleBusinessSettingsSaved}
-      />
 
       <button
         type="button"
