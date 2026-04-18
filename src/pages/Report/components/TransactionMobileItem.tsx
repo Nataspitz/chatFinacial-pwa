@@ -1,14 +1,14 @@
-import { useState } from 'react'
-import { FiChevronDown, FiChevronUp } from 'react-icons/fi'
+﻿import { useState, type MouseEvent } from 'react'
+import { FiChevronDown, FiChevronUp, FiMoreVertical } from 'react-icons/fi'
+import { Button, ButtonLoading } from '../../../components/ui'
 import type { Transaction } from '../../../types/transaction.types'
-import { TransactionActions } from './TransactionActions'
 import {
   formatPaymentMethod,
   getCategorySelectOptions,
   getConfirmedValue,
   getMonthlyCostValue
 } from './transactionTable.utils'
-import type { EditField, TransactionActionContext } from './transactions-table.types'
+import type { EditField, OpenTransactionContextMenu, TransactionActionContext } from './transactions-table.types'
 import styles from '../Report.module.css'
 
 interface TransactionMobileItemProps {
@@ -19,6 +19,7 @@ interface TransactionMobileItemProps {
   formatCurrency: (value: number) => string
   formatDate: (value: string) => string
   onEditChange: (field: EditField, value: string | boolean) => void
+  onOpenContextMenu: OpenTransactionContextMenu
   transaction: Transaction
 }
 
@@ -30,13 +31,27 @@ export const TransactionMobileItem = ({
   formatCurrency,
   formatDate,
   onEditChange,
+  onOpenContextMenu,
   transaction
 }: TransactionMobileItemProps): JSX.Element => {
   const [isExpanded, setIsExpanded] = useState(false)
   const isEditing = editingId === transaction.id && editingDraft !== null
 
+  const handleOpenMenu = (event: MouseEvent<HTMLButtonElement>): void => {
+    event.preventDefault()
+    event.stopPropagation()
+    const buttonRect = event.currentTarget.getBoundingClientRect()
+    const x = event.clientX || buttonRect.left + buttonRect.width / 2
+    const y = event.clientY || buttonRect.top + buttonRect.height / 2
+
+    onOpenContextMenu(transaction, {
+      x,
+      y
+    })
+  }
+
   return (
-    <article className={styles.mobileItem}>
+    <article className={styles.mobileItem} data-transaction-id={transaction.id}>
       {isEditing ? (
         <>
           <div className={styles.mobileRow}>
@@ -135,8 +150,27 @@ export const TransactionMobileItem = ({
               {getMonthlyCostValue(editingDraft, isEditing, onEditChange, transaction)}
             </div>
           </div>
-          <div className={styles.mobileActions}>
-            <TransactionActions context={actionContext} isEditing={isEditing} mobile transaction={transaction} />
+          <div className={`${styles.mobileActions} ${styles.mobileEditActions}`.trim()}>
+            <ButtonLoading
+              type="button"
+              variant="primary"
+              className={styles.actionButton}
+              loading={actionContext.isSavingEdit}
+              onClick={() => {
+                void actionContext.onEditSave()
+              }}
+            >
+              Salvar
+            </ButtonLoading>
+            <Button
+              type="button"
+              variant="secondary"
+              className={styles.actionButton}
+              disabled={actionContext.isSavingEdit}
+              onClick={actionContext.onEditCancel}
+            >
+              Cancelar
+            </Button>
           </div>
         </>
       ) : (
@@ -192,12 +226,17 @@ export const TransactionMobileItem = ({
               </div>
               <div className={styles.mobileRow}>
                 <span className={styles.mobileLabel}>Custo mensal</span>
-                <div className={styles.mobileValue}>
-                  {transaction.type === 'saida' ? (transaction.isMonthlyCost ? 'Sim' : 'Nao') : '-'}
+                <div className={`${styles.mobileValue} ${styles.mobileRowActions}`.trim()}>
+                  <span>{transaction.type === 'saida' ? (transaction.isMonthlyCost ? 'Sim' : 'Nao') : '-'}</span>
+                  <button
+                    type="button"
+                    className={styles.rowMenuButton}
+                    aria-label="Abrir menu da transacao"
+                    onClick={handleOpenMenu}
+                  >
+                    <FiMoreVertical />
+                  </button>
                 </div>
-              </div>
-              <div className={styles.mobileActions}>
-                <TransactionActions context={actionContext} isEditing={false} mobile transaction={transaction} />
               </div>
             </div>
           </div>

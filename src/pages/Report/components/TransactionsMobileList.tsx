@@ -1,6 +1,6 @@
 import type { Transaction } from '../../../types/transaction.types'
 import { TransactionMobileItem } from './TransactionMobileItem'
-import type { EditField, TransactionActionContext } from './transactions-table.types'
+import type { EditField, OpenTransactionContextMenu, TransactionActionContext } from './transactions-table.types'
 import styles from '../Report.module.css'
 
 interface TransactionsMobileListProps {
@@ -11,6 +11,7 @@ interface TransactionsMobileListProps {
   formatCurrency: (value: number) => string
   formatDate: (value: string) => string
   onEditChange: (field: EditField, value: string | boolean) => void
+  onOpenContextMenu: OpenTransactionContextMenu
   transactions: Transaction[]
 }
 
@@ -22,6 +23,7 @@ export const TransactionsMobileList = ({
   formatCurrency,
   formatDate,
   onEditChange,
+  onOpenContextMenu,
   transactions
 }: TransactionsMobileListProps): JSX.Element => {
   return (
@@ -37,6 +39,7 @@ export const TransactionsMobileList = ({
           formatCurrency={formatCurrency}
           formatDate={formatDate}
           onEditChange={onEditChange}
+          onOpenContextMenu={onOpenContextMenu}
         />
       ))}
     </div>

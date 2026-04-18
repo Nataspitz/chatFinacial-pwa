@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent } from 'react'
-import { Button, ButtonLoading } from '../../components/ui'
+import { Button, ButtonLoading, ModalBase } from '../../components/ui'
 import { PageTemplate } from '../../components/templates/PageTemplate/PageTemplate'
 import { useAuth } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
@@ -73,6 +73,13 @@ export const Settings = (): JSX.Element => {
   )
   const [accountDraft, setAccountDraft] = useState<AccountSettingsDraft>(() => toInitialAccountDraft(user))
   const [isSavingAccount, setIsSavingAccount] = useState(false)
+  const [isTrashModalOpen, setIsTrashModalOpen] = useState(false)
+  const [deletedTransactions, setDeletedTransactions] = useState<Transaction[]>([])
+  const [selectedDeletedIds, setSelectedDeletedIds] = useState<string[]>([])
+  const [isLoadingTrash, setIsLoadingTrash] = useState(false)
+  const [isRestoringTrash, setIsRestoringTrash] = useState(false)
+  const [isClearingTrash, setIsClearingTrash] = useState(false)
+  const [trashFeedback, setTrashFeedback] = useState('')
 
   const fullName = typeof user?.user_metadata?.full_name === 'string' ? user.user_metadata.full_name.trim() : ''
   const userLabel = fullName || user?.email || 'Usuario'
@@ -230,6 +237,77 @@ export const Settings = (): JSX.Element => {
     }
   }
 
+  const loadDeletedTransactions = async (): Promise<void> => {
+    setIsLoadingTrash(true)
+    try {
+      const deleted = await financeService.getDeletedTransactions()
+      setDeletedTransactions(deleted)
+    } catch {
+      setTrashFeedback('Nao foi possivel carregar a lixeira.')
+    } finally {
+      setIsLoadingTrash(false)
+    }
+  }
+
+  const handleOpenTrashModal = (): void => {
+    setTrashFeedback('')
+    setSelectedDeletedIds([])
+    setIsTrashModalOpen(true)
+    void loadDeletedTransactions()
+  }
+
+  const handleToggleDeleted = (id: string): void => {
+    setSelectedDeletedIds((prev) => (
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    ))
+  }
+
+  const handleToggleAllDeleted = (): void => {
+    setSelectedDeletedIds((prev) => (
+      prev.length === deletedTransactions.length ? [] : deletedTransactions.map((item) => item.id)
+    ))
+  }
+
+  const handleRestoreDeleted = async (): Promise<void> => {
+    setIsRestoringTrash(true)
+    setTrashFeedback('')
+    try {
+      const restoredCount = selectedDeletedIds.length > 0
+        ? await financeService.restoreDeletedTransactionsByIds(selectedDeletedIds)
+        : await financeService.restoreDeletedTransactions()
+      setSelectedDeletedIds([])
+      await loadDeletedTransactions()
+      setTrashFeedback(
+        restoredCount > 0
+          ? `${restoredCount} transacoes foram recuperadas.`
+          : 'Nenhuma transacao para recuperar.'
+      )
+    } catch {
+      setTrashFeedback('Nao foi possivel recuperar os itens selecionados.')
+    } finally {
+      setIsRestoringTrash(false)
+    }
+  }
+
+  const handlePurgeDeleted = async (): Promise<void> => {
+    setIsClearingTrash(true)
+    setTrashFeedback('')
+    try {
+      const deletedCount = await financeService.purgeDeletedTransactions()
+      setSelectedDeletedIds([])
+      await loadDeletedTransactions()
+      setTrashFeedback(
+        deletedCount > 0
+          ? `${deletedCount} transacoes foram removidas definitivamente.`
+          : 'Nenhuma transacao para limpar.'
+      )
+    } catch {
+      setTrashFeedback('Nao foi possivel limpar a lixeira.')
+    } finally {
+      setIsClearingTrash(false)
+    }
+  }
+
   const paymentMethodOptions: Array<{ value: PaymentMethod; label: string }> = [
     { value: 'pix', label: 'Pix' },
     { value: 'debito', label: 'Debito' },
@@ -348,6 +426,9 @@ export const Settings = (): JSX.Element => {
               <div className={styles.actionsRow}>
                 <Button type="button" variant="ghost" onClick={() => void handleExportBackup()} disabled={isLoadingData || isImportingBackup}>
                   Baixar backup
+                </Button>
+                <Button type="button" variant="ghost" onClick={handleOpenTrashModal} disabled={isLoadingData || isImportingBackup}>
+                  Ver apagados
                 </Button>
                 <ButtonLoading
                   type="button"
@@ -635,6 +716,80 @@ export const Settings = (): JSX.Element => {
           ) : null}
         </article>
       </section>
+
+      <ModalBase
+        open={isTrashModalOpen}
+        title="Lixeira de transacoes"
+        onClose={() => {
+          if (isLoadingTrash || isRestoringTrash || isClearingTrash) return
+          setIsTrashModalOpen(false)
+          setTrashFeedback('')
+        }}
+      >
+        <div className={styles.trashModalContent}>
+          {isLoadingTrash ? (
+            <p className={styles.trashStateCenter}>Carregando itens apagados...</p>
+          ) : deletedTransactions.length === 0 ? (
+            <p className={styles.trashStateCenter}>Nenhum apagado.</p>
+          ) : (
+            <>
+              <label className={styles.checkField}>
+                <input
+                  type="checkbox"
+                  checked={selectedDeletedIds.length > 0 && selectedDeletedIds.length === deletedTransactions.length}
+                  onChange={handleToggleAllDeleted}
+                  disabled={isRestoringTrash || isClearingTrash}
+                />
+                <span>Selecionar todos</span>
+              </label>
+
+              <div className={styles.trashList}>
+                {deletedTransactions.map((item) => (
+                  <label key={item.id} className={styles.trashRow}>
+                    <input
+                      type="checkbox"
+                      checked={selectedDeletedIds.includes(item.id)}
+                      onChange={() => handleToggleDeleted(item.id)}
+                      disabled={isRestoringTrash || isClearingTrash}
+                    />
+                    <div className={styles.trashRowBody}>
+                      <strong>{item.category}</strong>
+                      <span>{item.description}</span>
+                    </div>
+                    <strong>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.amount)}</strong>
+                  </label>
+                ))}
+              </div>
+            </>
+          )}
+
+          {trashFeedback ? <p className={styles.feedback}>{trashFeedback}</p> : null}
+
+          <div className={styles.actionsRow}>
+            <Button type="button" variant="ghost" onClick={() => setIsTrashModalOpen(false)} disabled={isRestoringTrash || isClearingTrash}>
+              Fechar
+            </Button>
+            <ButtonLoading
+              type="button"
+              variant="secondary"
+              loading={isRestoringTrash}
+              disabled={isClearingTrash || deletedTransactions.length === 0}
+              onClick={() => void handleRestoreDeleted()}
+            >
+              {selectedDeletedIds.length > 0 ? 'Recuperar selecionados' : 'Recuperar tudo'}
+            </ButtonLoading>
+            <ButtonLoading
+              type="button"
+              variant="danger"
+              loading={isClearingTrash}
+              disabled={isRestoringTrash || deletedTransactions.length === 0}
+              onClick={() => void handlePurgeDeleted()}
+            >
+              Limpar lixeira
+            </ButtonLoading>
+          </div>
+        </div>
+      </ModalBase>
     </PageTemplate>
   )
 }

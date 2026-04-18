@@ -466,6 +466,7 @@
   background: color-mix(in srgb, var(--bg-secondary) 90%, var(--bg-primary));
   box-shadow: 0 1px 3px color-mix(in srgb, #000 8%, transparent);
   transition: box-shadow var(--report-transition-fast), background-color var(--report-transition-fast);
+  cursor: pointer;
 }
 
 .table tbody tr:hover {
@@ -503,13 +504,49 @@
   color: var(--text-primary);
 }
 
-.actionsCell {
-  white-space: nowrap;
+.inlineEditActions {
+  margin-top: var(--space-2);
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--report-space-micro);
 }
 
-.actionsGroup {
+.inlineActionButton {
+  width: 100px;
+  min-width: 100px;
+}
+
+.mobileRowActions {
   display: inline-flex;
-  gap: var(--report-space-micro);
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  gap: var(--space-2);
+}
+
+.rowMenuButton {
+  width: 30px;
+  min-width: 30px;
+  height: 30px;
+  border: 1px solid color-mix(in srgb, var(--border-color) 90%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--bg-secondary) 92%, transparent);
+  color: var(--text-secondary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background-color var(--report-transition-fast), border-color var(--report-transition-fast), color var(--report-transition-fast);
+}
+
+.rowMenuButton:hover {
+  border-color: color-mix(in srgb, var(--brand-500) 28%, var(--border-color));
+  background: color-mix(in srgb, var(--brand-500) 12%, transparent);
+  color: var(--text-primary);
+}
+
+.rowMenuButton svg {
+  font-size: 14px;
 }
 
 .mobileItem {
@@ -561,10 +598,14 @@
   word-break: break-word;
 }
 
-.mobileActions .actionsGroup {
+.mobileActions {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.mobileEditActions {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-2);
 }
 
 .mobileReadMoreButton {
@@ -695,16 +736,6 @@
   min-width: 100px;
 }
 
-.iconActionButton {
-  width: 36px;
-  min-width: 36px;
-  height: 36px;
-  padding: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-
 .colDate {
   width: 12%;
 }
@@ -737,8 +768,75 @@
   width: 10%;
 }
 
-.colActions {
-  width: 18%;
+.colRowMenu {
+  width: 4%;
+}
+
+.rowMenuCell {
+  width: 44px;
+  text-align: center;
+}
+
+.contextMenuBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1300;
+  border: 0;
+  background: transparent;
+  margin: 0;
+  padding: 0;
+}
+
+.contextMenu {
+  position: fixed;
+  z-index: 1310;
+  width: 196px;
+  border: 1px solid color-mix(in srgb, var(--border-color) 90%, transparent);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--bg-secondary) 95%, var(--bg-primary));
+  box-shadow: 0 16px 32px color-mix(in srgb, #000 25%, transparent);
+  padding: var(--space-1);
+  display: grid;
+  gap: 2px;
+}
+
+.contextMenuItem {
+  width: 100%;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text-primary);
+  font: inherit;
+  font-size: var(--text-sm);
+  font-weight: var(--font-weight-medium);
+  text-align: left;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 10px;
+  cursor: pointer;
+  transition: background-color var(--report-transition-fast), color var(--report-transition-fast);
+}
+
+.contextMenuItem:hover {
+  background: color-mix(in srgb, var(--brand-500) 15%, transparent);
+}
+
+.contextMenuItem svg {
+  font-size: 14px;
+}
+
+.contextMenuItem:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.contextMenuItemDanger {
+  color: var(--danger-500);
+}
+
+.contextMenuItemDanger:hover {
+  background: color-mix(in srgb, var(--danger-500) 12%, transparent);
 }
 
 .empty {
@@ -750,6 +848,68 @@
   margin: 0;
   color: var(--danger-500);
   font-weight: var(--font-weight-semibold);
+}
+
+.toastSuccess {
+  position: fixed;
+  right: var(--space-5);
+  bottom: var(--space-5);
+  z-index: 1500;
+  padding: var(--space-3) var(--space-4);
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--report-positive-strong) 28%, var(--border-color));
+  background: color-mix(in srgb, var(--report-positive-light) 76%, var(--bg-secondary));
+  color: var(--text-primary);
+  font-size: var(--text-sm);
+  box-shadow: 0 10px 22px color-mix(in srgb, #000 18%, transparent);
+}
+
+.trashModalContent {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.trashList {
+  max-height: min(48vh, 360px);
+  overflow: auto;
+  display: grid;
+  gap: var(--space-2);
+  padding-right: var(--space-1);
+}
+
+.trashItem {
+  border: 1px solid color-mix(in srgb, var(--border-color) 92%, transparent);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--bg-secondary) 95%, transparent);
+  padding: var(--space-3);
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.trashItemMain {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.trashItemMain strong {
+  color: var(--text-primary);
+}
+
+.trashItemMain span {
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.trashItemMeta {
+  display: grid;
+  gap: 2px;
+  justify-items: end;
+  color: var(--text-secondary);
+  white-space: nowrap;
 }
 
 .resultHeader {
@@ -1053,7 +1213,7 @@
     min-width: 700px;
   }
 
-  .actionsGroup {
+  .inlineEditActions {
     flex-wrap: wrap;
   }
 }
@@ -1162,6 +1322,21 @@
   .createActions {
     display: grid;
     grid-template-columns: 1fr;
+  }
+
+  .toastSuccess {
+    left: var(--space-4);
+    right: var(--space-4);
+    bottom: var(--space-4);
+  }
+
+  .trashItem {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .trashItemMeta {
+    justify-items: start;
   }
 
   .categoryActions {

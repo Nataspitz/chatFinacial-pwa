@@ -287,6 +287,7 @@ export const ReportPage = (): JSX.Element => {
   const [appliedListFilter, setAppliedListFilter] = useState<ListFilterState>(initialListFilterState)
   const [draftCombinedFilter, setDraftCombinedFilter] = useState<CombinedFilterDraftState>(initialCombinedFilterDraftState)
   const [transactionSettings, setTransactionSettings] = useState<TransactionSettings>(DEFAULT_TRANSACTION_SETTINGS)
+  const [toastMessage, setToastMessage] = useState('')
 
   const loadTransactions = async (): Promise<void> => {
     try {
@@ -346,6 +347,18 @@ export const ReportPage = (): JSX.Element => {
       setCreateForm((prev) => ({ ...prev, category: options[0].name }))
     }
   }, [categoryOptions, createForm.category, createForm.type, isCreateModalOpen])
+
+  useEffect(() => {
+    if (!toastMessage) {
+      return
+    }
+
+    const timeout = window.setTimeout(() => {
+      setToastMessage('')
+    }, 2800)
+
+    return () => window.clearTimeout(timeout)
+  }, [toastMessage])
 
   const yearOptions = useMemo(() => {
     const years = transactions
@@ -561,6 +574,7 @@ export const ReportPage = (): JSX.Element => {
       }
       setDeleteCandidate(null)
       setError('')
+      setToastMessage('Transacao movida para a lixeira!')
     } catch {
       setError('Nao foi possivel apagar a transacao.')
     } finally {
@@ -582,6 +596,30 @@ export const ReportPage = (): JSX.Element => {
       isMonthlyCost: transaction.type === 'saida' ? Boolean(transaction.isMonthlyCost) : false
     })
     setError('')
+  }
+
+  const handleDuplicateTransaction = (transaction: Transaction): void => {
+    const installmentCount = transaction.paymentMethod === 'credito' ? Math.max(1, transaction.installmentCount) : 1
+    const amountToDuplicate =
+      transaction.paymentMethod === 'credito' && installmentCount > 1 ? transaction.totalAmount : transaction.amount
+
+    setCreateFeedback('')
+    setNewCategoryName('')
+    setError('')
+    setEditingId(null)
+    setEditingDraft(null)
+    setCreateForm({
+      type: transaction.type,
+      amount: String(amountToDuplicate),
+      date: getTodayDate(),
+      category: transaction.category,
+      description: transaction.description,
+      isMonthlyCost: transaction.type === 'saida' ? transaction.isMonthlyCost : false,
+      paymentMethod: transaction.paymentMethod,
+      installmentCount
+    })
+    setIsCreateModalOpen(true)
+    setIsMobileActionsDrawerOpen(false)
   }
 
   const handleApplyListFilter = (): void => {
@@ -1094,6 +1132,7 @@ export const ReportPage = (): JSX.Element => {
 
       {isLoading && <LoadingState label="Carregando transacoes..." />}
       {error && <p className={styles.error}>{error}</p>}
+      {toastMessage ? <div className={styles.toastSuccess}>{toastMessage}</div> : null}
 
       {!isLoading && !error && (
         <>
@@ -1117,6 +1156,7 @@ export const ReportPage = (): JSX.Element => {
               emptyMessage="Sem entradas até hoje."
               categoryOptions={categoryOptions.entrada.map((item) => item.name)}
               onDelete={handleDelete}
+              onDuplicate={handleDuplicateTransaction}
               onEditStart={handleEditStart}
               onEditCancel={handleEditCancel}
               onEditChange={handleEditChange}
@@ -1136,6 +1176,7 @@ export const ReportPage = (): JSX.Element => {
               emptyMessage="Sem saídas até hoje."
               categoryOptions={categoryOptions.saida.map((item) => item.name)}
               onDelete={handleDelete}
+              onDuplicate={handleDuplicateTransaction}
               onEditStart={handleEditStart}
               onEditCancel={handleEditCancel}
               onEditChange={handleEditChange}
@@ -1155,6 +1196,7 @@ export const ReportPage = (): JSX.Element => {
               emptyMessage="Sem entradas futuras."
               categoryOptions={categoryOptions.entrada.map((item) => item.name)}
               onDelete={handleDelete}
+              onDuplicate={handleDuplicateTransaction}
               onEditStart={handleEditStart}
               onEditCancel={handleEditCancel}
               onEditChange={handleEditChange}
@@ -1175,6 +1217,7 @@ export const ReportPage = (): JSX.Element => {
               emptyMessage="Sem saídas futuras."
               categoryOptions={categoryOptions.saida.map((item) => item.name)}
               onDelete={handleDelete}
+              onDuplicate={handleDuplicateTransaction}
               onEditStart={handleEditStart}
               onEditCancel={handleEditCancel}
               onEditChange={handleEditChange}
@@ -1334,7 +1377,7 @@ export const ReportPage = (): JSX.Element => {
 
       <ModalBase
         open={deleteCandidate !== null}
-        title="Confirmar exclusao"
+        title="Mover para lixeira"
         onClose={() => {
           if (deletingId !== null) return
           setDeleteCandidate(null)
@@ -1342,11 +1385,11 @@ export const ReportPage = (): JSX.Element => {
       >
         <div className={styles.confirmDeleteContent}>
           <p>
-            Deseja apagar esta transacao?
+            Deseja mover esta transacao para a lixeira?
           </p>
           {deleteCandidate?.installmentCount && deleteCandidate.installmentCount > 1 ? (
             <p className={styles.confirmDeleteWarning}>
-              Esta transacao faz parte de um parcelamento. Ao confirmar, todas as parcelas desse grupo serao apagadas.
+              Esta transacao faz parte de um parcelamento. Ao confirmar, todas as parcelas desse grupo vao para a lixeira.
             </p>
           ) : null}
 

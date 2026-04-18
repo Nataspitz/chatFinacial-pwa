@@ -18,6 +18,7 @@ export interface TransactionsTableProps {
   emptyMessage?: string
   categoryOptions: string[]
   onDelete: (id: string) => Promise<void>
+  onDuplicate: (transaction: Transaction) => void
   onEditStart: (transaction: Transaction) => void
   onEditCancel: () => void
   onEditChange: (field: EditField, value: string | boolean) => void
@@ -35,7 +36,18 @@ export interface TransactionActionContext {
   deletingId: string | null
   isSavingEdit: boolean
   onDelete: (id: string) => Promise<void>
+  onDuplicate: (transaction: Transaction) => void
   onEditCancel: () => void
   onEditSave: () => Promise<void>
   onEditStart: (transaction: Transaction) => void
 }
+
+export interface TransactionContextMenuCoordinates {
+  x: number
+  y: number
+}
+
+export type OpenTransactionContextMenu = (
+  transaction: Transaction,
+  coordinates: TransactionContextMenuCoordinates
+) => void

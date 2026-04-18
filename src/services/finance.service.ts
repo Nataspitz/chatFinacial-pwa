@@ -1,4 +1,4 @@
-import { supabase } from '../lib/supabase'
+﻿import { supabase } from '../lib/supabase'
 import type { ExportReportPdfPayload, ExportReportPdfResult } from '../types/report-export.types'
 import type { PaymentMethod, Transaction, TransactionType } from '../types/transaction.types'
 
@@ -18,6 +18,7 @@ interface TransactionRow {
   installment_count: number
   total_amount: number
   is_installment: boolean
+  deleted_at?: string | null
 }
 
 interface TransactionCategoryRow {
@@ -33,7 +34,7 @@ export interface CategoryItem {
 }
 
 const TRANSACTION_FIELDS =
-  'id, type, category, amount, description, date, created_at, is_confirmed, is_monthly_cost, payment_method, installment_group_id, installment_number, installment_count, total_amount, is_installment'
+  'id, type, category, amount, description, date, created_at, is_confirmed, is_monthly_cost, payment_method, installment_group_id, installment_number, installment_count, total_amount, is_installment, deleted_at'
 
 const normalizeDate = (value: string): string => value.match(/^\d{4}-\d{2}-\d{2}/)?.[0] ?? value
 
@@ -118,6 +119,19 @@ const isMissingConfirmedColumnError = (error: unknown): boolean => {
   const combined = `${message} ${details} ${hint}`.toLowerCase()
 
   return combined.includes('is_confirmed') && (combined.includes('column') || combined.includes('schema'))
+}
+
+const isMissingDeletedAtColumnError = (error: unknown): boolean => {
+  if (!error || typeof error !== 'object') {
+    return false
+  }
+
+  const message = 'message' in error && typeof error.message === 'string' ? error.message : ''
+  const details = 'details' in error && typeof error.details === 'string' ? error.details : ''
+  const hint = 'hint' in error && typeof error.hint === 'string' ? error.hint : ''
+  const combined = `${message} ${details} ${hint}`.toLowerCase()
+
+  return combined.includes('deleted_at') && (combined.includes('column') || combined.includes('schema'))
 }
 
 const extractMissingColumnName = (error: unknown): string | null => {
@@ -224,10 +238,47 @@ export const financeService = {
       .from('transactions')
       .select(TRANSACTION_FIELDS)
       .eq('user_id', userId)
+      .is('deleted_at', null)
       .order('date', { ascending: false })
       .order('created_at', { ascending: false })
 
     if (response.error) {
+      if (isMissingDeletedAtColumnError(response.error)) {
+        const noDeletedAt = await supabase
+          .from('transactions')
+          .select(TRANSACTION_FIELDS.replace(', deleted_at', ''))
+          .eq('user_id', userId)
+          .order('date', { ascending: false })
+          .order('created_at', { ascending: false })
+
+        if (!noDeletedAt.error) {
+          return ((noDeletedAt.data ?? []) as TransactionRow[]).map(mapRow)
+        }
+
+        if (!isMissingConfirmedColumnError(noDeletedAt.error)) {
+          throw noDeletedAt.error
+        }
+
+        const legacyWithoutDeletedAt = await supabase
+          .from('transactions')
+          .select('id, type, category, amount, description, date, created_at, is_monthly_cost, payment_method, installment_group_id, installment_number, installment_count, total_amount, is_installment')
+          .eq('user_id', userId)
+          .order('date', { ascending: false })
+          .order('created_at', { ascending: false })
+
+        if (legacyWithoutDeletedAt.error) {
+          throw legacyWithoutDeletedAt.error
+        }
+
+        const legacyRows = (legacyWithoutDeletedAt.data ?? []) as Array<Omit<TransactionRow, 'is_confirmed'>>
+        return legacyRows.map((row) =>
+          mapRow({
+            ...row,
+            is_confirmed: getDefaultConfirmedByDate(row.date)
+          })
+        )
+      }
+
       if (!isMissingConfirmedColumnError(response.error)) {
         throw response.error
       }
@@ -236,6 +287,55 @@ export const financeService = {
         .from('transactions')
         .select('id, type, category, amount, description, date, created_at, is_monthly_cost, payment_method, installment_group_id, installment_number, installment_count, total_amount, is_installment')
         .eq('user_id', userId)
+        .not('deleted_at', 'is', null)
+        .order('date', { ascending: false })
+        .order('created_at', { ascending: false })
+
+      if (fallback.error) {
+        if (isMissingDeletedAtColumnError(fallback.error)) {
+          return []
+        }
+        throw fallback.error
+      }
+
+      const raw = (fallback.data ?? []) as Array<Omit<TransactionRow, 'is_confirmed'>>
+      return raw.map((row) =>
+        mapRow({
+          ...row,
+          is_confirmed: getDefaultConfirmedByDate(row.date)
+        })
+      )
+    }
+
+    return ((response.data ?? []) as TransactionRow[]).map(mapRow)
+  },
+
+  getDeletedTransactions: async (): Promise<Transaction[]> => {
+    const userId = await getUserId()
+
+    const response = await supabase
+      .from('transactions')
+      .select(TRANSACTION_FIELDS)
+      .eq('user_id', userId)
+      .not('deleted_at', 'is', null)
+      .order('deleted_at', { ascending: false })
+      .order('date', { ascending: false })
+      .order('created_at', { ascending: false })
+
+    if (response.error) {
+      if (isMissingDeletedAtColumnError(response.error)) {
+        return []
+      }
+
+      if (!isMissingConfirmedColumnError(response.error)) {
+        throw response.error
+      }
+
+      const fallback = await supabase
+        .from('transactions')
+        .select('id, type, category, amount, description, date, created_at, is_monthly_cost, payment_method, installment_group_id, installment_number, installment_count, total_amount, is_installment')
+        .eq('user_id', userId)
+        .is('deleted_at', null)
         .order('date', { ascending: false })
         .order('created_at', { ascending: false })
 
@@ -290,11 +390,89 @@ export const financeService = {
   deleteTransaction: async (id: string): Promise<void> => {
     const userId = await getUserId()
 
-    const { error } = await supabase.from('transactions').delete().eq('id', id).eq('user_id', userId)
+    const { error } = await supabase
+      .from('transactions')
+      .update({ deleted_at: new Date().toISOString() })
+      .eq('id', id)
+      .eq('user_id', userId)
+      .is('deleted_at', null)
 
     if (error) {
+      if (isMissingDeletedAtColumnError(error)) {
+        const fallbackDelete = await supabase.from('transactions').delete().eq('id', id).eq('user_id', userId)
+        if (fallbackDelete.error) {
+          throw fallbackDelete.error
+        }
+        return
+      }
+
       throw error
     }
+  },
+
+  restoreDeletedTransactions: async (): Promise<number> => {
+    const userId = await getUserId()
+
+    const response = await supabase
+      .from('transactions')
+      .update({ deleted_at: null })
+      .eq('user_id', userId)
+      .not('deleted_at', 'is', null)
+      .select('id')
+
+    if (response.error) {
+      if (isMissingDeletedAtColumnError(response.error)) {
+        return 0
+      }
+      throw response.error
+    }
+
+    return response.data?.length ?? 0
+  },
+
+  restoreDeletedTransactionsByIds: async (ids: string[]): Promise<number> => {
+    if (ids.length === 0) {
+      return 0
+    }
+
+    const userId = await getUserId()
+
+    const response = await supabase
+      .from('transactions')
+      .update({ deleted_at: null })
+      .eq('user_id', userId)
+      .in('id', ids)
+      .not('deleted_at', 'is', null)
+      .select('id')
+
+    if (response.error) {
+      if (isMissingDeletedAtColumnError(response.error)) {
+        return 0
+      }
+      throw response.error
+    }
+
+    return response.data?.length ?? 0
+  },
+
+  purgeDeletedTransactions: async (): Promise<number> => {
+    const userId = await getUserId()
+
+    const response = await supabase
+      .from('transactions')
+      .delete()
+      .eq('user_id', userId)
+      .not('deleted_at', 'is', null)
+      .select('id')
+
+    if (response.error) {
+      if (isMissingDeletedAtColumnError(response.error)) {
+        return 0
+      }
+      throw response.error
+    }
+
+    return response.data?.length ?? 0
   },
 
   getCategoryItems: async (type: TransactionType): Promise<CategoryItem[]> => {
@@ -367,3 +545,4 @@ export const financeService = {
     return window.api.exportReportPdf(payload)
   }
 }
+

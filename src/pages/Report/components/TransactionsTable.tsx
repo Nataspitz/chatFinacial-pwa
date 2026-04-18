@@ -1,9 +1,15 @@
 import { useMemo, useState } from 'react'
 import { FiChevronDown, FiChevronUp } from 'react-icons/fi'
 import { ContentCard } from '../../../components/organisms/ContentCard/ContentCard'
+import type { Transaction } from '../../../types/transaction.types'
+import { TransactionContextMenu } from './TransactionContextMenu'
 import { TransactionsDesktopTable } from './TransactionsDesktopTable'
 import { TransactionsMobileList } from './TransactionsMobileList'
-import type { TransactionActionContext, TransactionsTableProps } from './transactions-table.types'
+import type {
+  TransactionActionContext,
+  TransactionContextMenuCoordinates,
+  TransactionsTableProps
+} from './transactions-table.types'
 import styles from '../Report.module.css'
 
 export const TransactionsTable = ({
@@ -13,6 +19,7 @@ export const TransactionsTable = ({
   transactions,
   categoryOptions,
   onDelete,
+  onDuplicate,
   onEditStart,
   onEditCancel,
   onEditChange,
@@ -27,15 +34,65 @@ export const TransactionsTable = ({
   variant = 'default'
 }: TransactionsTableProps): JSX.Element => {
   const [isExpanded, setIsExpanded] = useState(true)
+  const [contextMenuState, setContextMenuState] = useState<{
+    coordinates: TransactionContextMenuCoordinates
+    transaction: Transaction
+  } | null>(null)
+
+  const closeContextMenu = (): void => {
+    setContextMenuState(null)
+  }
 
   const actionContext = useMemo<TransactionActionContext>(() => ({
     deletingId,
     isSavingEdit,
     onDelete,
+    onDuplicate,
     onEditCancel,
     onEditSave,
     onEditStart
-  }), [deletingId, isSavingEdit, onDelete, onEditCancel, onEditSave, onEditStart])
+  }), [deletingId, isSavingEdit, onDelete, onDuplicate, onEditCancel, onEditSave, onEditStart])
+
+  const openContextMenu = (
+    transaction: Transaction,
+    coordinates: TransactionContextMenuCoordinates
+  ): void => {
+    if (editingId !== null && editingId !== transaction.id) {
+      return
+    }
+
+    setContextMenuState({
+      transaction,
+      coordinates
+    })
+  }
+
+  const handleContextEdit = (): void => {
+    if (!contextMenuState) {
+      return
+    }
+
+    actionContext.onEditStart(contextMenuState.transaction)
+    closeContextMenu()
+  }
+
+  const handleContextDuplicate = (): void => {
+    if (!contextMenuState) {
+      return
+    }
+
+    actionContext.onDuplicate(contextMenuState.transaction)
+    closeContextMenu()
+  }
+
+  const handleContextDelete = (): void => {
+    if (!contextMenuState) {
+      return
+    }
+
+    void actionContext.onDelete(contextMenuState.transaction.id)
+    closeContextMenu()
+  }
 
   const totalToneClassName =
     totalTone === 'entrada'
@@ -73,6 +130,7 @@ export const TransactionsTable = ({
             formatCurrency={formatCurrency}
             formatDate={formatDate}
             onEditChange={onEditChange}
+            onOpenContextMenu={openContextMenu}
             transactions={transactions}
           />
 
@@ -84,7 +142,18 @@ export const TransactionsTable = ({
             formatCurrency={formatCurrency}
             formatDate={formatDate}
             onEditChange={onEditChange}
+            onOpenContextMenu={openContextMenu}
             transactions={transactions}
+          />
+
+          <TransactionContextMenu
+            coordinates={contextMenuState?.coordinates ?? null}
+            isDeleting={Boolean(contextMenuState && deletingId === contextMenuState.transaction.id)}
+            isOpen={contextMenuState !== null}
+            onClose={closeContextMenu}
+            onDelete={handleContextDelete}
+            onDuplicate={handleContextDuplicate}
+            onEdit={handleContextEdit}
           />
         </>
       )}
