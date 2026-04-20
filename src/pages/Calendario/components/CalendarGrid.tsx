@@ -3,12 +3,21 @@ import type { CalendarCell } from '../types'
 
 interface CalendarGridProps {
   cells: CalendarCell[]
+  selectedDateKey: string | null
   weekDays: string[]
   todayKey: string
   formatCurrency: (value: number) => string
+  onSelectDate: (cell: CalendarCell) => void
 }
 
-export const CalendarGrid = ({ cells, weekDays, todayKey, formatCurrency }: CalendarGridProps): JSX.Element => {
+export const CalendarGrid = ({
+  cells,
+  selectedDateKey,
+  weekDays,
+  todayKey,
+  formatCurrency,
+  onSelectDate
+}: CalendarGridProps): JSX.Element => {
   return (
     <div className={styles.calendarWrap}>
       <div className={styles.calendar}>
@@ -24,10 +33,12 @@ export const CalendarGrid = ({ cells, weekDays, todayKey, formatCurrency }: Cale
             data-date={cell.key}
             className={[
               cell.isCurrentMonth ? styles.dayCell : styles.dayCellMuted,
-              cell.key === todayKey ? styles.todayCell : ''
+              cell.key === todayKey ? styles.todayCell : '',
+              cell.key === selectedDateKey ? styles.selectedCell : ''
             ]
               .filter(Boolean)
               .join(' ')}
+            onClick={() => onSelectDate(cell)}
           >
             <span className={styles.dayNumber}>{cell.date.getDate()}</span>
             {cell.totals.entrada > 0 && <span className={styles.entrada}>Entradas: {formatCurrency(cell.totals.entrada)}</span>}

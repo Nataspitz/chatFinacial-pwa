@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom'
-import { FiCalendar, FiClipboard, FiFileText, FiLogOut, FiMessageCircle, FiSettings } from 'react-icons/fi'
+import { FiCalendar, FiClipboard, FiFileText, FiLogOut, FiMessageCircle, FiSettings, FiTarget } from 'react-icons/fi'
 import { useAuth } from '../../contexts/AuthContext'
 import styles from './Navbar.module.css'
 
@@ -38,6 +38,10 @@ export const Navbar = (): JSX.Element => {
           <NavLink to="/report" className={getLinkClassName}>
             <FiFileText aria-hidden />
             <span>Report</span>
+          </NavLink>
+          <NavLink to="/goals" className={getLinkClassName}>
+            <FiTarget aria-hidden />
+            <span>Metas</span>
           </NavLink>
           <NavLink to="/calendario" className={getLinkClassName}>
             <FiCalendar aria-hidden />
@@ -81,6 +85,10 @@ export const Navbar = (): JSX.Element => {
         <NavLink to="/report" className={getMobileLinkClassName}>
           <FiFileText aria-hidden />
           <span>Report</span>
+        </NavLink>
+        <NavLink to="/goals" className={getMobileLinkClassName}>
+          <FiTarget aria-hidden />
+          <span>Metas</span>
         </NavLink>
         <NavLink to="/calendario" className={getMobileLinkClassName}>
           <FiCalendar aria-hidden />

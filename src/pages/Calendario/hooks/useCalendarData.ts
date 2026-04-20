@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState, type ChangeEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react'
 import { financeService } from '../../../services/finance.service'
 import type { Transaction } from '../../../types/transaction.types'
-import type { CalendarCell, DayTotals } from '../types'
+import type { CalendarCell, DayTotals, DayTransactions } from '../types'
 
 const toDateKey = (date: Date): string => {
   const year = date.getFullYear()
@@ -37,11 +37,26 @@ const getAvailableYears = (transactions: Transaction[], currentYear: number): nu
   return result
 }
 
-const buildDailyTotalsMap = (transactions: Transaction[], monthDate: Date): Record<string, DayTotals> => {
-  const map: Record<string, DayTotals> = {}
-  const monthYear = monthDate.getFullYear()
-  const monthIndex = monthDate.getMonth()
-  const daysInMonth = new Date(monthYear, monthIndex + 1, 0).getDate()
+interface DayData {
+  totals: DayTotals
+  transactions: DayTransactions
+}
+
+const ensureDayData = (map: Record<string, DayData>, key: string): DayData => {
+  if (!map[key]) {
+    map[key] = {
+      totals: { entrada: 0, saida: 0 },
+      transactions: { entrada: [], saida: [] }
+    }
+  }
+  return map[key]
+}
+
+const buildDailyDataMap = (transactions: Transaction[], monthDate: Date): Record<string, DayData> => {
+  const map: Record<string, DayData> = {}
+  const targetYear = monthDate.getFullYear()
+  const targetMonth = monthDate.getMonth() + 1
+  const daysInMonth = new Date(targetYear, targetMonth, 0).getDate()
 
   transactions.forEach((transaction) => {
     const normalizedDate = normalizeTransactionDate(transaction.date)
@@ -50,42 +65,50 @@ const buildDailyTotalsMap = (transactions: Transaction[], monthDate: Date): Reco
     }
 
     const [year, month, day] = normalizedDate.split('-').map(Number)
-    const isMonthlyCost = transaction.type === 'saida' && transaction.isMonthlyCost
 
-    if (isMonthlyCost) {
-      if (day > daysInMonth) {
+    if (transaction.type === 'saida' && transaction.isMonthlyCost) {
+      const isAfterStartMonth = targetYear > year || (targetYear === year && targetMonth >= month)
+      if (!isAfterStartMonth) {
         return
       }
 
-      const recurringKey = toDateKey(new Date(monthYear, monthIndex, day))
-      if (!map[recurringKey]) {
-        map[recurringKey] = { entrada: 0, saida: 0 }
-      }
-      map[recurringKey].saida += transaction.amount
+      const adjustedDay = Math.min(day, daysInMonth)
+      const recurringKey = toDateKey(new Date(targetYear, targetMonth - 1, adjustedDay))
+      const dayData = ensureDayData(map, recurringKey)
+
+      dayData.totals.saida += transaction.amount
+      dayData.transactions.saida.push({
+        ...transaction,
+        date: recurringKey
+      })
       return
     }
 
-    const isSameMonth = year === monthYear && month === monthIndex + 1
+    const isSameMonth = year === targetYear && month === targetMonth
     if (!isSameMonth) {
       return
     }
 
-    const key = normalizedDate
-    if (!map[key]) {
-      map[key] = { entrada: 0, saida: 0 }
-    }
+    const dayData = ensureDayData(map, normalizedDate)
 
     if (transaction.type === 'entrada') {
-      map[key].entrada += transaction.amount
+      dayData.totals.entrada += transaction.amount
+      dayData.transactions.entrada.push(transaction)
     } else {
-      map[key].saida += transaction.amount
+      dayData.totals.saida += transaction.amount
+      dayData.transactions.saida.push(transaction)
     }
+  })
+
+  Object.values(map).forEach((dayData) => {
+    dayData.transactions.entrada.sort((a, b) => b.amount - a.amount)
+    dayData.transactions.saida.sort((a, b) => b.amount - a.amount)
   })
 
   return map
 }
 
-const buildCalendarCells = (monthDate: Date, totalsMap: Record<string, DayTotals>): CalendarCell[] => {
+const buildCalendarCells = (monthDate: Date, dailyDataMap: Record<string, DayData>): CalendarCell[] => {
   const year = monthDate.getFullYear()
   const month = monthDate.getMonth()
 
@@ -100,11 +123,14 @@ const buildCalendarCells = (monthDate: Date, totalsMap: Record<string, DayTotals
     cellDate.setDate(startDate.getDate() + i)
 
     const key = toDateKey(cellDate)
+    const dayData = dailyDataMap[key]
+
     cells.push({
       key,
       date: cellDate,
       isCurrentMonth: cellDate.getMonth() === month,
-      totals: totalsMap[key] ?? { entrada: 0, saida: 0 }
+      totals: dayData?.totals ?? { entrada: 0, saida: 0 },
+      transactions: dayData?.transactions ?? { entrada: [], saida: [] }
     })
   }
 
@@ -148,26 +174,63 @@ export const useCalendarData = (): UseCalendarDataResult => {
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState('')
+  const isRefreshingRef = useRef(false)
   const todayKey = toDateKey(new Date())
 
-  useEffect(() => {
-    void (async () => {
-      try {
-        const data = await financeService.getTransactions()
-        setTransactions(data)
-      } catch {
+  const loadTransactions = async (silent = false): Promise<void> => {
+    if (isRefreshingRef.current) {
+      return
+    }
+
+    isRefreshingRef.current = true
+    if (!silent) {
+      setIsLoading(true)
+      setError('')
+    }
+
+    try {
+      const data = await financeService.getTransactions()
+      setTransactions(data)
+    } catch {
+      if (!silent) {
         setError('Nao foi possivel carregar os dados do calendario.')
-      } finally {
+      }
+    } finally {
+      if (!silent) {
         setIsLoading(false)
       }
-    })()
+      isRefreshingRef.current = false
+    }
+  }
+
+  useEffect(() => {
+    void loadTransactions()
   }, [])
 
-  const totalsMap = useMemo(
-    () => buildDailyTotalsMap(transactions, currentMonth),
+  useEffect(() => {
+    const intervalId = window.setInterval(() => {
+      void loadTransactions(true)
+    }, 30000)
+
+    const handleFocusRefresh = (): void => {
+      void loadTransactions(true)
+    }
+
+    window.addEventListener('focus', handleFocusRefresh)
+    document.addEventListener('visibilitychange', handleFocusRefresh)
+
+    return () => {
+      window.clearInterval(intervalId)
+      window.removeEventListener('focus', handleFocusRefresh)
+      document.removeEventListener('visibilitychange', handleFocusRefresh)
+    }
+  }, [])
+
+  const dailyDataMap = useMemo(
+    () => buildDailyDataMap(transactions, currentMonth),
     [transactions, currentMonth]
   )
-  const cells = useMemo(() => buildCalendarCells(currentMonth, totalsMap), [currentMonth, totalsMap])
+  const cells = useMemo(() => buildCalendarCells(currentMonth, dailyDataMap), [currentMonth, dailyDataMap])
   const availableYears = useMemo(
     () => getAvailableYears(transactions, new Date().getFullYear()),
     [transactions]
@@ -217,3 +280,4 @@ export const useCalendarData = (): UseCalendarDataResult => {
     todayKey
   }
 }
+

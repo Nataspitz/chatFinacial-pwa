@@ -86,6 +86,14 @@
   display: grid;
   gap: var(--space-1);
   background: var(--card-bg);
+  cursor: pointer;
+  transition: border-color 150ms ease, box-shadow 150ms ease, transform 150ms ease;
+}
+
+.dayCell:hover,
+.dayCellMuted:hover {
+  border-color: color-mix(in srgb, var(--brand-500) 30%, var(--border-color));
+  transform: translateY(-1px);
 }
 
 .dayCellMuted {
@@ -95,6 +103,11 @@
 .todayCell {
   border-color: var(--brand-600);
   box-shadow: var(--shadow-sm);
+}
+
+.selectedCell {
+  border-color: color-mix(in srgb, var(--brand-600) 56%, var(--border-color));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--brand-600) 46%, transparent);
 }
 
 .dayNumber {
@@ -119,6 +132,86 @@
   margin: 0;
   color: var(--danger-500);
   font-weight: var(--font-weight-semibold);
+}
+
+.dayDetailsModal {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.dayDetailsSummary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+
+.dayDetailsSummary article {
+  display: grid;
+  gap: 4px;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--bg-secondary) 72%, transparent);
+}
+
+.dayDetailsSummary article span {
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+}
+
+.dayDetailsSection {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.dayDetailsSection h3 {
+  margin: 0;
+  font-size: var(--text-base);
+}
+
+.dayDetailsList {
+  display: grid;
+  gap: var(--space-2);
+  max-height: min(34vh, 260px);
+  overflow: auto;
+  padding-right: var(--space-1);
+}
+
+.dayDetailsItem {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--bg-secondary) 68%, transparent);
+}
+
+.dayDetailsItem div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.dayDetailsItem strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dayDetailsItem span {
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dayDetailsEmpty {
+  margin: 0;
+  color: var(--text-secondary);
+  padding: var(--space-2) 0;
 }
 
 @media (max-width: 900px) {
@@ -193,5 +286,9 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+  }
+
+  .dayDetailsSummary {
+    grid-template-columns: 1fr;
   }
 }

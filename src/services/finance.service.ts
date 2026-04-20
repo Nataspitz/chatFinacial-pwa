@@ -27,6 +27,11 @@ interface TransactionCategoryRow {
   name: string
 }
 
+interface TransactionDeleteScopeRow {
+  installment_group_id: string | null
+  installment_count: number
+}
+
 export interface CategoryItem {
   id: string
   type: TransactionType
@@ -287,7 +292,7 @@ export const financeService = {
         .from('transactions')
         .select('id, type, category, amount, description, date, created_at, is_monthly_cost, payment_method, installment_group_id, installment_number, installment_count, total_amount, is_installment')
         .eq('user_id', userId)
-        .not('deleted_at', 'is', null)
+        .is('deleted_at', null)
         .order('date', { ascending: false })
         .order('created_at', { ascending: false })
 
@@ -335,7 +340,7 @@ export const financeService = {
         .from('transactions')
         .select('id, type, category, amount, description, date, created_at, is_monthly_cost, payment_method, installment_group_id, installment_number, installment_count, total_amount, is_installment')
         .eq('user_id', userId)
-        .is('deleted_at', null)
+        .not('deleted_at', 'is', null)
         .order('date', { ascending: false })
         .order('created_at', { ascending: false })
 
@@ -389,17 +394,42 @@ export const financeService = {
 
   deleteTransaction: async (id: string): Promise<void> => {
     const userId = await getUserId()
+    const scopeLookup = await supabase
+      .from('transactions')
+      .select('installment_group_id, installment_count')
+      .eq('id', id)
+      .eq('user_id', userId)
+      .maybeSingle()
 
-    const { error } = await supabase
+    if (scopeLookup.error) {
+      throw scopeLookup.error
+    }
+
+    const scopeRow = scopeLookup.data as TransactionDeleteScopeRow | null
+    const hasInstallmentGroup = Boolean(scopeRow?.installment_group_id && Number(scopeRow.installment_count) > 1)
+    const installmentGroupId = hasInstallmentGroup ? scopeRow?.installment_group_id ?? null : null
+
+    const deleteQuery = supabase
       .from('transactions')
       .update({ deleted_at: new Date().toISOString() })
-      .eq('id', id)
       .eq('user_id', userId)
       .is('deleted_at', null)
 
+    const { error } = installmentGroupId
+      ? await deleteQuery.eq('installment_group_id', installmentGroupId)
+      : await deleteQuery.eq('id', id)
+
     if (error) {
       if (isMissingDeletedAtColumnError(error)) {
-        const fallbackDelete = await supabase.from('transactions').delete().eq('id', id).eq('user_id', userId)
+        const fallbackDeleteQuery = supabase
+          .from('transactions')
+          .delete()
+          .eq('user_id', userId)
+
+        const fallbackDelete = installmentGroupId
+          ? await fallbackDeleteQuery.eq('installment_group_id', installmentGroupId)
+          : await fallbackDeleteQuery.eq('id', id)
+
         if (fallbackDelete.error) {
           throw fallbackDelete.error
         }

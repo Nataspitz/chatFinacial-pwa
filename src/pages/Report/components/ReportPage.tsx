@@ -173,8 +173,29 @@ const getSortableDateValue = (value: string): number => {
   return Number.isNaN(parsed) ? Number.MAX_SAFE_INTEGER : parsed
 }
 
+const getSortableCreatedAtValue = (value?: string): number => {
+  if (!value) {
+    return Number.MAX_SAFE_INTEGER
+  }
+
+  const parsed = new Date(value).getTime()
+  return Number.isNaN(parsed) ? Number.MAX_SAFE_INTEGER : parsed
+}
+
 const sortTransactionsByDateAsc = (items: Transaction[]): Transaction[] => {
-  return [...items].sort((a, b) => getSortableDateValue(a.date) - getSortableDateValue(b.date))
+  return [...items].sort((a, b) => {
+    const byDate = getSortableDateValue(a.date) - getSortableDateValue(b.date)
+    if (byDate !== 0) {
+      return byDate
+    }
+
+    const byCreatedAt = getSortableCreatedAtValue(a.createdAt) - getSortableCreatedAtValue(b.createdAt)
+    if (byCreatedAt !== 0) {
+      return byCreatedAt
+    }
+
+    return a.id.localeCompare(b.id)
+  })
 }
 
 const buildMonthlyCostForPeriod = (
@@ -415,7 +436,7 @@ export const ReportPage = (): JSX.Element => {
     const maxAmountLimit = Number(appliedListFilter.maxAmountLimit)
     const hasMaxAmountLimit = appliedListFilter.maxAmountLimit.trim() !== '' && Number.isFinite(maxAmountLimit)
 
-    return filteredTransactions.filter((item) => {
+    const filtered = filteredTransactions.filter((item) => {
       if (appliedListFilter.operationType !== 'all' && item.type !== appliedListFilter.operationType) {
         return false
       }
@@ -432,6 +453,7 @@ export const ReportPage = (): JSX.Element => {
       const searchableText = `${item.category} ${item.description} ${item.amount} ${searchableAmount} ${formatCurrency(item.amount)}`.toLowerCase()
       return searchableText.includes(normalizedSearch)
     })
+    return sortTransactionsByDateAsc(filtered)
   }, [appliedListFilter, filteredTransactions, searchTerm])
 
   const amountRangeMax = useMemo(() => {
