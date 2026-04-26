@@ -6,7 +6,9 @@ import { supabase } from '../../lib/supabase'
 import { backupService } from '../../services/backup.service'
 import { businessService } from '../../services/business.service'
 import { financeService, type CategoryItem } from '../../services/finance.service'
+import { goalsService } from '../../services/goals.service'
 import { transactionSettingsService } from '../../services/transaction-settings.service'
+import type { Goal } from '../../types/goal.types'
 import {
   DEFAULT_TRANSACTION_SETTINGS,
   type TransactionSettings
@@ -27,6 +29,7 @@ const sections: Array<{ id: SettingsSection; label: string }> = [
 interface BackupSnapshot {
   transactions: Transaction[]
   categories: CategoryItem[]
+  goals: Goal[]
 }
 
 interface LoadBackupDataOptions {
@@ -92,15 +95,17 @@ export const Settings = (): JSX.Element => {
     }
 
     try {
-      const [loadedTransactions, entradaCategories, saidaCategories] = await Promise.all([
+      const [loadedTransactions, entradaCategories, saidaCategories, loadedGoals] = await Promise.all([
         financeService.getTransactions(),
         financeService.getCategoryItems('entrada'),
-        financeService.getCategoryItems('saida')
+        financeService.getCategoryItems('saida'),
+        goalsService.getGoals()
       ])
       const loadedCategories = [...entradaCategories, ...saidaCategories]
       return {
         transactions: loadedTransactions,
-        categories: loadedCategories
+        categories: loadedCategories,
+        goals: loadedGoals
       }
     } catch {
       setBackupFeedback('Nao foi possivel carregar os dados para backup.')
@@ -180,12 +185,18 @@ export const Settings = (): JSX.Element => {
       const payload = backupService.buildBackup({
         categories: snapshot.categories,
         transactions: snapshot.transactions,
+        goals: snapshot.goals,
         transactionSettings: userTransactionSettings,
         businessSettings: serializedBusinessSettings
       })
 
-      const fileName = backupService.downloadBackup(payload)
-      setBackupFeedback(`Backup baixado como ${fileName}.`)
+      const folderName = await backupService.downloadBackupFolder(payload)
+      const usedFolderApi = typeof window.showDirectoryPicker === 'function'
+      setBackupFeedback(
+        usedFolderApi
+          ? `Backup salvo na pasta ${folderName}.`
+          : `Seu navegador nao permitiu criar uma pasta diretamente. Os arquivos do backup foram baixados separadamente com o prefixo ${folderName}.`
+      )
     } catch {
       setBackupFeedback('Nao foi possivel baixar o backup.')
     }
@@ -197,10 +208,10 @@ export const Settings = (): JSX.Element => {
   }
 
   const handleImportBackupFile = async (event: ChangeEvent<HTMLInputElement>): Promise<void> => {
-    const file = event.target.files?.[0]
+    const files = Array.from(event.target.files ?? [])
     event.target.value = ''
 
-    if (!file) {
+    if (files.length === 0) {
       return
     }
 
@@ -208,15 +219,18 @@ export const Settings = (): JSX.Element => {
     setBackupFeedback('')
 
     try {
-      const rawContent = await file.text()
       const {
         importedTransactions,
+        restoredGoals = 0,
         restoredTransactionSettings = false,
         restoredBusinessSettings = false,
         warnings = []
-      } = await backupService.restoreBackup(rawContent)
+      } = await backupService.restoreBackupFolder(files)
 
       const feedbackParts = [`Backup restaurado. ${importedTransactions} transacoes novas foram importadas.`]
+      if (restoredGoals > 0) {
+        feedbackParts.push(`${restoredGoals} metas foram restauradas.`)
+      }
       if (restoredTransactionSettings) {
         feedbackParts.push('Configuracoes de transacoes foram restauradas.')
       }
@@ -383,7 +397,15 @@ export const Settings = (): JSX.Element => {
 
   return (
     <PageTemplate className={styles.page}>
-      <input ref={backupInputRef} type="file" accept="application/json,.json" hidden onChange={(event) => void handleImportBackupFile(event)} />
+      <input
+        ref={backupInputRef}
+        type="file"
+        accept="application/json,.json"
+        multiple
+        hidden
+        onChange={(event) => void handleImportBackupFile(event)}
+        {...({ webkitdirectory: '', directory: '' } as Record<string, string>)}
+      />
 
       <header className={styles.header}>
         <h1 className={styles.title}>Configuracoes</h1>
@@ -437,7 +459,7 @@ export const Settings = (): JSX.Element => {
                   disabled={isLoadingData}
                   onClick={handleImportBackupClick}
                 >
-                  Restaurar backup
+                  Restaurar pasta de backup
                 </ButtonLoading>
               </div>
               {backupFeedback ? <p className={styles.feedback}>{backupFeedback}</p> : null}

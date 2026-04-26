@@ -6,7 +6,7 @@ import { PageTemplate } from '../../../components/templates/PageTemplate/PageTem
 import { useAuth } from '../../../contexts/AuthContext'
 import { financeService, type CategoryItem } from '../../../services/finance.service'
 import { transactionSettingsService } from '../../../services/transaction-settings.service'
-import type { ExportReportPdfPayload } from '../../../types/report-export.types'
+import type { ExportReportPdfPayload, ExportReportPdfTransaction } from '../../../types/report-export.types'
 import {
   DEFAULT_TRANSACTION_SETTINGS,
   getDefaultConfirmedByType,
@@ -19,6 +19,7 @@ import type { PaymentMethod, Transaction, TransactionType } from '../../../types
 import type { EditField } from './transactions-table.types'
 import { PageHeader } from './PageHeader'
 import { TransactionsTable } from './TransactionsTable'
+import { formatPaymentMethod } from './transactionTable.utils'
 import styles from '../Report.module.css'
 
 interface CreateFormState {
@@ -172,6 +173,31 @@ const getSortableDateValue = (value: string): number => {
   const parsed = new Date(value).getTime()
   return Number.isNaN(parsed) ? Number.MAX_SAFE_INTEGER : parsed
 }
+
+const getInstallmentLabel = (transaction: Transaction): string => {
+  if (transaction.paymentMethod !== 'credito') {
+    return 'Pagamento sem parcelas'
+  }
+
+  if (transaction.installmentCount <= 1) {
+    return 'Credito a vista'
+  }
+
+  return `${transaction.installmentNumber}/${transaction.installmentCount} parcelas`
+}
+
+const toExportReportPdfTransaction = (transaction: Transaction): ExportReportPdfTransaction => ({
+  ...transaction,
+  dateLabel: formatDate(transaction.date),
+  amountLabel: formatCurrency(transaction.amount),
+  totalAmountLabel: formatCurrency(transaction.totalAmount),
+  paymentMethodLabel: formatPaymentMethod(transaction.paymentMethod),
+  installmentLabel: getInstallmentLabel(transaction),
+  paymentDetailsLabel:
+    transaction.paymentMethod === 'credito' && transaction.installmentCount > 1
+      ? `${formatPaymentMethod(transaction.paymentMethod)} - ${getInstallmentLabel(transaction)}`
+      : formatPaymentMethod(transaction.paymentMethod)
+})
 
 const getSortableCreatedAtValue = (value?: string): number => {
   if (!value) {
@@ -538,11 +564,17 @@ export const ReportPage = (): JSX.Element => {
   )
 
   const exportEntries = useMemo(
-    () => sortTransactionsByDateAsc(exportTransactions.filter((item) => item.type === 'entrada')),
+    () =>
+      sortTransactionsByDateAsc(exportTransactions.filter((item) => item.type === 'entrada')).map(
+        toExportReportPdfTransaction
+      ),
     [exportTransactions]
   )
   const exportOutcomes = useMemo(
-    () => sortTransactionsByDateAsc(exportTransactions.filter((item) => item.type === 'saida')),
+    () =>
+      sortTransactionsByDateAsc(exportTransactions.filter((item) => item.type === 'saida')).map(
+        toExportReportPdfTransaction
+      ),
     [exportTransactions]
   )
   const exportTotalEntries = useMemo(

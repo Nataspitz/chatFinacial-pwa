@@ -1,5 +1,14 @@
 import type { Transaction } from './transaction.types'
 
+export interface ExportReportPdfTransaction extends Transaction {
+  dateLabel: string
+  amountLabel: string
+  totalAmountLabel: string
+  paymentMethodLabel: string
+  installmentLabel: string
+  paymentDetailsLabel: string
+}
+
 export interface ExportDashboardMetric {
   label: string
   value: string
@@ -10,8 +19,8 @@ export interface ExportReportPdfPayload {
   companyName: string
   createdAt: string
   periodLabel: string
-  entries: Transaction[]
-  outcomes: Transaction[]
+  entries: ExportReportPdfTransaction[]
+  outcomes: ExportReportPdfTransaction[]
   totalEntries: number
   totalOutcomes: number
   resultBalance: number
