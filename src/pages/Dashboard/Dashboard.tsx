@@ -1,7 +1,7 @@
-import { FiEye, FiEyeOff } from 'react-icons/fi'
+import { FiEye, FiEyeOff, FiRefreshCw } from 'react-icons/fi'
 import { PageIntro } from '../../components/molecules/PageIntro/PageIntro'
 import { PageTemplate } from '../../components/templates/PageTemplate/PageTemplate'
-import { Button } from '../../components/ui'
+import { Button, ButtonLoading } from '../../components/ui'
 import { DashboardContent } from './components/DashboardContent/DashboardContent'
 import { DashboardFilters } from './components/DashboardFilters/DashboardFilters'
 import { DashboardSkeleton } from './components/DashboardSkeleton/DashboardSkeleton'
@@ -33,6 +33,18 @@ export const Dashboard = (): JSX.Element => {
         className={styles.pageHeader}
         action={
           <div className={styles.headerActions}>
+            <ButtonLoading
+              type="button"
+              variant={dashboard.summarySource === 'database' ? 'secondary' : 'primary'}
+              className={styles.valueVisibilityButton}
+              loading={dashboard.isRefreshingSummaries}
+              onClick={() => {
+                void dashboard.refreshSummaries()
+              }}
+            >
+              <FiRefreshCw aria-hidden />
+              Atualizar resumo
+            </ButtonLoading>
             <Button
               type="button"
               variant="ghost"
@@ -58,6 +70,11 @@ export const Dashboard = (): JSX.Element => {
       />
 
       {dashboard.error ? <p className={styles.error}>{dashboard.error}</p> : null}
+      {dashboard.summaryFeedback ? (
+        <p className={dashboard.summaryFeedbackTone === 'error' ? styles.error : styles.summaryFeedback}>
+          {dashboard.summaryFeedback}
+        </p>
+      ) : null}
 
       {dashboard.shouldShowEmptyState ? (
         <section className={styles.emptyState}>

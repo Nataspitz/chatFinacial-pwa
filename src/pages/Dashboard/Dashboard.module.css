@@ -86,6 +86,16 @@
   padding: var(--dash-space-base);
 }
 
+.summaryFeedback {
+  margin: 0;
+  color: var(--success-500);
+  font-weight: var(--font-weight-semibold);
+  border: 1px solid color-mix(in srgb, var(--success-500) 28%, var(--border-color));
+  background: color-mix(in srgb, var(--success-500) 8%, var(--bg-secondary));
+  border-radius: 14px;
+  padding: var(--dash-space-base);
+}
+
 .emptyState {
   border: 1px dashed var(--card-border);
   border-radius: 18px;

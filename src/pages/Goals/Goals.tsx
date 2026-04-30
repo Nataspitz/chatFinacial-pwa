@@ -4,8 +4,10 @@ import { PageIntro } from '../../components/molecules/PageIntro/PageIntro'
 import { PageTemplate } from '../../components/templates/PageTemplate/PageTemplate'
 import { Button, ButtonLoading, ModalBase } from '../../components/ui'
 import { businessService } from '../../services/business.service'
+import { financialSummaryService } from '../../services/financial-summary.service'
 import { financeService } from '../../services/finance.service'
 import { goalsService } from '../../services/goals.service'
+import type { FinancialMonthlySummary } from '../../types/financial-summary.types'
 import type { Goal, GoalStatus } from '../../types/goal.types'
 import type { Transaction } from '../../types/transaction.types'
 import styles from './Goals.module.css'
@@ -13,6 +15,12 @@ import styles from './Goals.module.css'
 interface GoalFormState {
   title: string
   targetAmount: string
+}
+
+interface MonthlyAverages {
+  entries: number
+  outcomes: number
+  result: number
 }
 
 const SYSTEM_GOAL_CREDIT_KEY = 'credit-card-open-invoice'
@@ -44,6 +52,43 @@ const formatSignedCurrency = (value: number): string => {
 }
 
 const clamp = (value: number, min: number, max: number): number => Math.min(Math.max(value, min), max)
+
+const toMonthRef = (year: number, month: number): string => `${year}-${String(month).padStart(2, '0')}-01`
+
+const isValidYearSummary = (summaries: FinancialMonthlySummary[], year: number): boolean => {
+  if (summaries.length !== 12) {
+    return false
+  }
+
+  return Array.from({ length: 12 }, (_, index) => toMonthRef(year, index + 1)).every((monthRef) => {
+    const summary = summaries.find((item) => item.monthRef === monthRef)
+    return Boolean(summary?.calculatedAt)
+  })
+}
+
+const getCurrentMonthSummaryBalance = (summaries: FinancialMonthlySummary[]): number | null => {
+  const now = new Date()
+  const monthRef = toMonthRef(now.getFullYear(), now.getMonth() + 1)
+  const summary = summaries.find((item) => item.monthRef === monthRef)
+  return summary ? summary.accountBalance : null
+}
+
+const calcAverageMonthlyAveragesFromSummaries = (summaries: FinancialMonthlySummary[]): MonthlyAverages => {
+  const currentMonth = new Date().getMonth() + 1
+  const elapsedSummaries = summaries.slice(0, currentMonth)
+  if (elapsedSummaries.length === 0) {
+    return { entries: 0, outcomes: 0, result: 0 }
+  }
+
+  const entries = elapsedSummaries.reduce((acc, item) => acc + item.totalEntries, 0) / elapsedSummaries.length
+  const outcomes = elapsedSummaries.reduce((acc, item) => acc + item.totalOutcomes, 0) / elapsedSummaries.length
+
+  return {
+    entries,
+    outcomes,
+    result: entries - outcomes
+  }
+}
 
 const calcAccountBalance = (transactions: Transaction[], baseAmount: number, baseDate: string): number => {
   const today = getTodayDate()
@@ -113,12 +158,12 @@ const getMonthRangeCountInclusive = (fromDate: string, toDate: string): number =
   return Math.max(1, diff)
 }
 
-const calcAverageMonthlyResult = (
+const calcAverageMonthlyAverages = (
   transactions: Transaction[],
   baseAmountDate: string
-): number => {
+): MonthlyAverages => {
   const today = getTodayDate()
-  const monthTotals = new Map<string, number>()
+  const monthTotals = new Map<string, { entries: number; outcomes: number }>()
 
   transactions.forEach((item) => {
     if (!item.isConfirmed) {
@@ -135,13 +180,42 @@ const calcAverageMonthlyResult = (
       return
     }
 
-    const signal = item.type === 'entrada' ? 1 : -1
-    monthTotals.set(monthKey, (monthTotals.get(monthKey) ?? 0) + signal * item.amount)
+    const totals = monthTotals.get(monthKey) ?? { entries: 0, outcomes: 0 }
+    if (item.type === 'entrada') {
+      totals.entries += item.amount
+    } else {
+      totals.outcomes += item.amount
+    }
+    monthTotals.set(monthKey, totals)
   })
 
-  const summedResult = Array.from(monthTotals.values()).reduce((acc, value) => acc + value, 0)
   const monthsCount = getMonthRangeCountInclusive(baseAmountDate, today)
-  return summedResult / monthsCount
+  const summed = Array.from(monthTotals.values()).reduce(
+    (acc, value) => ({
+      entries: acc.entries + value.entries,
+      outcomes: acc.outcomes + value.outcomes
+    }),
+    { entries: 0, outcomes: 0 }
+  )
+
+  const entries = summed.entries / monthsCount
+  const outcomes = summed.outcomes / monthsCount
+  return {
+    entries,
+    outcomes,
+    result: entries - outcomes
+  }
+}
+
+const formatForecastRange = (estimatedMonths: number): string => {
+  const safeMinimum = Math.max(1, Math.floor(estimatedMonths * 0.85))
+  const safeMaximum = Math.max(safeMinimum, Math.ceil(estimatedMonths * 1.25))
+
+  if (safeMinimum === safeMaximum) {
+    return `${safeMinimum} ${safeMinimum === 1 ? 'mês' : 'meses'}`
+  }
+
+  return `entre ${safeMinimum} e ${safeMaximum} meses`
 }
 
 export const Goals = (): JSX.Element => {
@@ -153,6 +227,8 @@ export const Goals = (): JSX.Element => {
   const [error, setError] = useState('')
   const [feedback, setFeedback] = useState('')
   const [accountBalance, setAccountBalance] = useState(0)
+  const [averageMonthlyEntries, setAverageMonthlyEntries] = useState(0)
+  const [averageMonthlyOutcomes, setAverageMonthlyOutcomes] = useState(0)
   const [averageMonthlyResult, setAverageMonthlyResult] = useState(0)
   const [isGoalModalOpen, setIsGoalModalOpen] = useState(false)
   const [editingGoalId, setEditingGoalId] = useState<string | null>(null)
@@ -165,24 +241,41 @@ export const Goals = (): JSX.Element => {
   }
 
   const loadFinancialSnapshot = async (): Promise<Transaction[]> => {
-    const [transactionsResult, businessResult] = await Promise.allSettled([
+    const currentYear = new Date().getFullYear()
+    const [transactionsResult, businessResult, summariesResult] = await Promise.allSettled([
       financeService.getTransactions(),
-      businessService.getBusinessSettings()
+      businessService.getBusinessSettings(),
+      financialSummaryService.listYear(currentYear)
     ])
 
     if (transactionsResult.status !== 'fulfilled') {
-      throw new Error('Nao foi possivel carregar as metas.')
+      throw new Error('Não foi possível carregar as metas.')
     }
 
     const loadedTransactions = transactionsResult.value
 
+    if (summariesResult.status === 'fulfilled' && isValidYearSummary(summariesResult.value, currentYear)) {
+      const summaryBalance = getCurrentMonthSummaryBalance(summariesResult.value)
+      if (summaryBalance !== null) {
+        const averages = calcAverageMonthlyAveragesFromSummaries(summariesResult.value)
+        setAccountBalance(summaryBalance)
+        setAverageMonthlyEntries(averages.entries)
+        setAverageMonthlyOutcomes(averages.outcomes)
+        setAverageMonthlyResult(averages.result)
+        return loadedTransactions
+      }
+    }
+
     if (businessResult.status === 'fulfilled') {
       const settings = businessResult.value
       const balanceBaseDate = settings.account_balance_base_date
+      const averages = calcAverageMonthlyAverages(loadedTransactions, balanceBaseDate)
       setAccountBalance(
         calcAccountBalance(loadedTransactions, settings.account_balance_base_amount, balanceBaseDate)
       )
-      setAverageMonthlyResult(calcAverageMonthlyResult(loadedTransactions, balanceBaseDate))
+      setAverageMonthlyEntries(averages.entries)
+      setAverageMonthlyOutcomes(averages.outcomes)
+      setAverageMonthlyResult(averages.result)
     } else {
       const fallbackBaseDate = normalizeDate(
         [...loadedTransactions]
@@ -191,8 +284,11 @@ export const Goals = (): JSX.Element => {
           .sort()[0] ?? getTodayDate()
       ) ?? getTodayDate()
 
+      const averages = calcAverageMonthlyAverages(loadedTransactions, fallbackBaseDate)
       setAccountBalance(calcAccountBalance(loadedTransactions, 0, fallbackBaseDate))
-      setAverageMonthlyResult(calcAverageMonthlyResult(loadedTransactions, fallbackBaseDate))
+      setAverageMonthlyEntries(averages.entries)
+      setAverageMonthlyOutcomes(averages.outcomes)
+      setAverageMonthlyResult(averages.result)
     }
 
     return loadedTransactions
@@ -201,7 +297,7 @@ export const Goals = (): JSX.Element => {
   const syncSystemGoalFromTransactions = async (transactions: Transaction[]): Promise<void> => {
     await goalsService.syncSystemGoal({
       systemKey: SYSTEM_GOAL_CREDIT_KEY,
-      title: 'Cartao de credito (fatura em aberto)',
+      title: 'Cartão de crédito (fatura em aberto)',
       targetAmount: calcOpenCreditInvoiceGoal(transactions)
     })
   }
@@ -215,7 +311,7 @@ export const Goals = (): JSX.Element => {
       await syncSystemGoalFromTransactions(loadedTransactions)
       await loadGoals()
     } catch {
-      setError('Nao foi possivel sincronizar as metas com o banco.')
+      setError('Não foi possível sincronizar as metas com o banco.')
     } finally {
       setIsLoading(false)
     }
@@ -232,7 +328,7 @@ export const Goals = (): JSX.Element => {
       await syncSystemGoalFromTransactions(loadedTransactions)
       await loadGoals()
     } catch {
-      // Evita exibir erro de refresh automatico em background.
+      // Evita exibir erro de atualização automática em background.
     } finally {
       isRefreshingRef.current = false
     }
@@ -329,7 +425,7 @@ export const Goals = (): JSX.Element => {
     const parsedTarget = Number(goalForm.targetAmount)
 
     if (!normalizedTitle || !Number.isFinite(parsedTarget) || parsedTarget <= 0) {
-      setFeedback('Informe nome e valor valido para a meta.')
+      setFeedback('Informe nome e valor válido para a meta.')
       return
     }
 
@@ -355,7 +451,7 @@ export const Goals = (): JSX.Element => {
       setGoalForm(initialGoalFormState)
       setEditingGoalId(null)
     } catch {
-      setFeedback('Nao foi possivel salvar a meta.')
+      setFeedback('Não foi possível salvar a meta.')
     } finally {
       setIsSavingGoal(false)
     }
@@ -366,9 +462,9 @@ export const Goals = (): JSX.Element => {
       await goalsService.updateGoalStatus(goal.id, status)
       await loadGoals()
       setOpenMenuGoalId(null)
-      setFeedback(status === 'completed' ? 'Meta concluida.' : 'Meta apagada.')
+      setFeedback(status === 'completed' ? 'Meta concluída.' : 'Meta apagada.')
     } catch {
-      setFeedback('Nao foi possivel atualizar o status da meta.')
+      setFeedback('Não foi possível atualizar o status da meta.')
     }
   }
 
@@ -383,8 +479,8 @@ export const Goals = (): JSX.Element => {
     const forecastLabel = isReached
       ? 'Atingida'
       : averageMonthlyResult <= 0
-        ? 'Sem previsao'
-        : `${estimatedMonthsToGoal} ${estimatedMonthsToGoal === 1 ? 'mes' : 'meses'}`
+        ? 'Sem previsão'
+        : formatForecastRange(estimatedMonthsToGoal)
     const reachedFillColor = 'color-mix(in srgb, #2f9d72 90%, #43b883)'
     const markerPosition = clamp(progressPercent, 2, 98)
     const rangeStyle = {
@@ -453,7 +549,7 @@ export const Goals = (): JSX.Element => {
           <div className={styles.goalValueMain}>
             {formatCurrency(accountBalance)} <span>/ {formatCurrency(goal.targetAmount)}</span>
           </div>
-          <p className={styles.goalValueCaption}>Em conta / Meta</p>
+          <p className={styles.goalValueCaption}>Em conta / meta</p>
         </div>
 
         <div className={styles.goalRangeWrapper} style={rangeStyle}>
@@ -469,8 +565,8 @@ export const Goals = (): JSX.Element => {
         </div>
 
         <div className={styles.goalSecondaryInfo}>
-          <span>{formatSignedCurrency(averageMonthlyResult)} / mes</span>
-          <span>{forecastLabel}</span>
+          <span>Sobra média: {formatSignedCurrency(averageMonthlyResult)}</span>
+          <span>Previsão: {forecastLabel}</span>
         </div>
       </article>
     )
@@ -511,11 +607,11 @@ export const Goals = (): JSX.Element => {
 
           <section className={styles.section}>
             <header className={styles.sectionHeader}>
-              <h2>Concluidas</h2>
+              <h2>Concluídas</h2>
               <span>{completedGoals.length}</span>
             </header>
             {completedGoals.length === 0 ? (
-              <p className={styles.stateMessage}>Nenhuma meta concluida.</p>
+              <p className={styles.stateMessage}>Nenhuma meta concluída.</p>
             ) : (
               <div className={styles.goalGrid}>
                 {completedGoals.map((goal) => renderGoalCard(goal))}
@@ -548,7 +644,7 @@ export const Goals = (): JSX.Element => {
               type="text"
               value={goalForm.title}
               onChange={(event) => setGoalForm((prev) => ({ ...prev, title: event.target.value }))}
-              placeholder="Ex: Reserva de emergencia"
+              placeholder="Ex: Reserva de emergência"
               disabled={isSavingGoal}
             />
           </label>
