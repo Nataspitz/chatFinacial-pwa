@@ -1,4 +1,5 @@
 ﻿import { supabase } from '../lib/supabase'
+import { assertFinancialPeriodUnlocked } from './financial-audit-lock'
 import type { ExportReportPdfPayload, ExportReportPdfResult } from '../types/report-export.types'
 import type { PaymentMethod, Transaction, TransactionType } from '../types/transaction.types'
 
@@ -30,6 +31,7 @@ interface TransactionCategoryRow {
 interface TransactionDeleteScopeRow {
   installment_group_id: string | null
   installment_count: number
+  date: string
 }
 
 export interface CategoryItem {
@@ -62,6 +64,197 @@ const getTodayDate = (): string => {
 const getDefaultConfirmedByDate = (dateValue: string): boolean => {
   const normalizedDate = normalizeDate(dateValue)
   return normalizedDate <= getTodayDate()
+}
+
+const formatCurrency = (value: number): string =>
+  new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: 'BRL'
+  }).format(Number.isFinite(value) ? value : 0)
+
+const escapeHtml = (value: string): string =>
+  value
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;')
+
+const buildPdfRows = (transactions: ExportReportPdfPayload['entries']): string[][] => {
+  if (transactions.length === 0) {
+    return [['-', 'Nenhuma transacao neste periodo.', '-', '-', '-', '-']]
+  }
+
+  return transactions.map((transaction) => [
+    transaction.dateLabel,
+    transaction.description,
+    transaction.category,
+    transaction.paymentDetailsLabel || '-',
+    transaction.amountLabel,
+    transaction.totalAmountLabel
+  ])
+}
+
+const sanitizeFileName = (value: string): string => {
+  const cleaned = value.trim().replace(/[<>:"/\\|?*\u0000-\u001F]/g, '-')
+  return cleaned || 'relatorio-financeiro'
+}
+
+const exportReportPdfOnWeb = async (payload: ExportReportPdfPayload): Promise<ExportReportPdfResult> => {
+  const { jsPDF } = await import('jspdf')
+
+  const doc = new jsPDF({
+    orientation: 'landscape',
+    unit: 'pt',
+    format: 'a4'
+  })
+
+  const pageWidth = doc.internal.pageSize.getWidth()
+  const pageHeight = doc.internal.pageSize.getHeight()
+  const marginX = 32
+  const marginY = 28
+  const contentWidth = pageWidth - marginX * 2
+  const baseFont = 'helvetica'
+
+  const primary = [24, 32, 51] as const
+  const muted = [100, 112, 139] as const
+  const border = [219, 227, 243] as const
+  const accent = [79, 124, 255] as const
+  const surface = [233, 240, 255] as const
+
+  const drawText = (text: string, x: number, y: number, options?: { size?: number; color?: readonly number[]; style?: 'normal' | 'bold'; align?: 'left' | 'right' }) => {
+    doc.setFont(baseFont, options?.style ?? 'normal')
+    doc.setFontSize(options?.size ?? 11)
+    doc.setTextColor(...(options?.color ?? primary))
+    doc.text(text, x, y, { align: options?.align ?? 'left' })
+  }
+
+  const drawWrappedText = (text: string, x: number, y: number, width: number, options?: { size?: number; color?: readonly number[]; style?: 'normal' | 'bold' }) => {
+    doc.setFont(baseFont, options?.style ?? 'normal')
+    doc.setFontSize(options?.size ?? 11)
+    doc.setTextColor(...(options?.color ?? primary))
+    const lines = doc.splitTextToSize(text, width)
+    doc.text(lines, x, y)
+    return lines.length
+  }
+
+  const drawMetricCards = (startY: number): number => {
+    const metrics = payload.dashboardMetrics.length > 0
+      ? payload.dashboardMetrics
+      : [
+          { label: 'Entradas', value: formatCurrency(payload.totalEntries) },
+          { label: 'Saidas', value: formatCurrency(payload.totalOutcomes) },
+          { label: 'Resultado', value: formatCurrency(payload.resultBalance) }
+        ]
+
+    const columns = 3
+    const gap = 12
+    const cardWidth = (contentWidth - gap * (columns - 1)) / columns
+    const cardHeight = 58
+    const rowGap = 10
+    const visibleMetrics = metrics.slice(0, 6)
+
+    visibleMetrics.forEach((metric, index) => {
+      const column = index % columns
+      const row = Math.floor(index / columns)
+      const x = marginX + column * (cardWidth + gap)
+      const y = startY + row * (cardHeight + rowGap)
+      doc.setFillColor(...surface)
+      doc.setDrawColor(...border)
+      doc.roundedRect(x, y, cardWidth, cardHeight, 10, 10, 'FD')
+      drawText(metric.label.toUpperCase(), x + 12, y + 18, { size: 8, color: muted })
+      drawText(metric.value, x + 12, y + 42, { size: 15, style: 'bold' })
+    })
+
+    const rowCount = Math.max(1, Math.ceil(visibleMetrics.length / columns))
+    return startY + rowCount * cardHeight + (rowCount - 1) * rowGap + 24
+  }
+
+  const ensureSpace = (cursorY: number, neededHeight: number): number => {
+    if (cursorY + neededHeight <= pageHeight - marginY) {
+      return cursorY
+    }
+
+    doc.addPage()
+    return marginY
+  }
+
+  const drawTable = (title: string, rows: string[][], startY: number): number => {
+    let cursorY = ensureSpace(startY, 80)
+
+    drawText(title, marginX, cursorY, { size: 16, style: 'bold' })
+    cursorY += 16
+
+    const columnWidths = [70, 180, 110, 170, 95, 95]
+    const rowHeight = 24
+    const headerHeight = 28
+    const headers = ['Data', 'Descricao', 'Categoria', 'Pagamento', 'Valor', 'Total']
+
+    const drawHeader = (y: number) => {
+      let currentX = marginX
+      headers.forEach((header, index) => {
+        const width = columnWidths[index]
+        doc.setFillColor(...surface)
+        doc.setDrawColor(...border)
+        doc.rect(currentX, y, width, headerHeight, 'FD')
+        drawText(header, currentX + 8, y + 18, { size: 9, color: muted, style: 'bold' })
+        currentX += width
+      })
+    }
+
+    const drawRow = (row: string[], y: number) => {
+      let currentX = marginX
+      row.forEach((cell, index) => {
+        const width = columnWidths[index]
+        doc.setDrawColor(...border)
+        doc.rect(currentX, y, width, rowHeight)
+        const isNumeric = index >= 4
+        const textX = isNumeric ? currentX + width - 8 : currentX + 8
+        drawText(cell, textX, y + 16, {
+          size: 9,
+          align: isNumeric ? 'right' : 'left'
+        })
+        currentX += width
+      })
+    }
+
+    drawHeader(cursorY)
+    cursorY += headerHeight
+
+    rows.forEach((row) => {
+      cursorY = ensureSpace(cursorY, rowHeight + 8)
+      if (cursorY === marginY) {
+        drawHeader(cursorY)
+        cursorY += headerHeight
+      }
+      drawRow(row, cursorY)
+      cursorY += rowHeight
+    })
+
+    return cursorY + 24
+  }
+
+  drawText(payload.companyName || 'Relatorio financeiro', marginX, marginY + 8, { size: 22, style: 'bold' })
+  drawText(`Periodo: ${payload.periodLabel}`, marginX, marginY + 30, { size: 11, color: muted })
+  drawText(`Gerado em: ${payload.createdAt}`, marginX, marginY + 48, { size: 11, color: muted })
+
+  let cursorY = marginY + 68
+  cursorY = drawMetricCards(cursorY)
+  cursorY = drawTable('Entradas', buildPdfRows(payload.entries), cursorY)
+  cursorY = drawTable('Saidas', buildPdfRows(payload.outcomes), cursorY)
+
+  cursorY = ensureSpace(cursorY, 40)
+  drawWrappedText(
+    'Este arquivo foi gerado pela versao web do ChatFinacial. As linhas do relatorio incluem descricao, categoria, forma de pagamento e informacoes de parcelas.',
+    marginX,
+    cursorY,
+    contentWidth,
+    { size: 10, color: muted }
+  )
+
+  doc.save(`${sanitizeFileName(payload.fileName)}.pdf`)
+
+  return { canceled: false }
 }
 
 const mapRow = (row: TransactionRow): Transaction => ({
@@ -365,12 +558,16 @@ export const financeService = {
       return
     }
 
+    assertFinancialPeriodUnlocked(transactions.map((item) => item.date))
+
     const userId = await getUserId()
     const payload = transactions.map((item) => toInsertPayload(item, userId))
     await insertTransactionsWithFallback(payload)
   },
 
   updateTransaction: async (transaction: Transaction): Promise<void> => {
+    assertFinancialPeriodUnlocked([transaction.date])
+
     const userId = await getUserId()
 
     const payload = {
@@ -396,7 +593,7 @@ export const financeService = {
     const userId = await getUserId()
     const scopeLookup = await supabase
       .from('transactions')
-      .select('installment_group_id, installment_count')
+      .select('installment_group_id, installment_count, date')
       .eq('id', id)
       .eq('user_id', userId)
       .maybeSingle()
@@ -408,6 +605,34 @@ export const financeService = {
     const scopeRow = scopeLookup.data as TransactionDeleteScopeRow | null
     const hasInstallmentGroup = Boolean(scopeRow?.installment_group_id && Number(scopeRow.installment_count) > 1)
     const installmentGroupId = hasInstallmentGroup ? scopeRow?.installment_group_id ?? null : null
+    const affectedDates = installmentGroupId
+      ? await supabase
+          .from('transactions')
+          .select('date')
+          .eq('user_id', userId)
+          .eq('installment_group_id', installmentGroupId)
+          .is('deleted_at', null)
+      : null
+    const affectedDatesFallback =
+      affectedDates?.error && isMissingDeletedAtColumnError(affectedDates.error)
+        ? await supabase
+            .from('transactions')
+            .select('date')
+            .eq('user_id', userId)
+            .eq('installment_group_id', installmentGroupId)
+        : affectedDates
+
+    if (affectedDatesFallback?.error) {
+      throw affectedDatesFallback.error
+    }
+
+    assertFinancialPeriodUnlocked(
+      installmentGroupId
+        ? ((affectedDatesFallback?.data ?? []) as Array<Pick<TransactionDeleteScopeRow, 'date'>>).map((item) => item.date)
+        : scopeRow?.date
+          ? [scopeRow.date]
+          : []
+    )
 
     const deleteQuery = supabase
       .from('transactions')
@@ -442,6 +667,22 @@ export const financeService = {
 
   restoreDeletedTransactions: async (): Promise<number> => {
     const userId = await getUserId()
+    const lockedLookup = await supabase
+      .from('transactions')
+      .select('date')
+      .eq('user_id', userId)
+      .not('deleted_at', 'is', null)
+
+    if (lockedLookup.error) {
+      if (isMissingDeletedAtColumnError(lockedLookup.error)) {
+        return 0
+      }
+      throw lockedLookup.error
+    }
+
+    assertFinancialPeriodUnlocked(
+      ((lockedLookup.data ?? []) as Array<Pick<TransactionDeleteScopeRow, 'date'>>).map((item) => item.date)
+    )
 
     const response = await supabase
       .from('transactions')
@@ -466,6 +707,23 @@ export const financeService = {
     }
 
     const userId = await getUserId()
+    const lockedLookup = await supabase
+      .from('transactions')
+      .select('date')
+      .eq('user_id', userId)
+      .in('id', ids)
+      .not('deleted_at', 'is', null)
+
+    if (lockedLookup.error) {
+      if (isMissingDeletedAtColumnError(lockedLookup.error)) {
+        return 0
+      }
+      throw lockedLookup.error
+    }
+
+    assertFinancialPeriodUnlocked(
+      ((lockedLookup.data ?? []) as Array<Pick<TransactionDeleteScopeRow, 'date'>>).map((item) => item.date)
+    )
 
     const response = await supabase
       .from('transactions')
@@ -487,6 +745,22 @@ export const financeService = {
 
   purgeDeletedTransactions: async (): Promise<number> => {
     const userId = await getUserId()
+    const lockedLookup = await supabase
+      .from('transactions')
+      .select('date')
+      .eq('user_id', userId)
+      .not('deleted_at', 'is', null)
+
+    if (lockedLookup.error) {
+      if (isMissingDeletedAtColumnError(lockedLookup.error)) {
+        return 0
+      }
+      throw lockedLookup.error
+    }
+
+    assertFinancialPeriodUnlocked(
+      ((lockedLookup.data ?? []) as Array<Pick<TransactionDeleteScopeRow, 'date'>>).map((item) => item.date)
+    )
 
     const response = await supabase
       .from('transactions')
@@ -568,11 +842,11 @@ export const financeService = {
   },
 
   exportReportPdf: async (payload: ExportReportPdfPayload): Promise<ExportReportPdfResult> => {
-    if (!window.api?.exportReportPdf) {
-      throw new Error('Exportacao PDF indisponivel neste ambiente.')
+    if (window.api?.exportReportPdf) {
+      return window.api.exportReportPdf(payload)
     }
 
-    return window.api.exportReportPdf(payload)
+    return exportReportPdfOnWeb(payload)
   }
 }
 

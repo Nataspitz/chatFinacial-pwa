@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { Calendario } from '../pages/Calendario/Calendario'
 import { Chat } from '../pages/Chat/Chat'
 import { Dashboard } from '../pages/Dashboard/Dashboard'
+import { Auditoria } from '../pages/Auditoria/Auditoria'
 import { Goals } from '../pages/Goals/Goals'
 import { Login } from '../pages/Login/Login'
 import { Report } from '../pages/Report/Report'
@@ -51,6 +52,10 @@ const routes: RouteObject[] = [
           {
             path: '/goals',
             element: <Goals />
+          },
+          {
+            path: '/auditoria',
+            element: <Auditoria />
           },
           {
             path: '/calendario',

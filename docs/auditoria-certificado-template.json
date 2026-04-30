@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "month_ref": "2026-05-01",
+  "audit_slice": 1,
+  "period_start": "2026-05-01",
+  "period_end": "2026-05-10",
+  "unlock_at": "2026-05-10",
+  "verdict": "approved",
+  "generated_at": "2026-05-10T13:45:00Z",
+  "notes": "Conferencia de extrato concluida sem divergencias materiais."
+}

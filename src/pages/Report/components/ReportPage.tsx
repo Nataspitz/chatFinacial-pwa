@@ -4,6 +4,13 @@ import { Button, ButtonLoading, ModalBase } from '../../../components/ui'
 import { LoadingState } from '../../../components/organisms/LoadingState/LoadingState'
 import { PageTemplate } from '../../../components/templates/PageTemplate/PageTemplate'
 import { useAuth } from '../../../contexts/AuthContext'
+import { businessService } from '../../../services/business.service'
+import {
+  FINANCIAL_AUDIT_LOCK_MESSAGE,
+  getFinancialAuditLockCutoffDate,
+  hasLockedFinancialPeriod,
+  isFinancialPeriodLocked
+} from '../../../services/financial-audit-lock'
 import { financeService, type CategoryItem } from '../../../services/finance.service'
 import { transactionSettingsService } from '../../../services/transaction-settings.service'
 import type { ExportReportPdfPayload, ExportReportPdfTransaction } from '../../../types/report-export.types'
@@ -86,6 +93,160 @@ const getTodayDate = (): string => {
 const getCurrentYear = (): string => String(new Date().getFullYear())
 
 const getCurrentMonth = (): string => String(new Date().getMonth() + 1).padStart(2, '0')
+
+const getErrorMessage = (error: unknown, fallback: string): string =>
+  error instanceof Error && error.message ? error.message : fallback
+
+const getLastDayOfMonth = (year: string, month: string): string => {
+  const lastDay = new Date(Number(year), Number(month), 0).getDate()
+  return `${year}-${month}-${String(lastDay).padStart(2, '0')}`
+}
+
+const getPreviousDate = (dateValue: string): string => {
+  const [year, month, day] = dateValue.split('-').map(Number)
+  const date = new Date(year, month - 1, day)
+  date.setDate(date.getDate() - 1)
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+}
+
+const getExportDateRange = (form: ExportFormState): { startDate: string; endDate: string } => {
+  if (form.periodType === 'year') {
+    return {
+      startDate: `${form.year}-01-01`,
+      endDate: `${form.year}-12-31`
+    }
+  }
+
+  if (form.periodType === 'month') {
+    return {
+      startDate: `${form.year}-${form.month}-01`,
+      endDate: getLastDayOfMonth(form.year, form.month)
+    }
+  }
+
+  const selectedDate = `${form.year}-${form.month}-${form.day}`
+  return {
+    startDate: selectedDate,
+    endDate: selectedDate
+  }
+}
+
+const parseLocalDate = (dateValue: string): Date => {
+  const [year, month, day] = dateValue.split('-').map(Number)
+  return new Date(year, month - 1, day)
+}
+
+const addMonths = (dateValue: string, monthOffset: number): string => {
+  const date = parseLocalDate(dateValue)
+  const next = addMonthsKeepingDay(date, monthOffset)
+  return `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, '0')}-${String(next.getDate()).padStart(2, '0')}`
+}
+
+const getMonthDiff = (fromDate: string, toDate: string): number => {
+  const from = parseLocalDate(fromDate)
+  const to = parseLocalDate(toDate)
+  return (to.getFullYear() - from.getFullYear()) * 12 + (to.getMonth() - from.getMonth())
+}
+
+const getTransactionBalanceSignal = (transaction: Transaction): number => transaction.type === 'entrada' ? 1 : -1
+
+const getEarliestConfirmedTransactionDate = (transactions: Transaction[]): string | null => {
+  const dates = transactions
+    .filter((transaction) => transaction.isConfirmed)
+    .map((transaction) => normalizeTransactionDate(transaction.date))
+    .filter((date): date is string => Boolean(date))
+    .sort()
+
+  return dates[0] ?? null
+}
+
+const getConfirmedTransactionAmountAt = (
+  transaction: Transaction,
+  baseDate: string,
+  targetDate: string,
+  todayDate: string
+): number => {
+  const normalizedDate = normalizeTransactionDate(transaction.date)
+  if (!normalizedDate || normalizedDate > targetDate || normalizedDate > todayDate) {
+    return 0
+  }
+
+  if (transaction.type === 'saida' && transaction.isMonthlyCost) {
+    const monthDiff = getMonthDiff(normalizedDate, targetDate)
+    if (monthDiff < 0) {
+      return 0
+    }
+
+    let total = 0
+    for (let offset = 0; offset <= monthDiff; offset += 1) {
+      const occurrenceDate = addMonths(normalizedDate, offset)
+      if (occurrenceDate >= baseDate && occurrenceDate <= targetDate && occurrenceDate <= todayDate && transaction.isConfirmed) {
+        total += transaction.amount
+      }
+    }
+
+    return getTransactionBalanceSignal(transaction) * total
+  }
+
+  if (!transaction.isConfirmed) {
+    return 0
+  }
+
+  if (normalizedDate < baseDate) {
+    return 0
+  }
+
+  return getTransactionBalanceSignal(transaction) * transaction.amount
+}
+
+const calculateAccountBalanceAt = (
+  transactions: Transaction[],
+  baseAmount: number,
+  baseDate: string,
+  targetDate: string
+): number => {
+  if (targetDate < baseDate) {
+    return baseAmount
+  }
+
+  const todayDate = getTodayDate()
+  return transactions.reduce((acc, transaction) => {
+    const normalizedDate = normalizeTransactionDate(transaction.date)
+    if (!normalizedDate) {
+      return acc
+    }
+
+    return acc + getConfirmedTransactionAmountAt(transaction, baseDate, targetDate, todayDate)
+  }, baseAmount)
+}
+
+const resolveAccountBalanceBase = (
+  transactions: Transaction[],
+  configuredBaseAmount: number,
+  configuredBaseDate: string
+): { baseAmount: number; baseDate: string } => {
+  const earliestConfirmedDate = getEarliestConfirmedTransactionDate(transactions)
+  const normalizedConfiguredDate = normalizeTransactionDate(configuredBaseDate) ?? getTodayDate()
+
+  if (!earliestConfirmedDate) {
+    return {
+      baseAmount: configuredBaseAmount,
+      baseDate: normalizedConfiguredDate
+    }
+  }
+
+  if (configuredBaseAmount === 0 && normalizedConfiguredDate > earliestConfirmedDate) {
+    return {
+      baseAmount: 0,
+      baseDate: earliestConfirmedDate
+    }
+  }
+
+  return {
+    baseAmount: configuredBaseAmount,
+    baseDate: normalizedConfiguredDate
+  }
+}
 
 const isTransactionInFuture = (transaction: Transaction, todayDate: string): boolean => {
   const normalizedDate = normalizeTransactionDate(transaction.date)
@@ -335,6 +496,7 @@ export const ReportPage = (): JSX.Element => {
   const [draftCombinedFilter, setDraftCombinedFilter] = useState<CombinedFilterDraftState>(initialCombinedFilterDraftState)
   const [transactionSettings, setTransactionSettings] = useState<TransactionSettings>(DEFAULT_TRANSACTION_SETTINGS)
   const [toastMessage, setToastMessage] = useState('')
+  const auditLockCutoffDate = useMemo(() => getFinancialAuditLockCutoffDate(), [])
 
   const loadTransactions = async (): Promise<void> => {
     try {
@@ -611,6 +773,11 @@ export const ReportPage = (): JSX.Element => {
 
   const handleDelete = async (id: string): Promise<void> => {
     const transaction = transactions.find((item) => item.id === id) ?? null
+    if (transaction && isFinancialPeriodLocked(transaction.date)) {
+      setError(FINANCIAL_AUDIT_LOCK_MESSAGE)
+      return
+    }
+
     setDeleteCandidate(transaction)
   }
 
@@ -629,14 +796,19 @@ export const ReportPage = (): JSX.Element => {
       setDeleteCandidate(null)
       setError('')
       setToastMessage('Transacao movida para a lixeira!')
-    } catch {
-      setError('Nao foi possivel apagar a transacao.')
+    } catch (deleteError) {
+      setError(getErrorMessage(deleteError, 'Nao foi possivel apagar a transacao.'))
     } finally {
       setDeletingId(null)
     }
   }
 
   const handleEditStart = (transaction: Transaction): void => {
+    if (isFinancialPeriodLocked(transaction.date)) {
+      setError(FINANCIAL_AUDIT_LOCK_MESSAGE)
+      return
+    }
+
     const installmentCount = transaction.paymentMethod === 'credito' ? Math.max(1, transaction.installmentCount) : 1
 
     setEditingId(transaction.id)
@@ -762,6 +934,12 @@ export const ReportPage = (): JSX.Element => {
   const handleEditSave = async (): Promise<void> => {
     if (!editingDraft || !editingId) return
 
+    const originalTransaction = transactions.find((item) => item.id === editingId)
+    if (hasLockedFinancialPeriod([originalTransaction?.date ?? editingDraft.date, editingDraft.date])) {
+      setError(FINANCIAL_AUDIT_LOCK_MESSAGE)
+      return
+    }
+
     if (!editingDraft.category.trim() || !editingDraft.description.trim() || editingDraft.amount <= 0 || !editingDraft.date) {
       setError('Preencha os campos da edicao com valores validos.')
       return
@@ -817,8 +995,8 @@ export const ReportPage = (): JSX.Element => {
       setEditingDraft(null)
       await loadCategories()
       setError('')
-    } catch {
-      setError('Nao foi possivel editar a transacao.')
+    } catch (editError) {
+      setError(getErrorMessage(editError, 'Nao foi possivel editar a transacao.'))
     } finally {
       setIsSavingEdit(false)
     }
@@ -833,6 +1011,11 @@ export const ReportPage = (): JSX.Element => {
 
     if (!createForm.date) {
       setCreateFeedback('Informe a data da transacao.')
+      return
+    }
+
+    if (isFinancialPeriodLocked(createForm.date)) {
+      setCreateFeedback(FINANCIAL_AUDIT_LOCK_MESSAGE)
       return
     }
 
@@ -862,7 +1045,7 @@ export const ReportPage = (): JSX.Element => {
       return
     }
 
-    const firstDate = new Date(createForm.date)
+    const firstDate = parseLocalDate(createForm.date)
     if (Number.isNaN(firstDate.getTime())) {
       setCreateFeedback('Informe uma data valida.')
       return
@@ -899,6 +1082,10 @@ export const ReportPage = (): JSX.Element => {
     const normalizedTransactions = transactionsToCreate.map((item) =>
       normalizeTransactionBySettings(item, transactionSettings)
     )
+    if (hasLockedFinancialPeriod(normalizedTransactions.map((item) => item.date))) {
+      setCreateFeedback(FINANCIAL_AUDIT_LOCK_MESSAGE)
+      return
+    }
     const invalidTransactionMessage = normalizedTransactions
       .map((item) => validateTransactionBySettings(item, transactionSettings))
       .find((message) => Boolean(message))
@@ -957,6 +1144,38 @@ export const ReportPage = (): JSX.Element => {
       typeof meta.company_name === 'string' && meta.company_name.trim()
         ? meta.company_name.trim()
         : 'Empresa nao informada'
+    const exportRange = getExportDateRange(exportForm)
+    const previousBalanceDate = getPreviousDate(exportRange.startDate)
+
+    setIsExporting(true)
+    setError('')
+    setExportFeedback('')
+
+    let accountBalanceBase = resolveAccountBalanceBase(transactions, 0, getTodayDate())
+
+    try {
+      const businessSettings = await businessService.getBusinessSettings()
+      accountBalanceBase = resolveAccountBalanceBase(
+        transactions,
+        businessSettings.account_balance_base_amount,
+        businessSettings.account_balance_base_date
+      )
+    } catch (balanceError) {
+      console.warn('Nao foi possivel carregar o saldo de conta para o PDF.', balanceError)
+    }
+
+    const previousAccountBalance = calculateAccountBalanceAt(
+      transactions,
+      accountBalanceBase.baseAmount,
+      accountBalanceBase.baseDate,
+      previousBalanceDate
+    )
+    const currentAccountBalance = calculateAccountBalanceAt(
+      transactions,
+      accountBalanceBase.baseAmount,
+      accountBalanceBase.baseDate,
+      exportRange.endDate
+    )
 
     const payload: ExportReportPdfPayload = {
       fileName,
@@ -968,20 +1187,20 @@ export const ReportPage = (): JSX.Element => {
       totalEntries: exportTotalEntries,
       totalOutcomes: exportTotalOutcomes,
       resultBalance: exportResultBalance,
+      previousAccountBalance,
+      currentAccountBalance,
       dashboardMetrics: [
         { label: 'Receita do periodo', value: formatCurrency(exportTotalEntries) },
         { label: 'Despesa do periodo', value: formatCurrency(exportTotalOutcomes) },
         { label: 'Lucro liquido', value: formatCurrency(exportResultBalance) },
+        { label: 'Saldo anterior', value: formatCurrency(previousAccountBalance) },
+        { label: 'Saldo atual', value: formatCurrency(currentAccountBalance) },
         {
           label: 'Margem',
           value: exportTotalEntries > 0 ? `${((exportResultBalance / exportTotalEntries) * 100).toFixed(2)}%` : 'N/D'
         }
       ]
     }
-
-    setIsExporting(true)
-    setError('')
-    setExportFeedback('')
 
     try {
       await financeService.exportReportPdf(payload)
@@ -1648,7 +1867,12 @@ export const ReportPage = (): JSX.Element => {
 
           <label className={styles.createField}>
             <span>Data</span>
-            <input type="date" value={createForm.date} onChange={(event) => setCreateForm((prev) => ({ ...prev, date: event.target.value }))} />
+            <input
+              type="date"
+              min={auditLockCutoffDate}
+              value={createForm.date}
+              onChange={(event) => setCreateForm((prev) => ({ ...prev, date: event.target.value }))}
+            />
           </label>
 
           <label className={styles.createField}>

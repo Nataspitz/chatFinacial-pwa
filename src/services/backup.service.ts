@@ -1,8 +1,15 @@
-import type { BackupBusinessSettings, BackupFile, BackupFolderBundle, BackupFolderMetadata } from '../types/backup.types'
+import type {
+  BackupBusinessSettings,
+  BackupFile,
+  BackupFinancialAuditSettings,
+  BackupFolderBundle,
+  BackupFolderMetadata
+} from '../types/backup.types'
 import type { Goal } from '../types/goal.types'
 import { DEFAULT_TRANSACTION_SETTINGS, type TransactionSettings } from '../types/transaction-settings.types'
 import type { PaymentMethod, Transaction, TransactionType } from '../types/transaction.types'
 import { businessService } from './business.service'
+import { getFinancialAuditLockCutoffDate } from './financial-audit-lock'
 import { financeService, type CategoryItem } from './finance.service'
 import { goalsService } from './goals.service'
 import { transactionSettingsService } from './transaction-settings.service'
@@ -17,7 +24,8 @@ const BACKUP_FOLDER_FILE_NAMES = {
   transactions: 'transactions.json',
   goals: 'goals.json',
   transactionSettings: 'transaction-settings.json',
-  businessSettings: 'business-settings.json'
+  businessSettings: 'business-settings.json',
+  financialAudit: 'financial-audit.json'
 } as const
 
 type BackupFolderFileName = (typeof BACKUP_FOLDER_FILE_NAMES)[keyof typeof BACKUP_FOLDER_FILE_NAMES]
@@ -62,6 +70,28 @@ const normalizeOptionalInteger = (value: unknown): number | null => {
 }
 
 const getDefaultConfirmedByDate = (dateValue: string): boolean => dateValue <= getTodayDate()
+
+const getPreviousDate = (dateValue: string): string => {
+  const [year, month, day] = dateValue.split('-').map(Number)
+  const date = new Date(year, month - 1, day)
+  date.setDate(date.getDate() - 1)
+
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+}
+
+const buildFinancialAuditSettings = (): BackupFinancialAuditSettings => {
+  const lockedBeforeDate = getFinancialAuditLockCutoffDate()
+
+  return {
+    version: 1,
+    policy: 'previous-months-locked',
+    lockedBeforeDate,
+    lockedThroughDate: getPreviousDate(lockedBeforeDate),
+    timezone: 'America/Sao_Paulo',
+    databaseTrigger: 'trg_prevent_closed_financial_period_transaction_changes',
+    exportedAt: new Date().toISOString()
+  }
+}
 
 const isLegacyBackupFile = (value: unknown): value is BackupFile => {
   if (!value || typeof value !== 'object') {
@@ -256,6 +286,35 @@ const sanitizeBackupBusinessSettings = (value: unknown): BackupBusinessSettings 
   }
 }
 
+const sanitizeBackupFinancialAuditSettings = (value: unknown): BackupFinancialAuditSettings | null => {
+  if (!value || typeof value !== 'object') {
+    return null
+  }
+
+  const candidate = value as Partial<BackupFinancialAuditSettings>
+  const lockedBeforeDate = normalizeDateValue(candidate.lockedBeforeDate)
+  const lockedThroughDate = normalizeDateValue(candidate.lockedThroughDate)
+
+  if (
+    candidate.version !== 1 ||
+    candidate.policy !== 'previous-months-locked' ||
+    !lockedBeforeDate ||
+    !lockedThroughDate
+  ) {
+    return null
+  }
+
+  return {
+    version: 1,
+    policy: 'previous-months-locked',
+    lockedBeforeDate,
+    lockedThroughDate,
+    timezone: 'America/Sao_Paulo',
+    databaseTrigger: 'trg_prevent_closed_financial_period_transaction_changes',
+    exportedAt: typeof candidate.exportedAt === 'string' ? candidate.exportedAt : new Date().toISOString()
+  }
+}
+
 const downloadJsonFile = (fileName: string, payload: unknown): void => {
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
   const objectUrl = URL.createObjectURL(blob)
@@ -401,7 +460,8 @@ const parseLegacyBackupContent = (rawContent: string): BackupFolderBundle => {
     transactions: parsedJson.transactions,
     goals: [],
     transactionSettings: parsedJson.transactionSettings ?? null,
-    businessSettings: parsedJson.businessSettings ?? null
+    businessSettings: parsedJson.businessSettings ?? null,
+    financialAudit: parsedJson.financialAudit ?? null
   }
 }
 
@@ -412,6 +472,7 @@ export const backupService = {
     goals: Goal[]
     transactionSettings?: TransactionSettings | null
     businessSettings?: BackupBusinessSettings | null
+    financialAudit?: BackupFinancialAuditSettings | null
   }): BackupFolderBundle {
     const files: BackupFolderFileName[] = [
       BACKUP_FOLDER_FILE_NAMES.metadata,
@@ -428,6 +489,9 @@ export const backupService = {
       files.push(BACKUP_FOLDER_FILE_NAMES.businessSettings)
     }
 
+    const financialAudit = sanitizeBackupFinancialAuditSettings(input.financialAudit) ?? buildFinancialAuditSettings()
+    files.push(BACKUP_FOLDER_FILE_NAMES.financialAudit)
+
     return {
       metadata: {
         version: BACKUP_FOLDER_VERSION,
@@ -439,7 +503,8 @@ export const backupService = {
       transactions: input.transactions,
       goals: input.goals,
       transactionSettings: input.transactionSettings ?? null,
-      businessSettings: input.businessSettings ?? null
+      businessSettings: input.businessSettings ?? null,
+      financialAudit
     }
   },
 
@@ -454,7 +519,8 @@ export const backupService = {
         { name: BACKUP_FOLDER_FILE_NAMES.metadata, content: payload.metadata },
         { name: BACKUP_FOLDER_FILE_NAMES.categories, content: payload.categories },
         { name: BACKUP_FOLDER_FILE_NAMES.transactions, content: payload.transactions },
-        { name: BACKUP_FOLDER_FILE_NAMES.goals, content: payload.goals }
+        { name: BACKUP_FOLDER_FILE_NAMES.goals, content: payload.goals },
+        { name: BACKUP_FOLDER_FILE_NAMES.financialAudit, content: payload.financialAudit ?? buildFinancialAuditSettings() }
       ]
 
       if (payload.transactionSettings) {
@@ -479,6 +545,10 @@ export const backupService = {
     downloadJsonFile(`${folderName}-${BACKUP_FOLDER_FILE_NAMES.categories}`, payload.categories)
     downloadJsonFile(`${folderName}-${BACKUP_FOLDER_FILE_NAMES.transactions}`, payload.transactions)
     downloadJsonFile(`${folderName}-${BACKUP_FOLDER_FILE_NAMES.goals}`, payload.goals)
+    downloadJsonFile(
+      `${folderName}-${BACKUP_FOLDER_FILE_NAMES.financialAudit}`,
+      payload.financialAudit ?? buildFinancialAuditSettings()
+    )
 
     if (payload.transactionSettings) {
       downloadJsonFile(`${folderName}-${BACKUP_FOLDER_FILE_NAMES.transactionSettings}`, payload.transactionSettings)
@@ -560,6 +630,10 @@ export const backupService = {
       ),
       businessSettings: await parseJsonFile<BackupBusinessSettings | null>(
         BACKUP_FOLDER_FILE_NAMES.businessSettings,
+        null
+      ),
+      financialAudit: await parseJsonFile<BackupFinancialAuditSettings | null>(
+        BACKUP_FOLDER_FILE_NAMES.financialAudit,
         null
       )
     }

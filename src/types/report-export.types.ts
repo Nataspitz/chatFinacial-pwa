@@ -24,6 +24,8 @@ export interface ExportReportPdfPayload {
   totalEntries: number
   totalOutcomes: number
   resultBalance: number
+  previousAccountBalance?: number
+  currentAccountBalance?: number
   dashboardMetrics: ExportDashboardMetric[]
 }
 

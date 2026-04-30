@@ -11,6 +11,16 @@ export interface BackupBusinessSettings {
   accountBalanceLockedAt: string | null
 }
 
+export interface BackupFinancialAuditSettings {
+  version: 1
+  policy: 'previous-months-locked'
+  lockedBeforeDate: string
+  lockedThroughDate: string
+  timezone: 'America/Sao_Paulo'
+  databaseTrigger: 'trg_prevent_closed_financial_period_transaction_changes'
+  exportedAt: string
+}
+
 export interface BackupFile {
   version: 1
   exportedAt: string
@@ -19,6 +29,7 @@ export interface BackupFile {
   transactions: Transaction[]
   transactionSettings?: TransactionSettings
   businessSettings?: BackupBusinessSettings
+  financialAudit?: BackupFinancialAuditSettings
 }
 
 export interface BackupFolderMetadata {
@@ -35,4 +46,5 @@ export interface BackupFolderBundle {
   goals: Goal[]
   transactionSettings?: TransactionSettings | null
   businessSettings?: BackupBusinessSettings | null
+  financialAudit?: BackupFinancialAuditSettings | null
 }

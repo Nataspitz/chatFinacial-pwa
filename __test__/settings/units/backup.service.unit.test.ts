@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { backupService } from '../../../src/services/backup.service'
 import { businessService } from '../../../src/services/business.service'
 import { financeService } from '../../../src/services/finance.service'
+import { goalsService } from '../../../src/services/goals.service'
 import { transactionSettingsService } from '../../../src/services/transaction-settings.service'
 import { DEFAULT_TRANSACTION_SETTINGS } from '../../../src/types/transaction-settings.types'
 import type { Transaction } from '../../../src/types/transaction.types'
@@ -17,6 +18,15 @@ vi.mock('../../../src/services/finance.service', () => ({
 vi.mock('../../../src/services/transaction-settings.service', () => ({
   transactionSettingsService: {
     saveSettings: vi.fn()
+  }
+}))
+
+vi.mock('../../../src/services/goals.service', () => ({
+  goalsService: {
+    getGoals: vi.fn(),
+    syncSystemGoal: vi.fn(),
+    createGoal: vi.fn(),
+    updateGoalStatus: vi.fn()
   }
 }))
 
@@ -49,6 +59,7 @@ describe('backupService', () => {
     vi.mocked(financeService.getTransactions).mockResolvedValue([])
     vi.mocked(financeService.saveCategory).mockResolvedValue(undefined)
     vi.mocked(financeService.saveTransactions).mockResolvedValue(undefined)
+    vi.mocked(goalsService.getGoals).mockResolvedValue([])
     vi.mocked(transactionSettingsService.saveSettings).mockResolvedValue(DEFAULT_TRANSACTION_SETTINGS)
     vi.mocked(businessService.updateBusinessSettings).mockResolvedValue({
       company_id: 'user-1',
@@ -66,6 +77,7 @@ describe('backupService', () => {
     const payload = backupService.buildBackup({
       categories: [{ id: 'cat-1', type: 'entrada', name: 'Vendas' }],
       transactions: [sampleTransaction],
+      goals: [],
       transactionSettings: DEFAULT_TRANSACTION_SETTINGS,
       businessSettings: {
         investmentBaseAmount: 1000,
@@ -76,10 +88,19 @@ describe('backupService', () => {
       }
     })
 
-    expect(payload.version).toBe(1)
-    expect(payload.source).toBe('chatfinacial-pwa')
+    expect(payload.metadata.version).toBe(2)
+    expect(payload.metadata.source).toBe('chatfinacial-pwa')
+    expect(payload.metadata.files).toContain('financial-audit.json')
     expect(payload.transactionSettings).toEqual(DEFAULT_TRANSACTION_SETTINGS)
     expect(payload.businessSettings?.accountBalanceBaseAmount).toBe(1000)
+    expect(payload.financialAudit).toEqual(
+      expect.objectContaining({
+        version: 1,
+        policy: 'previous-months-locked',
+        timezone: 'America/Sao_Paulo',
+        databaseTrigger: 'trg_prevent_closed_financial_period_transaction_changes'
+      })
+    )
   })
 
   it('restaura backup legado sem campos novos e aplica defaults', async () => {
@@ -116,6 +137,7 @@ describe('backupService', () => {
     ])
     expect(result).toEqual({
       importedTransactions: 1,
+      restoredGoals: 0,
       restoredTransactionSettings: false,
       restoredBusinessSettings: false,
       warnings: []

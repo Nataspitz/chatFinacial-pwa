@@ -1,5 +1,10 @@
 import { financeService } from './finance.service'
 import { cfoAssistantService } from './cfo-assistant.service'
+import {
+  FINANCIAL_AUDIT_LOCK_MESSAGE,
+  hasLockedFinancialPeriod,
+  isFinancialPeriodLocked
+} from './financial-audit-lock'
 import { transactionSettingsService } from './transaction-settings.service'
 import type { ChatQuickAction, ChatReply, ChatSessionState, GuidedOptionItem } from '../types/chat.types'
 import type { CfoAnalysisType } from '../types/cfo.types'
@@ -138,6 +143,11 @@ const parseDate = (raw: string, normalized: string): string | null => {
   return null
 }
 
+const parseLocalDate = (dateValue: string): Date => {
+  const [year, month, day] = dateValue.split('-').map(Number)
+  return new Date(year, month - 1, day)
+}
+
 const parseAmount = (v: string): number | null => {
   const raw = v.replace(/[^\d,.-]/g, '').trim()
   if (!raw) return null
@@ -210,7 +220,16 @@ const saveTransactionWithSettings = async (
     return validationMessage
   }
 
-  await financeService.updateTransaction(normalized)
+  if (isFinancialPeriodLocked(normalized.date)) {
+    return FINANCIAL_AUDIT_LOCK_MESSAGE
+  }
+
+  try {
+    await financeService.updateTransaction(normalized)
+  } catch (error) {
+    return error instanceof Error ? error.message : 'Nao foi possivel atualizar a transacao.'
+  }
+
   return null
 }
 
@@ -567,7 +586,7 @@ const continueFlow = async (raw: string, normalized: string, session: ChatSessio
     const installmentCount = paymentMethod === 'credito' ? session.draft?.installmentCount ?? 1 : 1
     if (!type || !amount || !category || !description) return mainMenu('Dados incompletos para criar transacao.')
 
-    const firstDate = new Date(parsedDate)
+    const firstDate = parseLocalDate(parsedDate)
     const isInstallment = paymentMethod === 'credito' && installmentCount > 1
     const values = isInstallment ? splitInstallments(amount, installmentCount) : [amount]
     const groupId = isInstallment ? crypto.randomUUID() : null
@@ -599,7 +618,17 @@ const continueFlow = async (raw: string, normalized: string, session: ChatSessio
     if (invalidMessage) {
       return { content: invalidMessage ?? 'Dados invalidos para criar transacao.', nextSession: session }
     }
-    await financeService.saveTransactions(normalizedRows)
+    if (hasLockedFinancialPeriod(normalizedRows.map((item) => item.date))) {
+      return { content: FINANCIAL_AUDIT_LOCK_MESSAGE, nextSession: session }
+    }
+    try {
+      await financeService.saveTransactions(normalizedRows)
+    } catch (error) {
+      return {
+        content: error instanceof Error ? error.message : 'Nao foi possivel criar a transacao.',
+        nextSession: session
+      }
+    }
     await financeService.saveCategory(category, type)
     return mainMenu('Transacao criada.')
   }
@@ -610,6 +639,9 @@ const continueFlow = async (raw: string, normalized: string, session: ChatSessio
     const all = await financeService.getTransactions()
     const target = all.find((x) => x.id === picked.id)
     if (!target) return mainMenu('Transacao nao encontrada.')
+    if (isFinancialPeriodLocked(target.date)) {
+      return mainMenu(FINANCIAL_AUDIT_LOCK_MESSAGE)
+    }
     if (session.action === 'remover') return { content: `Confirmar remocao?\n${formatLine(target)}`, actions: [asOption('Confirmar', CMD.confirmYes), asOption('Cancelar', CMD.confirmNo)], nextSession: { ...session, step: 'confirm_transaction_delete', draft: { ...session.draft, targetId: target.id } } }
     return {
       content: `Campo para editar:\n${formatLine(target)}`,
@@ -767,7 +799,11 @@ const continueFlow = async (raw: string, normalized: string, session: ChatSessio
     if (raw === CMD.confirmNo) return mainMenu('Remocao cancelada.')
     const id = session.draft?.targetId
     if (!id) return mainMenu('Transacao nao encontrada.')
-    await financeService.deleteTransaction(id)
+    try {
+      await financeService.deleteTransaction(id)
+    } catch (error) {
+      return mainMenu(error instanceof Error ? error.message : 'Nao foi possivel remover a transacao.')
+    }
     return mainMenu('Transacao removida.')
   }
 
