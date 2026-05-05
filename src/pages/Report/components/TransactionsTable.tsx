@@ -18,6 +18,7 @@ export const TransactionsTable = ({
   totalTone = 'neutral',
   transactions,
   categoryOptions,
+  onConfirmStart,
   onDelete,
   onDuplicate,
   onEditStart,
@@ -25,12 +26,13 @@ export const TransactionsTable = ({
   onEditChange,
   onEditSave,
   deletingId,
+  confirmingId,
   editingId,
   editingDraft,
   isSavingEdit,
   formatCurrency,
   formatDate,
-  emptyMessage = 'Nenhuma transacao encontrada.',
+  emptyMessage = 'Nenhuma transação encontrada.',
   variant = 'default'
 }: TransactionsTableProps): JSX.Element => {
   const [isExpanded, setIsExpanded] = useState(true)
@@ -44,14 +46,16 @@ export const TransactionsTable = ({
   }
 
   const actionContext = useMemo<TransactionActionContext>(() => ({
+    confirmingId,
     deletingId,
     isSavingEdit,
+    onConfirmStart,
     onDelete,
     onDuplicate,
     onEditCancel,
     onEditSave,
     onEditStart
-  }), [deletingId, isSavingEdit, onDelete, onDuplicate, onEditCancel, onEditSave, onEditStart])
+  }), [confirmingId, deletingId, isSavingEdit, onConfirmStart, onDelete, onDuplicate, onEditCancel, onEditSave, onEditStart])
 
   const openContextMenu = (
     transaction: Transaction,
@@ -82,6 +86,15 @@ export const TransactionsTable = ({
     }
 
     actionContext.onDuplicate(contextMenuState.transaction)
+    closeContextMenu()
+  }
+
+  const handleContextConfirm = (): void => {
+    if (!contextMenuState) {
+      return
+    }
+
+    actionContext.onConfirmStart(contextMenuState.transaction)
     closeContextMenu()
   }
 
@@ -147,10 +160,13 @@ export const TransactionsTable = ({
           />
 
           <TransactionContextMenu
+            canConfirm={contextMenuState ? !contextMenuState.transaction.isConfirmed : false}
             coordinates={contextMenuState?.coordinates ?? null}
+            isConfirming={Boolean(contextMenuState && confirmingId === contextMenuState.transaction.id)}
             isDeleting={Boolean(contextMenuState && deletingId === contextMenuState.transaction.id)}
             isOpen={contextMenuState !== null}
             onClose={closeContextMenu}
+            onConfirm={handleContextConfirm}
             onDelete={handleContextDelete}
             onDuplicate={handleContextDuplicate}
             onEdit={handleContextEdit}

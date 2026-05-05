@@ -1,5 +1,5 @@
 import { render, screen, waitFor } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ReportPage } from '../../../src/pages/Report/components/ReportPage'
 import { DEFAULT_TRANSACTION_SETTINGS } from '../../../src/types/transaction-settings.types'
 import { createAuthContextMock } from '../../auth/mocks/auth-context.mock'
@@ -20,6 +20,7 @@ vi.mock('../../../src/services/finance.service', () => ({
     getCategoryItems: (type: 'entrada' | 'saida') => getCategoryItemsMock(type),
     deleteTransaction: vi.fn(async () => undefined),
     updateTransaction: vi.fn(async () => undefined),
+    updateMonthlyCostFromDate: vi.fn(async () => undefined),
     saveTransactions: vi.fn(async () => undefined),
     saveCategory: vi.fn(async () => undefined),
     exportReportToPdf: vi.fn(async () => undefined),
@@ -64,6 +65,15 @@ const getSectionTotal = (title: string): number => {
 }
 
 describe('Report future transactions integration', () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    vi.setSystemTime(new Date(2026, 3, 15))
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
   const toIsoDate = (value: Date): string => {
     const year = value.getFullYear()
     const month = String(value.getMonth() + 1).padStart(2, '0')
@@ -74,7 +84,7 @@ describe('Report future transactions integration', () => {
   const addDays = (base: Date, days: number): string =>
     toIsoDate(new Date(base.getFullYear(), base.getMonth(), base.getDate() + days))
 
-  it('separa valores atuais e futuros apenas pela data, mesmo confirmadas', async () => {
+  it('separa valores futuros apenas quando ainda nao estao confirmados', async () => {
     const now = new Date()
 
     useAuthMock.mockReturnValue(createAuthContextMock({ user: { id: 'u-1', email: 'user@test.com' } as never }))
@@ -97,7 +107,7 @@ describe('Report future transactions integration', () => {
         type: 'entrada',
         amount: 300,
         date: addDays(now, 3),
-        isConfirmed: true,
+        isConfirmed: false,
         description: 'Entrada futura'
       }),
       buildTransaction({
@@ -112,7 +122,7 @@ describe('Report future transactions integration', () => {
         type: 'saida',
         amount: 25,
         date: addDays(now, 4),
-        isConfirmed: true,
+        isConfirmed: false,
         description: 'Saida futura'
       })
     ])
@@ -124,8 +134,8 @@ describe('Report future transactions integration', () => {
     })
 
     expect(getSectionTotal('Entradas')).toBeCloseTo(100)
-    expect(getSectionTotal('Saidas')).toBeCloseTo(50)
+    expect(getSectionTotal('Saídas')).toBeCloseTo(50)
     expect(getSectionTotal('Entradas futuras')).toBeCloseTo(300)
-    expect(getSectionTotal('Saidas futuras')).toBeCloseTo(25)
+    expect(getSectionTotal('Saídas futuras')).toBeCloseTo(25)
   })
 })

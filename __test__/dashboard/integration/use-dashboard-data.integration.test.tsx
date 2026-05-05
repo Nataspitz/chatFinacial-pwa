@@ -4,6 +4,7 @@ import { act, renderHook } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useDashboardData } from '../../../src/pages/Dashboard/hooks/useDashboardData'
 import { businessService } from '../../../src/services/business.service'
+import { financialSummaryService } from '../../../src/services/financial-summary.service'
 import { financeService } from '../../../src/services/finance.service'
 import { businessSettingsFixture, dashboardTransactionsFixture } from '../mocks/dashboard-fixtures'
 
@@ -19,6 +20,13 @@ vi.mock('../../../src/services/business.service', () => ({
   }
 }))
 
+vi.mock('../../../src/services/financial-summary.service', () => ({
+  financialSummaryService: {
+    listYear: vi.fn(),
+    refreshYear: vi.fn()
+  }
+}))
+
 describe('useDashboardData - integration', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -27,6 +35,7 @@ describe('useDashboardData - integration', () => {
 
     vi.mocked(financeService.getTransactions).mockResolvedValue(dashboardTransactionsFixture)
     vi.mocked(businessService.getBusinessSettings).mockResolvedValue(businessSettingsFixture)
+    vi.mocked(financialSummaryService.listYear).mockResolvedValue([])
   })
 
   afterEach(() => {

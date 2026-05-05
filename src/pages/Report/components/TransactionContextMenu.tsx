@@ -1,21 +1,24 @@
 ﻿import { useEffect, useMemo } from 'react'
 import { createPortal } from 'react-dom'
-import { FiCopy, FiEdit2, FiTrash2 } from 'react-icons/fi'
+import { FiCheckCircle, FiCopy, FiEdit2, FiTrash2 } from 'react-icons/fi'
 import type { TransactionContextMenuCoordinates } from './transactions-table.types'
 import styles from '../Report.module.css'
 
 interface TransactionContextMenuProps {
+  canConfirm: boolean
   coordinates: TransactionContextMenuCoordinates | null
+  isConfirming: boolean
   isDeleting: boolean
   isOpen: boolean
   onClose: () => void
+  onConfirm: () => void
   onDelete: () => void
   onDuplicate: () => void
   onEdit: () => void
 }
 
 const MENU_WIDTH = 196
-const MENU_HEIGHT = 156
+const MENU_HEIGHT = 204
 const VIEWPORT_PADDING = 12
 
 const getSafeCoordinates = (coordinates: TransactionContextMenuCoordinates): TransactionContextMenuCoordinates => {
@@ -29,10 +32,13 @@ const getSafeCoordinates = (coordinates: TransactionContextMenuCoordinates): Tra
 }
 
 export const TransactionContextMenu = ({
+  canConfirm,
   coordinates,
+  isConfirming,
   isDeleting,
   isOpen,
   onClose,
+  onConfirm,
   onDelete,
   onDuplicate,
   onEdit
@@ -88,6 +94,19 @@ export const TransactionContextMenu = ({
           <FiCopy aria-hidden />
           <span>Duplicar</span>
         </button>
+
+        {canConfirm ? (
+          <button
+            type="button"
+            role="menuitem"
+            className={styles.contextMenuItem}
+            disabled={isConfirming}
+            onClick={onConfirm}
+          >
+            <FiCheckCircle aria-hidden />
+            <span>{isConfirming ? 'Validando...' : 'Confirmar'}</span>
+          </button>
+        ) : null}
 
         <button
           type="button"

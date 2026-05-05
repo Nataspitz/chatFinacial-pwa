@@ -115,9 +115,9 @@ export const TransactionDesktopRow = ({
             onChange={(event) => onEditChange('paymentMethod', event.target.value)}
           >
             <option value="pix">Pix</option>
-            <option value="debito">Debito</option>
+            <option value="debito">Débito</option>
             <option value="dinheiro">Dinheiro</option>
-            <option value="credito">Credito</option>
+            <option value="credito">Crédito</option>
           </select>
         ) : (
           formatPaymentMethod(transaction.paymentMethod)
@@ -176,7 +176,7 @@ export const TransactionDesktopRow = ({
           <button
             type="button"
             className={styles.rowMenuButton}
-            aria-label="Abrir menu da transacao"
+            aria-label="Abrir menu da transação"
             onClick={handleOpenMenu}
           >
             <FiMoreVertical />

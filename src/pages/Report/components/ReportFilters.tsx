@@ -51,7 +51,7 @@ export const ReportFilters = ({
           ))}
       </SelectField>
 
-      <SelectField label="Mes" value={selectedMonth} onChange={(event) => onMonthChange(event.target.value)}>
+      <SelectField label="Mês" value={selectedMonth} onChange={(event) => onMonthChange(event.target.value)}>
         {MONTH_OPTIONS.map((month) => (
           <option key={month.value} value={month.value}>
             {month.label}

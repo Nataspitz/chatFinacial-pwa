@@ -19,6 +19,7 @@ interface TransactionRow {
   installment_count: number
   total_amount: number
   is_installment: boolean
+  monthly_end_date?: string | null
   deleted_at?: string | null
 }
 
@@ -42,6 +43,11 @@ export interface CategoryItem {
 
 const TRANSACTION_FIELDS =
   'id, type, category, amount, description, date, created_at, is_confirmed, is_monthly_cost, payment_method, installment_group_id, installment_number, installment_count, total_amount, is_installment, deleted_at'
+const TRANSACTION_FIELDS_WITH_MONTHLY_END_DATE = TRANSACTION_FIELDS.replace(', deleted_at', ', monthly_end_date, deleted_at')
+const TRANSACTION_FIELDS_WITHOUT_DELETED_AT = TRANSACTION_FIELDS.replace(', deleted_at', '')
+const TRANSACTION_FIELDS_WITH_MONTHLY_END_DATE_WITHOUT_DELETED_AT = TRANSACTION_FIELDS_WITH_MONTHLY_END_DATE.replace(', deleted_at', '')
+const LEGACY_TRANSACTION_FIELDS =
+  'id, type, category, amount, description, date, created_at, is_monthly_cost, payment_method, installment_group_id, installment_number, installment_count, total_amount, is_installment'
 
 const normalizeDate = (value: string): string => value.match(/^\d{4}-\d{2}-\d{2}/)?.[0] ?? value
 
@@ -272,7 +278,8 @@ const mapRow = (row: TransactionRow): Transaction => ({
   installmentNumber: Number.isFinite(Number(row.installment_number)) ? Number(row.installment_number) : 1,
   installmentCount: Number.isFinite(Number(row.installment_count)) ? Number(row.installment_count) : 1,
   totalAmount: Number.isFinite(Number(row.total_amount)) ? Number(row.total_amount) : Number(row.amount),
-  isInstallment: Boolean(row.is_installment)
+  isInstallment: Boolean(row.is_installment),
+  monthlyEndDate: row.monthly_end_date ? normalizeDate(row.monthly_end_date) : null
 })
 
 const toInsertPayload = (transaction: Transaction, userId: string): Record<string, unknown> => ({
@@ -290,7 +297,8 @@ const toInsertPayload = (transaction: Transaction, userId: string): Record<strin
   installment_number: transaction.installmentNumber,
   installment_count: transaction.installmentCount,
   total_amount: transaction.totalAmount,
-  is_installment: transaction.isInstallment
+  is_installment: transaction.isInstallment,
+  monthly_end_date: transaction.monthlyEndDate ? normalizeDate(transaction.monthlyEndDate) : null
 })
 
 const getUserId = async (): Promise<string> => {
@@ -343,13 +351,18 @@ const extractMissingColumnName = (error: unknown): string | null => {
   const combined = `${message} ${details} ${hint}`
   const normalized = combined.toLowerCase()
 
-  if (!(normalized.includes('column') && normalized.includes('does not exist'))) {
-    return null
-  }
-
   const columnMatch = combined.match(/column\s+"?([a-zA-Z0-9_]+)"?\s+does not exist/i)
   if (columnMatch?.[1]) {
     return columnMatch[1].toLowerCase()
+  }
+
+  const schemaCacheMatch = combined.match(/could not find the ['"]?([a-zA-Z0-9_]+)['"]? column/i)
+  if (schemaCacheMatch?.[1]) {
+    return schemaCacheMatch[1].toLowerCase()
+  }
+
+  if (!(normalized.includes('column') && normalized.includes('does not exist'))) {
+    return null
   }
 
   return null
@@ -423,6 +436,9 @@ const updateTransactionWithFallback = async (
     }
 
     workingPayload = removeColumnFromPayload(workingPayload, missingColumn)
+    if (Object.keys(workingPayload).length === 0) {
+      throw new Error('Nao foi possivel editar a transacao por incompatibilidade de schema.')
+    }
   }
 
   throw new Error('Nao foi possivel editar a transacao por incompatibilidade de schema.')
@@ -432,19 +448,28 @@ export const financeService = {
   getTransactions: async (): Promise<Transaction[]> => {
     const userId = await getUserId()
 
-    const response = await supabase
+    const responseWithMonthlyEndDate = await supabase
       .from('transactions')
-      .select(TRANSACTION_FIELDS)
+      .select(TRANSACTION_FIELDS_WITH_MONTHLY_END_DATE)
       .eq('user_id', userId)
       .is('deleted_at', null)
       .order('date', { ascending: false })
       .order('created_at', { ascending: false })
+    const response = responseWithMonthlyEndDate.error
+      ? await supabase
+          .from('transactions')
+          .select(TRANSACTION_FIELDS)
+          .eq('user_id', userId)
+          .is('deleted_at', null)
+          .order('date', { ascending: false })
+          .order('created_at', { ascending: false })
+      : responseWithMonthlyEndDate
 
     if (response.error) {
       if (isMissingDeletedAtColumnError(response.error)) {
         const noDeletedAt = await supabase
           .from('transactions')
-          .select(TRANSACTION_FIELDS.replace(', deleted_at', ''))
+          .select(response === responseWithMonthlyEndDate ? TRANSACTION_FIELDS_WITH_MONTHLY_END_DATE_WITHOUT_DELETED_AT : TRANSACTION_FIELDS_WITHOUT_DELETED_AT)
           .eq('user_id', userId)
           .order('date', { ascending: false })
           .order('created_at', { ascending: false })
@@ -459,7 +484,7 @@ export const financeService = {
 
         const legacyWithoutDeletedAt = await supabase
           .from('transactions')
-          .select('id, type, category, amount, description, date, created_at, is_monthly_cost, payment_method, installment_group_id, installment_number, installment_count, total_amount, is_installment')
+          .select(LEGACY_TRANSACTION_FIELDS)
           .eq('user_id', userId)
           .order('date', { ascending: false })
           .order('created_at', { ascending: false })
@@ -483,7 +508,7 @@ export const financeService = {
 
       const fallback = await supabase
         .from('transactions')
-        .select('id, type, category, amount, description, date, created_at, is_monthly_cost, payment_method, installment_group_id, installment_number, installment_count, total_amount, is_installment')
+        .select(LEGACY_TRANSACTION_FIELDS)
         .eq('user_id', userId)
         .is('deleted_at', null)
         .order('date', { ascending: false })
@@ -531,7 +556,7 @@ export const financeService = {
 
       const fallback = await supabase
         .from('transactions')
-        .select('id, type, category, amount, description, date, created_at, is_monthly_cost, payment_method, installment_group_id, installment_number, installment_count, total_amount, is_installment')
+        .select(LEGACY_TRANSACTION_FIELDS)
         .eq('user_id', userId)
         .not('deleted_at', 'is', null)
         .order('date', { ascending: false })
@@ -583,10 +608,54 @@ export const financeService = {
       installment_number: transaction.installmentNumber,
       installment_count: transaction.installmentCount,
       total_amount: transaction.totalAmount,
-      is_installment: transaction.isInstallment
+      is_installment: transaction.isInstallment,
+      monthly_end_date: transaction.monthlyEndDate ? normalizeDate(transaction.monthlyEndDate) : null
     }
 
     await updateTransactionWithFallback(payload, transaction.id, userId)
+  },
+
+  updateMonthlyCostFromDate: async (originalTransaction: Transaction, nextTransaction: Transaction): Promise<void> => {
+    const originalDate = normalizeDate(originalTransaction.date)
+    const nextDate = normalizeDate(nextTransaction.date)
+
+    assertFinancialPeriodUnlocked([nextDate])
+
+    if (
+      originalTransaction.type !== 'saida'
+      || !originalTransaction.isMonthlyCost
+      || originalDate >= nextDate
+    ) {
+      await financeService.updateTransaction(nextTransaction)
+      return
+    }
+
+    const userId = await getUserId()
+    const previousDate = new Date(`${nextDate}T00:00:00`)
+    previousDate.setDate(previousDate.getDate() - 1)
+    const monthlyEndDate = `${previousDate.getFullYear()}-${String(previousDate.getMonth() + 1).padStart(2, '0')}-${String(previousDate.getDate()).padStart(2, '0')}`
+
+    await updateTransactionWithFallback(
+      {
+        monthly_end_date: monthlyEndDate
+      },
+      originalTransaction.id,
+      userId
+    )
+
+    await insertTransactionsWithFallback([
+      toInsertPayload(
+        {
+          ...nextTransaction,
+          id: crypto.randomUUID(),
+          date: nextDate,
+          isMonthlyCost: true,
+          monthlyEndDate: null,
+          monthlyCostStartDate: undefined
+        },
+        userId
+      )
+    ])
   },
 
   deleteTransaction: async (id: string): Promise<void> => {

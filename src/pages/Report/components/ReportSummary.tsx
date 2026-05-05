@@ -17,8 +17,8 @@ export const ReportSummary = ({
   return (
     <SummaryList>
       <SummaryMetric label="Soma de entradas" value={formatCurrency(totalEntries)} />
-      <SummaryMetric label="Soma de saidas" value={formatCurrency(totalOutcomes)} />
-      <SummaryMetric label="Parcelas no periodo" value={formatCurrency(totalInstallments)} />
+      <SummaryMetric label="Soma de saídas" value={formatCurrency(totalOutcomes)} />
+      <SummaryMetric label="Parcelas no período" value={formatCurrency(totalInstallments)} />
     </SummaryList>
   )
 }
