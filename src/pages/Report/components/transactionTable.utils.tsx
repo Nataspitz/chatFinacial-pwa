@@ -16,8 +16,8 @@ export const getCategorySelectOptions = (
 }
 
 export const formatPaymentMethod = (value: Transaction['paymentMethod']): string => {
-  if (value === 'credito') return 'Credito'
-  if (value === 'debito') return 'Debito'
+  if (value === 'credito') return 'Crédito'
+  if (value === 'debito') return 'Débito'
   if (value === 'dinheiro') return 'Dinheiro'
   return 'Pix'
 }
@@ -46,7 +46,7 @@ export const getMonthlyCostValue = (
     return '-'
   }
 
-  return transaction.isMonthlyCost ? 'Sim' : 'Nao'
+  return transaction.isMonthlyCost ? 'Sim' : 'Não'
 }
 
 export const getConfirmedValue = (
@@ -65,5 +65,5 @@ export const getConfirmedValue = (
     )
   }
 
-  return transaction.isConfirmed ? 'Sim' : 'Nao'
+  return transaction.isConfirmed ? 'Sim' : 'Não'
 }

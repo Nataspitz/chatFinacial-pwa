@@ -1,1320 +1,119 @@
-import { useEffect, useMemo, useState } from 'react'
-import { FiFilter, FiSearch, FiX } from 'react-icons/fi'
-import { Button, ButtonLoading, ModalBase } from '../../../components/ui'
+import { useMemo, useState } from 'react'
 import { LoadingState } from '../../../components/organisms/LoadingState/LoadingState'
 import { PageTemplate } from '../../../components/templates/PageTemplate/PageTemplate'
 import { useAuth } from '../../../contexts/AuthContext'
-import { businessService } from '../../../services/business.service'
-import {
-  FINANCIAL_AUDIT_LOCK_MESSAGE,
-  getFinancialAuditLockCutoffDate,
-  hasLockedFinancialPeriod,
-  isFinancialPeriodLocked
-} from '../../../services/financial-audit-lock'
-import { financeService, type CategoryItem } from '../../../services/finance.service'
-import { transactionSettingsService } from '../../../services/transaction-settings.service'
-import type { ExportReportPdfPayload, ExportReportPdfTransaction } from '../../../types/report-export.types'
-import {
-  DEFAULT_TRANSACTION_SETTINGS,
-  getDefaultConfirmedByType,
-  getDefaultPaymentMethodByType,
-  normalizeTransactionBySettings,
-  validateTransactionBySettings,
-  type TransactionSettings
-} from '../../../types/transaction-settings.types'
-import type { PaymentMethod, Transaction, TransactionType } from '../../../types/transaction.types'
-import type { EditField } from './transactions-table.types'
+import { getFinancialAuditLockCutoffDate } from '../../../services/financial-audit-lock'
+import { getDefaultPaymentMethodByType } from '../../../types/transaction-settings.types'
 import { PageHeader } from './PageHeader'
-import { TransactionsTable } from './TransactionsTable'
-import { formatPaymentMethod } from './transactionTable.utils'
+import { MobileActionsDrawer } from './MobileActionsDrawer'
+import { ReportTransactionsGrid } from './ReportTransactionsGrid'
+import { ReportSearchFilterBar } from './ReportSearchFilterBar'
+import { ReportListFilterModal } from './ReportListFilterModal'
+import { DeleteTransactionModal } from './DeleteTransactionModal'
+import { ConfirmTransactionModal } from './ConfirmTransactionModal'
+import { ExportReportModal } from './ExportReportModal'
+import { CreateTransactionModal } from './CreateTransactionModal'
+import { CategoryManagerModal } from './CategoryManagerModal'
+import { formatDate } from './report-page.date-utils'
+import { formatCurrency } from './report-page.utils'
+import { useReportData } from '../hooks/useReportData'
+import { useReportFilters } from '../hooks/useReportFilters'
+import { useReportExport } from '../hooks/useReportExport'
+import { useReportCategories } from '../hooks/useReportCategories'
+import { useReportCreateTransaction } from '../hooks/useReportCreateTransaction'
+import { useReportTransactionActions } from '../hooks/useReportTransactionActions'
 import styles from '../Report.module.css'
-
-interface CreateFormState {
-  type: Transaction['type']
-  amount: string
-  date: string
-  category: string
-  description: string
-  isMonthlyCost: boolean
-  paymentMethod: PaymentMethod
-  installmentCount: number
-}
-
-interface ExportFormState {
-  fileName: string
-  periodType: 'year' | 'month' | 'day'
-  year: string
-  month: string
-  day: string
-}
-
-interface ListFilterState {
-  operationType: 'all' | TransactionType
-  maxAmountLimit: string
-}
-
-interface CombinedFilterDraftState extends ListFilterState {
-  selectedYear: string
-  selectedMonth: string
-  selectedDay: string
-}
-
-const formatCurrency = (value: number): string => {
-  return new Intl.NumberFormat('pt-BR', {
-    style: 'currency',
-    currency: 'BRL'
-  }).format(value)
-}
-
-const formatDate = (value: string): string => {
-  const normalized = value.match(/^\d{4}-\d{2}-\d{2}/)?.[0]
-  if (!normalized) {
-    return new Intl.DateTimeFormat('pt-BR').format(new Date(value))
-  }
-
-  const [year, month, day] = normalized.split('-').map(Number)
-  const localDate = new Date(year, month - 1, day)
-  return new Intl.DateTimeFormat('pt-BR').format(localDate)
-}
-
-const normalizeTransactionDate = (value: string): string | null => {
-  const match = value.match(/^\d{4}-\d{2}-\d{2}/)
-  return match ? match[0] : null
-}
-
-const getTodayDate = (): string => {
-  const now = new Date()
-  const year = now.getFullYear()
-  const month = String(now.getMonth() + 1).padStart(2, '0')
-  const day = String(now.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
-}
-
-const getCurrentYear = (): string => String(new Date().getFullYear())
-
-const getCurrentMonth = (): string => String(new Date().getMonth() + 1).padStart(2, '0')
-
-const getErrorMessage = (error: unknown, fallback: string): string =>
-  error instanceof Error && error.message ? error.message : fallback
-
-const getLastDayOfMonth = (year: string, month: string): string => {
-  const lastDay = new Date(Number(year), Number(month), 0).getDate()
-  return `${year}-${month}-${String(lastDay).padStart(2, '0')}`
-}
-
-const getPreviousDate = (dateValue: string): string => {
-  const [year, month, day] = dateValue.split('-').map(Number)
-  const date = new Date(year, month - 1, day)
-  date.setDate(date.getDate() - 1)
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
-}
-
-const getExportDateRange = (form: ExportFormState): { startDate: string; endDate: string } => {
-  if (form.periodType === 'year') {
-    return {
-      startDate: `${form.year}-01-01`,
-      endDate: `${form.year}-12-31`
-    }
-  }
-
-  if (form.periodType === 'month') {
-    return {
-      startDate: `${form.year}-${form.month}-01`,
-      endDate: getLastDayOfMonth(form.year, form.month)
-    }
-  }
-
-  const selectedDate = `${form.year}-${form.month}-${form.day}`
-  return {
-    startDate: selectedDate,
-    endDate: selectedDate
-  }
-}
-
-const parseLocalDate = (dateValue: string): Date => {
-  const [year, month, day] = dateValue.split('-').map(Number)
-  return new Date(year, month - 1, day)
-}
-
-const addMonths = (dateValue: string, monthOffset: number): string => {
-  const date = parseLocalDate(dateValue)
-  const next = addMonthsKeepingDay(date, monthOffset)
-  return `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, '0')}-${String(next.getDate()).padStart(2, '0')}`
-}
-
-const getMonthDiff = (fromDate: string, toDate: string): number => {
-  const from = parseLocalDate(fromDate)
-  const to = parseLocalDate(toDate)
-  return (to.getFullYear() - from.getFullYear()) * 12 + (to.getMonth() - from.getMonth())
-}
-
-const getTransactionBalanceSignal = (transaction: Transaction): number => transaction.type === 'entrada' ? 1 : -1
-
-const getEarliestConfirmedTransactionDate = (transactions: Transaction[]): string | null => {
-  const dates = transactions
-    .filter((transaction) => transaction.isConfirmed)
-    .map((transaction) => normalizeTransactionDate(transaction.date))
-    .filter((date): date is string => Boolean(date))
-    .sort()
-
-  return dates[0] ?? null
-}
-
-const getConfirmedTransactionAmountAt = (
-  transaction: Transaction,
-  baseDate: string,
-  targetDate: string,
-  todayDate: string
-): number => {
-  const normalizedDate = normalizeTransactionDate(transaction.date)
-  if (!normalizedDate || normalizedDate > targetDate || normalizedDate > todayDate) {
-    return 0
-  }
-
-  if (transaction.type === 'saida' && transaction.isMonthlyCost) {
-    const monthDiff = getMonthDiff(normalizedDate, targetDate)
-    if (monthDiff < 0) {
-      return 0
-    }
-
-    let total = 0
-    for (let offset = 0; offset <= monthDiff; offset += 1) {
-      const occurrenceDate = addMonths(normalizedDate, offset)
-      if (occurrenceDate >= baseDate && occurrenceDate <= targetDate && occurrenceDate <= todayDate && transaction.isConfirmed) {
-        total += transaction.amount
-      }
-    }
-
-    return getTransactionBalanceSignal(transaction) * total
-  }
-
-  if (!transaction.isConfirmed) {
-    return 0
-  }
-
-  if (normalizedDate < baseDate) {
-    return 0
-  }
-
-  return getTransactionBalanceSignal(transaction) * transaction.amount
-}
-
-const calculateAccountBalanceAt = (
-  transactions: Transaction[],
-  baseAmount: number,
-  baseDate: string,
-  targetDate: string
-): number => {
-  if (targetDate < baseDate) {
-    return baseAmount
-  }
-
-  const todayDate = getTodayDate()
-  return transactions.reduce((acc, transaction) => {
-    const normalizedDate = normalizeTransactionDate(transaction.date)
-    if (!normalizedDate) {
-      return acc
-    }
-
-    return acc + getConfirmedTransactionAmountAt(transaction, baseDate, targetDate, todayDate)
-  }, baseAmount)
-}
-
-const resolveAccountBalanceBase = (
-  transactions: Transaction[],
-  configuredBaseAmount: number,
-  configuredBaseDate: string
-): { baseAmount: number; baseDate: string } => {
-  const earliestConfirmedDate = getEarliestConfirmedTransactionDate(transactions)
-  const normalizedConfiguredDate = normalizeTransactionDate(configuredBaseDate) ?? getTodayDate()
-
-  if (!earliestConfirmedDate) {
-    return {
-      baseAmount: configuredBaseAmount,
-      baseDate: normalizedConfiguredDate
-    }
-  }
-
-  if (configuredBaseAmount === 0 && normalizedConfiguredDate > earliestConfirmedDate) {
-    return {
-      baseAmount: 0,
-      baseDate: earliestConfirmedDate
-    }
-  }
-
-  return {
-    baseAmount: configuredBaseAmount,
-    baseDate: normalizedConfiguredDate
-  }
-}
-
-const isTransactionInFuture = (transaction: Transaction, todayDate: string): boolean => {
-  const normalizedDate = normalizeTransactionDate(transaction.date)
-  return Boolean(normalizedDate && normalizedDate > todayDate)
-}
-
-const getDefaultConfirmedByDate = (dateValue: string): boolean => {
-  const normalizedDate = normalizeTransactionDate(dateValue)
-  if (!normalizedDate) {
-    return true
-  }
-
-  return normalizedDate <= getTodayDate()
-}
-
-const initialCreateFormState: CreateFormState = {
-  type: 'saida',
-  amount: '',
-  date: getTodayDate(),
-  category: '',
-  description: '',
-  isMonthlyCost: false,
-  paymentMethod: 'pix',
-  installmentCount: 1
-}
-
-const initialExportFormState: ExportFormState = {
-  fileName: 'relatorio-financeiro',
-  periodType: 'month',
-  year: String(new Date().getFullYear()),
-  month: String(new Date().getMonth() + 1).padStart(2, '0'),
-  day: String(new Date().getDate()).padStart(2, '0')
-}
-
-const initialListFilterState: ListFilterState = {
-  operationType: 'all',
-  maxAmountLimit: ''
-}
-
-const initialCombinedFilterDraftState = (): CombinedFilterDraftState => ({
-  selectedYear: getCurrentYear(),
-  selectedMonth: getCurrentMonth(),
-  selectedDay: 'all',
-  operationType: 'all',
-  maxAmountLimit: ''
-})
-
-const normalizeCategoryValue = (value: string): string => value.trim().replace(/\s+/g, ' ')
-
-const addMonthsKeepingDay = (baseDate: Date, monthOffset: number): Date => {
-  const year = baseDate.getFullYear()
-  const month = baseDate.getMonth()
-  const day = baseDate.getDate()
-  const targetFirstDay = new Date(year, month + monthOffset, 1)
-  const lastDay = new Date(targetFirstDay.getFullYear(), targetFirstDay.getMonth() + 1, 0).getDate()
-  return new Date(targetFirstDay.getFullYear(), targetFirstDay.getMonth(), Math.min(day, lastDay))
-}
-
-const splitAmountIntoInstallments = (totalAmount: number, count: number): number[] => {
-  const totalInCents = Math.round(totalAmount * 100)
-  const base = Math.floor(totalInCents / count)
-  const remainder = totalInCents - base * count
-  const result = Array.from({ length: count }, () => base)
-
-  for (let i = 0; i < remainder; i += 1) {
-    result[i] += 1
-  }
-
-  return result.map((item) => item / 100)
-}
-
-const getSortableDateValue = (value: string): number => {
-  const iso = value.match(/^\d{4}-\d{2}-\d{2}/)?.[0]
-  if (iso) {
-    const [year, month, day] = iso.split('-').map(Number)
-    return new Date(year, month - 1, day).getTime()
-  }
-
-  const br = value.match(/^(\d{2})\/(\d{2})\/(\d{4})/)
-  if (br) {
-    const [, day, month, year] = br
-    return new Date(Number(year), Number(month) - 1, Number(day)).getTime()
-  }
-
-  const parsed = new Date(value).getTime()
-  return Number.isNaN(parsed) ? Number.MAX_SAFE_INTEGER : parsed
-}
-
-const getInstallmentLabel = (transaction: Transaction): string => {
-  if (transaction.paymentMethod !== 'credito') {
-    return 'Pagamento sem parcelas'
-  }
-
-  if (transaction.installmentCount <= 1) {
-    return 'Credito a vista'
-  }
-
-  return `${transaction.installmentNumber}/${transaction.installmentCount} parcelas`
-}
-
-const toExportReportPdfTransaction = (transaction: Transaction): ExportReportPdfTransaction => ({
-  ...transaction,
-  dateLabel: formatDate(transaction.date),
-  amountLabel: formatCurrency(transaction.amount),
-  totalAmountLabel: formatCurrency(transaction.totalAmount),
-  paymentMethodLabel: formatPaymentMethod(transaction.paymentMethod),
-  installmentLabel: getInstallmentLabel(transaction),
-  paymentDetailsLabel:
-    transaction.paymentMethod === 'credito' && transaction.installmentCount > 1
-      ? `${formatPaymentMethod(transaction.paymentMethod)} - ${getInstallmentLabel(transaction)}`
-      : formatPaymentMethod(transaction.paymentMethod)
-})
-
-const getSortableCreatedAtValue = (value?: string): number => {
-  if (!value) {
-    return Number.MAX_SAFE_INTEGER
-  }
-
-  const parsed = new Date(value).getTime()
-  return Number.isNaN(parsed) ? Number.MAX_SAFE_INTEGER : parsed
-}
-
-const sortTransactionsByDateAsc = (items: Transaction[]): Transaction[] => {
-  return [...items].sort((a, b) => {
-    const byDate = getSortableDateValue(a.date) - getSortableDateValue(b.date)
-    if (byDate !== 0) {
-      return byDate
-    }
-
-    const byCreatedAt = getSortableCreatedAtValue(a.createdAt) - getSortableCreatedAtValue(b.createdAt)
-    if (byCreatedAt !== 0) {
-      return byCreatedAt
-    }
-
-    return a.id.localeCompare(b.id)
-  })
-}
-
-const buildMonthlyCostForPeriod = (
-  transaction: Transaction,
-  selectedYear: string,
-  selectedMonth: string,
-  selectedDay: string
-): Transaction | null => {
-  if (transaction.type !== 'saida' || !transaction.isMonthlyCost) {
-    return null
-  }
-
-  if (selectedYear === 'all' || selectedMonth === 'all') {
-    return null
-  }
-
-  const normalizedDate = normalizeTransactionDate(transaction.date)
-  if (!normalizedDate) {
-    return null
-  }
-
-  const [year, month, originalDay] = normalizedDate.split('-').map(Number)
-  const targetYear = Number(selectedYear)
-  const targetMonth = Number(selectedMonth)
-
-  if (!Number.isFinite(targetYear) || !Number.isFinite(targetMonth)) {
-    return null
-  }
-
-  const isAfterStartMonth = targetYear > year || (targetYear === year && targetMonth >= month)
-  if (!isAfterStartMonth) {
-    return null
-  }
-
-  const lastDayInTargetMonth = new Date(targetYear, targetMonth, 0).getDate()
-  const adjustedDay = Math.min(originalDay, lastDayInTargetMonth)
-  const adjustedDayLabel = String(adjustedDay).padStart(2, '0')
-  const targetMonthLabel = String(targetMonth).padStart(2, '0')
-  const targetDate = `${selectedYear}-${targetMonthLabel}-${adjustedDayLabel}`
-  const matchDay = selectedDay === 'all' || adjustedDay === Number(selectedDay)
-
-  if (!matchDay) {
-    return null
-  }
-
-  const isGeneratedOccurrence = targetDate !== normalizedDate
-  const isConfirmed = isGeneratedOccurrence ? Boolean(transaction.isConfirmed) && getDefaultConfirmedByDate(targetDate) : transaction.isConfirmed
-
-  return {
-    ...transaction,
-    date: targetDate,
-    isConfirmed
-  }
-}
-
-const MONTH_LABELS: Record<string, string> = {
-  all: 'Todos os meses',
-  '01': 'Janeiro',
-  '02': 'Fevereiro',
-  '03': 'Marco',
-  '04': 'Abril',
-  '05': 'Maio',
-  '06': 'Junho',
-  '07': 'Julho',
-  '08': 'Agosto',
-  '09': 'Setembro',
-  '10': 'Outubro',
-  '11': 'Novembro',
-  '12': 'Dezembro'
-}
 
 export const ReportPage = (): JSX.Element => {
   const { user } = useAuth()
-  const [transactions, setTransactions] = useState<Transaction[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string>('')
-  const [selectedYear, setSelectedYear] = useState<string>(getCurrentYear)
-  const [selectedMonth, setSelectedMonth] = useState<string>(getCurrentMonth)
-  const [selectedDay, setSelectedDay] = useState<string>('all')
-  const [deletingId, setDeletingId] = useState<string | null>(null)
-  const [deleteCandidate, setDeleteCandidate] = useState<Transaction | null>(null)
-  const [editingId, setEditingId] = useState<string | null>(null)
-  const [editingDraft, setEditingDraft] = useState<Transaction | null>(null)
-  const [isSavingEdit, setIsSavingEdit] = useState(false)
-  const [isExporting, setIsExporting] = useState(false)
-  const [isExportModalOpen, setIsExportModalOpen] = useState(false)
-  const [exportFeedback, setExportFeedback] = useState('')
-  const [exportForm, setExportForm] = useState<ExportFormState>(initialExportFormState)
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
-  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false)
-  const [createForm, setCreateForm] = useState<CreateFormState>(initialCreateFormState)
-  const [isCreating, setIsCreating] = useState(false)
-  const [createFeedback, setCreateFeedback] = useState('')
-  const [categoryOptions, setCategoryOptions] = useState<Record<TransactionType, CategoryItem[]>>({
-    entrada: [],
-    saida: []
-  })
-  const [categoryType, setCategoryType] = useState<TransactionType>('saida')
-  const [isCreateCategoryOpen, setIsCreateCategoryOpen] = useState(false)
-  const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null)
-  const [editingCategoryName, setEditingCategoryName] = useState('')
-  const [categoryFeedback, setCategoryFeedback] = useState('')
-  const [newCategoryName, setNewCategoryName] = useState('')
-  const [isSavingCategory, setIsSavingCategory] = useState(false)
-  const [categoryUpdatingId, setCategoryUpdatingId] = useState<string | null>(null)
-  const [categoryDeletingId, setCategoryDeletingId] = useState<string | null>(null)
-  const [searchTerm, setSearchTerm] = useState('')
-  const [isListFilterModalOpen, setIsListFilterModalOpen] = useState(false)
   const [isMobileActionsDrawerOpen, setIsMobileActionsDrawerOpen] = useState(false)
-  const [appliedListFilter, setAppliedListFilter] = useState<ListFilterState>(initialListFilterState)
-  const [draftCombinedFilter, setDraftCombinedFilter] = useState<CombinedFilterDraftState>(initialCombinedFilterDraftState)
-  const [transactionSettings, setTransactionSettings] = useState<TransactionSettings>(DEFAULT_TRANSACTION_SETTINGS)
-  const [toastMessage, setToastMessage] = useState('')
   const auditLockCutoffDate = useMemo(() => getFinancialAuditLockCutoffDate(), [])
+  const {
+    transactions,
+    setTransactions,
+    isLoading,
+    error,
+    setError,
+    categoryOptions,
+    transactionSettings,
+    toastMessage,
+    setToastMessage,
+    loadTransactions,
+    loadCategories
+  } = useReportData()
 
-  const loadTransactions = async (): Promise<void> => {
-    try {
-      const data = await financeService.getTransactions()
-      setTransactions(data)
-      setError('')
-    } catch {
-      setError('Nao foi possivel carregar as transacoes.')
-    } finally {
-      setIsLoading(false)
-    }
-  }
+  const create = useReportCreateTransaction({
+    categoryOptions,
+    transactionSettings,
+    loadTransactions,
+    loadCategories
+  })
 
-  const loadCategories = async (): Promise<void> => {
-    try {
-      const [entradaCategories, saidaCategories] = await Promise.all([
-        financeService.getCategoryItems('entrada'),
-        financeService.getCategoryItems('saida')
-      ])
+  const categories = useReportCategories({
+    loadCategories,
+    setCreateFeedback: create.setCreateFeedback
+  })
 
-      setCategoryOptions({
-        entrada: entradaCategories,
-        saida: saidaCategories
-      })
-    } catch {
-      setError('Nao foi possivel carregar as categorias.')
-    }
-  }
+  const transactionActions = useReportTransactionActions({
+    transactions,
+    setTransactions,
+    transactionSettings,
+    loadTransactions,
+    loadCategories,
+    setError,
+    setToastMessage,
+    setCreateForm: create.setCreateForm,
+    setCreateFeedback: create.setCreateFeedback,
+    setNewCategoryName: categories.setNewCategoryName,
+    setIsCreateModalOpen: create.setIsCreateModalOpen,
+    setIsMobileActionsDrawerOpen
+  })
 
-  const loadTransactionSettings = async (): Promise<void> => {
-    try {
-      const settings = await transactionSettingsService.getSettings()
-      setTransactionSettings(settings)
-    } catch {
-      setTransactionSettings(DEFAULT_TRANSACTION_SETTINGS)
-    }
-  }
-
-  useEffect(() => {
-    void (async () => {
-      await Promise.allSettled([loadTransactions(), loadCategories(), loadTransactionSettings()])
-      setIsLoading(false)
-    })()
-  }, [])
-
-  useEffect(() => {
-    if (!isCreateModalOpen) {
-      return
-    }
-
-    const options = categoryOptions[createForm.type]
-    if (options.length === 0) {
-      return
-    }
-
-    if (!createForm.category || !options.some((option) => option.name === createForm.category)) {
-      setCreateForm((prev) => ({ ...prev, category: options[0].name }))
-    }
-  }, [categoryOptions, createForm.category, createForm.type, isCreateModalOpen])
-
-  useEffect(() => {
-    if (!toastMessage) {
-      return
-    }
-
-    const timeout = window.setTimeout(() => {
-      setToastMessage('')
-    }, 2800)
-
-    return () => window.clearTimeout(timeout)
-  }, [toastMessage])
-
-  const yearOptions = useMemo(() => {
-    const years = transactions
-      .map((item) => normalizeTransactionDate(item.date))
-      .filter((value): value is string => Boolean(value))
-      .map((value) => value.slice(0, 4))
-
-    const uniqueYears = Array.from(new Set(years)).sort((a, b) => Number(b) - Number(a))
-    const currentYear = getCurrentYear()
-
-    return ['all', ...Array.from(new Set([currentYear, ...uniqueYears])).sort((a, b) => Number(b) - Number(a))]
-  }, [transactions])
-
-  const filteredTransactions = useMemo(() => {
-    return transactions.flatMap((item) => {
-      const normalizedDate = normalizeTransactionDate(item.date)
-      if (!normalizedDate) {
-        return []
-      }
-
-      const [year, month, day] = normalizedDate.split('-')
-      const matchYear = selectedYear === 'all' || year === selectedYear
-      const matchMonth = selectedMonth === 'all' || month === selectedMonth
-      const matchDay = selectedDay === 'all' || day === selectedDay
-
-      if (matchYear && matchMonth && matchDay) {
-        return [item]
-      }
-
-      const monthlyCostInPeriod = buildMonthlyCostForPeriod(item, selectedYear, selectedMonth, selectedDay)
-      return monthlyCostInPeriod ? [monthlyCostInPeriod] : []
-    })
-  }, [selectedDay, selectedMonth, selectedYear, transactions])
-
-  const combinedFilterDayOptions = useMemo(() => {
-    const days = transactions
-      .map((item) => normalizeTransactionDate(item.date))
-      .filter((value): value is string => Boolean(value))
-      .filter((value) => {
-        const year = value.slice(0, 4)
-        const month = value.slice(5, 7)
-        const matchYear = draftCombinedFilter.selectedYear === 'all' || year === draftCombinedFilter.selectedYear
-        const matchMonth = draftCombinedFilter.selectedMonth === 'all' || month === draftCombinedFilter.selectedMonth
-        return matchYear && matchMonth
-      })
-      .map((value) => value.slice(8, 10))
-
-    return ['all', ...Array.from(new Set(days)).sort((a, b) => Number(a) - Number(b))]
-  }, [draftCombinedFilter.selectedMonth, draftCombinedFilter.selectedYear, transactions])
-
-  const displayedTransactions = useMemo(() => {
-    const normalizedSearch = searchTerm.trim().toLowerCase()
-    const hasSearch = normalizedSearch.length > 0
-    const maxAmountLimit = Number(appliedListFilter.maxAmountLimit)
-    const hasMaxAmountLimit = appliedListFilter.maxAmountLimit.trim() !== '' && Number.isFinite(maxAmountLimit)
-
-    const filtered = filteredTransactions.filter((item) => {
-      if (appliedListFilter.operationType !== 'all' && item.type !== appliedListFilter.operationType) {
-        return false
-      }
-
-      if (hasMaxAmountLimit && item.amount > maxAmountLimit) {
-        return false
-      }
-
-      if (!hasSearch) {
-        return true
-      }
-
-      const searchableAmount = `${item.amount}`.replace('.', ',')
-      const searchableText = `${item.category} ${item.description} ${item.amount} ${searchableAmount} ${formatCurrency(item.amount)}`.toLowerCase()
-      return searchableText.includes(normalizedSearch)
-    })
-    return sortTransactionsByDateAsc(filtered)
-  }, [appliedListFilter, filteredTransactions, searchTerm])
-
-  const amountRangeMax = useMemo(() => {
-    const maxAmount = transactions.reduce((highest, item) => Math.max(highest, item.amount), 0)
-    const rounded = Math.ceil(maxAmount / 100) * 100
-    return Math.max(100, rounded)
-  }, [transactions])
-
-  const exportYearOptions = useMemo(() => {
-    const years = transactions
-      .map((item) => normalizeTransactionDate(item.date))
-      .filter((value): value is string => Boolean(value))
-      .map((value) => value.slice(0, 4))
-
-    const uniqueYears = Array.from(new Set(years)).sort((a, b) => Number(b) - Number(a))
-    return uniqueYears.length > 0 ? uniqueYears : [String(new Date().getFullYear())]
-  }, [transactions])
-
-  const exportDayOptions = useMemo(() => {
-    const days = transactions
-      .map((item) => normalizeTransactionDate(item.date))
-      .filter((value): value is string => Boolean(value))
-      .filter((value) => value.slice(0, 4) === exportForm.year && value.slice(5, 7) === exportForm.month)
-      .map((value) => value.slice(8, 10))
-
-    const uniqueDays = Array.from(new Set(days)).sort((a, b) => Number(a) - Number(b))
-    return uniqueDays.length > 0 ? uniqueDays : ['01']
-  }, [exportForm.month, exportForm.year, transactions])
-
-  useEffect(() => {
-    if (!exportYearOptions.includes(exportForm.year)) {
-      setExportForm((prev) => ({ ...prev, year: exportYearOptions[0] }))
-    }
-  }, [exportForm.year, exportYearOptions])
-
-  useEffect(() => {
-    if (!exportDayOptions.includes(exportForm.day)) {
-      setExportForm((prev) => ({ ...prev, day: exportDayOptions[0] }))
-    }
-  }, [exportDayOptions, exportForm.day])
-
-  const exportTransactions = useMemo(() => {
-    return transactions.flatMap((item) => {
-      const normalizedDate = normalizeTransactionDate(item.date)
-      if (!normalizedDate) {
-        return []
-      }
-
-      const [year, month, day] = normalizedDate.split('-')
-
-      if (exportForm.periodType === 'year') {
-        return year === exportForm.year ? [item] : []
-      }
-
-      if (exportForm.periodType === 'month') {
-        if (year === exportForm.year && month === exportForm.month) {
-          return [item]
-        }
-
-        const monthlyCostInPeriod = buildMonthlyCostForPeriod(item, exportForm.year, exportForm.month, 'all')
-        return monthlyCostInPeriod ? [monthlyCostInPeriod] : []
-      }
-
-      if (year === exportForm.year && month === exportForm.month && day === exportForm.day) {
-        return [item]
-      }
-
-      const monthlyCostInPeriod = buildMonthlyCostForPeriod(item, exportForm.year, exportForm.month, exportForm.day)
-      return monthlyCostInPeriod ? [monthlyCostInPeriod] : []
-    })
-  }, [exportForm.day, exportForm.month, exportForm.periodType, exportForm.year, transactions])
-
-  const todayDate = getTodayDate()
-
-  const mainTransactions = useMemo(
-    () => displayedTransactions.filter((item) => !isTransactionInFuture(item, todayDate)),
-    [displayedTransactions, todayDate]
-  )
-  const futureTransactions = useMemo(
-    () => displayedTransactions.filter((item) => isTransactionInFuture(item, todayDate)),
-    [displayedTransactions, todayDate]
-  )
-
-  const exportEntries = useMemo(
-    () =>
-      sortTransactionsByDateAsc(exportTransactions.filter((item) => item.type === 'entrada')).map(
-        toExportReportPdfTransaction
-      ),
-    [exportTransactions]
-  )
-  const exportOutcomes = useMemo(
-    () =>
-      sortTransactionsByDateAsc(exportTransactions.filter((item) => item.type === 'saida')).map(
-        toExportReportPdfTransaction
-      ),
-    [exportTransactions]
-  )
-  const exportTotalEntries = useMemo(
-    () => exportEntries.reduce((acc, item) => acc + item.amount, 0),
-    [exportEntries]
-  )
-  const exportTotalOutcomes = useMemo(
-    () => exportOutcomes.reduce((acc, item) => acc + item.amount, 0),
-    [exportOutcomes]
-  )
-  const exportResultBalance = useMemo(
-    () => exportTotalEntries - exportTotalOutcomes,
-    [exportTotalEntries, exportTotalOutcomes]
-  )
-
-  const entries = useMemo(() => mainTransactions.filter((item) => item.type === 'entrada'), [mainTransactions])
-  const outcomes = useMemo(() => mainTransactions.filter((item) => item.type === 'saida'), [mainTransactions])
-  const futureEntries = useMemo(() => futureTransactions.filter((item) => item.type === 'entrada'), [futureTransactions])
-  const futureOutcomes = useMemo(() => futureTransactions.filter((item) => item.type === 'saida'), [futureTransactions])
+  const filters = useReportFilters(transactions)
+  const reportExport = useReportExport(transactions, (user?.user_metadata ?? {}) as Record<string, unknown>)
+  const entries = useMemo(() => filters.mainTransactions.filter((item) => item.type === 'entrada'), [filters.mainTransactions])
+  const outcomes = useMemo(() => filters.mainTransactions.filter((item) => item.type === 'saida'), [filters.mainTransactions])
+  const futureEntries = useMemo(() => filters.futureTransactions.filter((item) => item.type === 'entrada'), [filters.futureTransactions])
+  const futureOutcomes = useMemo(() => filters.futureTransactions.filter((item) => item.type === 'saida'), [filters.futureTransactions])
   const totalEntries = useMemo(() => entries.reduce((acc, item) => acc + item.amount, 0), [entries])
   const totalOutcomes = useMemo(() => outcomes.reduce((acc, item) => acc + item.amount, 0), [outcomes])
   const totalFutureEntries = useMemo(() => futureEntries.reduce((acc, item) => acc + item.amount, 0), [futureEntries])
   const totalFutureOutcomes = useMemo(() => futureOutcomes.reduce((acc, item) => acc + item.amount, 0), [futureOutcomes])
   const resultBalance = useMemo(() => totalEntries - totalOutcomes, [totalEntries, totalOutcomes])
-  const hasActiveCombinedFilter = useMemo(
-    () =>
-      selectedYear !== getCurrentYear()
-      || selectedMonth !== getCurrentMonth()
-      || selectedDay !== 'all'
-      || appliedListFilter.operationType !== 'all'
-      || appliedListFilter.maxAmountLimit.trim() !== '',
-    [appliedListFilter, selectedDay, selectedMonth, selectedYear]
-  )
-
-  const handleDelete = async (id: string): Promise<void> => {
-    const transaction = transactions.find((item) => item.id === id) ?? null
-    if (transaction && isFinancialPeriodLocked(transaction.date)) {
-      setError(FINANCIAL_AUDIT_LOCK_MESSAGE)
-      return
-    }
-
-    setDeleteCandidate(transaction)
-  }
-
-  const handleConfirmDelete = async (): Promise<void> => {
-    if (!deleteCandidate) return
-    const id = deleteCandidate.id
-    setDeletingId(id)
-
-    try {
-      await financeService.deleteTransaction(id)
-      await loadTransactions()
-      if (editingId === id) {
-        setEditingId(null)
-        setEditingDraft(null)
-      }
-      setDeleteCandidate(null)
-      setError('')
-      setToastMessage('Transacao movida para a lixeira!')
-    } catch (deleteError) {
-      setError(getErrorMessage(deleteError, 'Nao foi possivel apagar a transacao.'))
-    } finally {
-      setDeletingId(null)
-    }
-  }
-
-  const handleEditStart = (transaction: Transaction): void => {
-    if (isFinancialPeriodLocked(transaction.date)) {
-      setError(FINANCIAL_AUDIT_LOCK_MESSAGE)
-      return
-    }
-
-    const installmentCount = transaction.paymentMethod === 'credito' ? Math.max(1, transaction.installmentCount) : 1
-
-    setEditingId(transaction.id)
-    setEditingDraft({
-      ...transaction,
-      installmentCount,
-      installmentNumber: transaction.paymentMethod === 'credito' ? transaction.installmentNumber : 1,
-      installmentGroupId: transaction.paymentMethod === 'credito' && installmentCount > 1 ? transaction.installmentGroupId : null,
-      isInstallment: transaction.paymentMethod === 'credito' && installmentCount > 1,
-      isConfirmed: Boolean(transaction.isConfirmed),
-      isMonthlyCost: transaction.type === 'saida' ? Boolean(transaction.isMonthlyCost) : false
-    })
-    setError('')
-  }
-
-  const handleDuplicateTransaction = (transaction: Transaction): void => {
-    const installmentCount = transaction.paymentMethod === 'credito' ? Math.max(1, transaction.installmentCount) : 1
-    const amountToDuplicate =
-      transaction.paymentMethod === 'credito' && installmentCount > 1 ? transaction.totalAmount : transaction.amount
-
-    setCreateFeedback('')
-    setNewCategoryName('')
-    setError('')
-    setEditingId(null)
-    setEditingDraft(null)
-    setCreateForm({
-      type: transaction.type,
-      amount: String(amountToDuplicate),
-      date: getTodayDate(),
-      category: transaction.category,
-      description: transaction.description,
-      isMonthlyCost: transaction.type === 'saida' ? transaction.isMonthlyCost : false,
-      paymentMethod: transaction.paymentMethod,
-      installmentCount
-    })
-    setIsCreateModalOpen(true)
-    setIsMobileActionsDrawerOpen(false)
-  }
-
-  const handleApplyListFilter = (): void => {
-    setSelectedYear(draftCombinedFilter.selectedYear)
-    setSelectedMonth(draftCombinedFilter.selectedMonth)
-    setSelectedDay(draftCombinedFilter.selectedDay)
-    setAppliedListFilter({
-      operationType: draftCombinedFilter.operationType,
-      maxAmountLimit: draftCombinedFilter.maxAmountLimit.trim()
-    })
-    setIsListFilterModalOpen(false)
-  }
-
-  const handleClearListFilter = (): void => {
-    setSelectedYear(getCurrentYear())
-    setSelectedMonth(getCurrentMonth())
-    setSelectedDay('all')
-    setAppliedListFilter(initialListFilterState)
-    setDraftCombinedFilter(initialCombinedFilterDraftState())
-  }
-
-  const handleEditCancel = (): void => {
-    setEditingId(null)
-    setEditingDraft(null)
-  }
-
-  const handleEditChange = (field: EditField, value: string | boolean): void => {
-    if (!editingDraft) return
-
-    if (field === 'amount') {
-      const nextAmount = Number(value as string)
-      setEditingDraft({ ...editingDraft, amount: Number.isFinite(nextAmount) ? nextAmount : 0 })
-      return
-    }
-
-    if (field === 'isMonthlyCost') {
-      setEditingDraft({
-        ...editingDraft,
-        isMonthlyCost: editingDraft.type === 'saida' ? Boolean(value) : false
-      })
-      return
-    }
-
-    if (field === 'isConfirmed') {
-      setEditingDraft({
-        ...editingDraft,
-        isConfirmed: Boolean(value)
-      })
-      return
-    }
-
-    if (field === 'paymentMethod') {
-      const paymentMethod = value as PaymentMethod
-      const nextInstallmentCount = paymentMethod === 'credito' ? Math.max(1, editingDraft.installmentCount) : 1
-      setEditingDraft({
-        ...editingDraft,
-        paymentMethod,
-        installmentCount: nextInstallmentCount,
-        installmentNumber: paymentMethod === 'credito' ? editingDraft.installmentNumber : 1,
-        installmentGroupId:
-          paymentMethod === 'credito' && nextInstallmentCount > 1
-            ? editingDraft.installmentGroupId ?? crypto.randomUUID()
-            : null,
-        isInstallment: paymentMethod === 'credito' && nextInstallmentCount > 1
-      })
-      return
-    }
-
-    if (field === 'installmentCount') {
-      const parsed = Number(value as string)
-      const nextInstallmentCount = Number.isInteger(parsed) ? Math.min(48, Math.max(1, parsed)) : 1
-
-      setEditingDraft({
-        ...editingDraft,
-        installmentCount: nextInstallmentCount,
-        installmentNumber: 1,
-        installmentGroupId: nextInstallmentCount > 1 ? editingDraft.installmentGroupId ?? crypto.randomUUID() : null,
-        isInstallment: nextInstallmentCount > 1
-      })
-      return
-    }
-
-    setEditingDraft({ ...editingDraft, [field]: value as string })
-  }
-
-  const handleEditSave = async (): Promise<void> => {
-    if (!editingDraft || !editingId) return
-
-    const originalTransaction = transactions.find((item) => item.id === editingId)
-    if (hasLockedFinancialPeriod([originalTransaction?.date ?? editingDraft.date, editingDraft.date])) {
-      setError(FINANCIAL_AUDIT_LOCK_MESSAGE)
-      return
-    }
-
-    if (!editingDraft.category.trim() || !editingDraft.description.trim() || editingDraft.amount <= 0 || !editingDraft.date) {
-      setError('Preencha os campos da edicao com valores validos.')
-      return
-    }
-
-    if (editingDraft.paymentMethod === 'credito' && (!Number.isInteger(editingDraft.installmentCount) || editingDraft.installmentCount < 1 || editingDraft.installmentCount > 48)) {
-      setError('Informe uma quantidade de parcelas entre 1 e 48 para pagamento no credito.')
-      return
-    }
-
-    if (
-      !transactionSettings.allowCreditWithoutInstallments &&
-      editingDraft.paymentMethod === 'credito' &&
-      editingDraft.installmentCount <= 1
-    ) {
-      setError('Para pagamento no credito, configure ao menos 2 parcelas nas regras.')
-      return
-    }
-
-    setIsSavingEdit(true)
-
-    try {
-      const category = normalizeCategoryValue(editingDraft.category)
-      const safeDraft: Transaction = {
-        ...editingDraft,
-        category,
-        description: editingDraft.description.trim(),
-        isConfirmed: Boolean(editingDraft.isConfirmed),
-        isMonthlyCost: editingDraft.type === 'saida' ? editingDraft.isMonthlyCost : false,
-        paymentMethod: editingDraft.paymentMethod,
-        installmentCount: editingDraft.paymentMethod === 'credito' ? editingDraft.installmentCount : 1,
-        installmentNumber: editingDraft.paymentMethod === 'credito' ? editingDraft.installmentNumber : 1,
-        installmentGroupId:
-          editingDraft.paymentMethod === 'credito' && editingDraft.installmentCount > 1 ? editingDraft.installmentGroupId : null,
-        isInstallment: editingDraft.paymentMethod === 'credito' && editingDraft.installmentCount > 1,
-        totalAmount:
-          editingDraft.paymentMethod === 'credito' && editingDraft.installmentCount > 1
-            ? editingDraft.totalAmount
-            : editingDraft.amount
-      }
-
-      const normalizedDraft = normalizeTransactionBySettings(safeDraft, transactionSettings)
-      const validationError = validateTransactionBySettings(normalizedDraft, transactionSettings)
-      if (validationError) {
-        setError(validationError)
-        return
-      }
-
-      await financeService.saveCategory(category, normalizedDraft.type)
-      await financeService.updateTransaction(normalizedDraft)
-      setTransactions((prev) => prev.map((item) => (item.id === editingId ? normalizedDraft : item)))
-      setEditingId(null)
-      setEditingDraft(null)
-      await loadCategories()
-      setError('')
-    } catch (editError) {
-      setError(getErrorMessage(editError, 'Nao foi possivel editar a transacao.'))
-    } finally {
-      setIsSavingEdit(false)
-    }
-  }
-
-  const handleCreateSubmit = async (): Promise<void> => {
-    const parsedAmount = Number(createForm.amount.replace(',', '.'))
-    if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
-      setCreateFeedback('Informe um valor valido maior que zero.')
-      return
-    }
-
-    if (!createForm.date) {
-      setCreateFeedback('Informe a data da transacao.')
-      return
-    }
-
-    if (isFinancialPeriodLocked(createForm.date)) {
-      setCreateFeedback(FINANCIAL_AUDIT_LOCK_MESSAGE)
-      return
-    }
-
-    const category = normalizeCategoryValue(createForm.category)
-    if (!category) {
-      setCreateFeedback('Selecione uma categoria.')
-      return
-    }
-
-    const description = createForm.description.trim()
-    if (!description) {
-      setCreateFeedback('Informe a descricao da transacao.')
-      return
-    }
-    const installmentCount = createForm.paymentMethod === 'credito' ? createForm.installmentCount : 1
-    if (!Number.isInteger(installmentCount) || installmentCount < 1 || installmentCount > 48) {
-      setCreateFeedback('Informe uma quantidade de parcelas entre 1 e 48.')
-      return
-    }
-
-    if (
-      !transactionSettings.allowCreditWithoutInstallments &&
-      createForm.paymentMethod === 'credito' &&
-      installmentCount <= 1
-    ) {
-      setCreateFeedback('Para pagamento no credito, configure ao menos 2 parcelas nas regras.')
-      return
-    }
-
-    const firstDate = parseLocalDate(createForm.date)
-    if (Number.isNaN(firstDate.getTime())) {
-      setCreateFeedback('Informe uma data valida.')
-      return
-    }
-
-    const isInstallment = createForm.paymentMethod === 'credito' && installmentCount > 1
-    const amounts = isInstallment ? splitAmountIntoInstallments(parsedAmount, installmentCount) : [parsedAmount]
-    const installmentGroupId = isInstallment ? crypto.randomUUID() : null
-    const transactionsToCreate: Transaction[] = amounts.map((amount, index) => {
-      const date = isInstallment ? addMonthsKeepingDay(firstDate, index) : firstDate
-      const year = date.getFullYear()
-      const month = String(date.getMonth() + 1).padStart(2, '0')
-      const day = String(date.getDate()).padStart(2, '0')
-      const transactionDate = `${year}-${month}-${day}`
-
-      return {
-        id: crypto.randomUUID(),
-        type: createForm.type,
-        amount,
-        date: transactionDate,
-        category,
-        description,
-        isConfirmed: getDefaultConfirmedByType(transactionSettings, createForm.type, transactionDate),
-        isMonthlyCost: createForm.type === 'saida' ? createForm.isMonthlyCost && !isInstallment : false,
-        paymentMethod: createForm.paymentMethod,
-        installmentGroupId,
-        installmentNumber: isInstallment ? index + 1 : 1,
-        installmentCount,
-        totalAmount: parsedAmount,
-        isInstallment
-      }
-    })
-
-    const normalizedTransactions = transactionsToCreate.map((item) =>
-      normalizeTransactionBySettings(item, transactionSettings)
-    )
-    if (hasLockedFinancialPeriod(normalizedTransactions.map((item) => item.date))) {
-      setCreateFeedback(FINANCIAL_AUDIT_LOCK_MESSAGE)
-      return
-    }
-    const invalidTransactionMessage = normalizedTransactions
-      .map((item) => validateTransactionBySettings(item, transactionSettings))
-      .find((message) => Boolean(message))
-
-    if (invalidTransactionMessage) {
-      setCreateFeedback(invalidTransactionMessage ?? 'Dados invalidos para criar transacao.')
-      return
-    }
-
-    setIsCreating(true)
-    setCreateFeedback('')
-
-    try {
-      await financeService.saveTransactions(normalizedTransactions)
-      await financeService.saveCategory(category, createForm.type)
-      await Promise.all([loadTransactions(), loadCategories()])
-      setCreateForm(initialCreateFormState)
-      setNewCategoryName('')
-      setIsCreateModalOpen(false)
-    } catch (createError) {
-      const message = createError instanceof Error ? createError.message : 'Nao foi possivel registrar a transacao no momento.'
-      setCreateFeedback(message)
-    } finally {
-      setIsCreating(false)
-    }
-  }
-
-  const getExportPeriodLabel = (): string => {
-    if (exportForm.periodType === 'year') {
-      return `Ano: ${exportForm.year}`
-    }
-
-    if (exportForm.periodType === 'month') {
-      const monthLabel = MONTH_LABELS[exportForm.month] ?? exportForm.month
-      return `Mes: ${monthLabel}/${exportForm.year}`
-    }
-
-    const monthLabel = MONTH_LABELS[exportForm.month] ?? exportForm.month
-    return `Dia: ${exportForm.day}/${exportForm.month}/${exportForm.year} (${monthLabel})`
-  }
-
-  const handleExportReport = async (): Promise<void> => {
-    const fileName = normalizeCategoryValue(exportForm.fileName)
-    if (!fileName) {
-      setExportFeedback('Informe o nome do arquivo.')
-      return
-    }
-
-    if (exportForm.periodType === 'day' && !exportForm.day) {
-      setExportFeedback('Selecione o dia para exportar.')
-      return
-    }
-
-    const meta = (user?.user_metadata ?? {}) as Record<string, unknown>
-    const companyName =
-      typeof meta.company_name === 'string' && meta.company_name.trim()
-        ? meta.company_name.trim()
-        : 'Empresa nao informada'
-    const exportRange = getExportDateRange(exportForm)
-    const previousBalanceDate = getPreviousDate(exportRange.startDate)
-
-    setIsExporting(true)
-    setError('')
-    setExportFeedback('')
-
-    let accountBalanceBase = resolveAccountBalanceBase(transactions, 0, getTodayDate())
-
-    try {
-      const businessSettings = await businessService.getBusinessSettings()
-      accountBalanceBase = resolveAccountBalanceBase(
-        transactions,
-        businessSettings.account_balance_base_amount,
-        businessSettings.account_balance_base_date
-      )
-    } catch (balanceError) {
-      console.warn('Nao foi possivel carregar o saldo de conta para o PDF.', balanceError)
-    }
-
-    const previousAccountBalance = calculateAccountBalanceAt(
-      transactions,
-      accountBalanceBase.baseAmount,
-      accountBalanceBase.baseDate,
-      previousBalanceDate
-    )
-    const currentAccountBalance = calculateAccountBalanceAt(
-      transactions,
-      accountBalanceBase.baseAmount,
-      accountBalanceBase.baseDate,
-      exportRange.endDate
-    )
-
-    const payload: ExportReportPdfPayload = {
-      fileName,
-      companyName,
-      createdAt: new Date().toISOString(),
-      periodLabel: getExportPeriodLabel(),
-      entries: exportEntries,
-      outcomes: exportOutcomes,
-      totalEntries: exportTotalEntries,
-      totalOutcomes: exportTotalOutcomes,
-      resultBalance: exportResultBalance,
-      previousAccountBalance,
-      currentAccountBalance,
-      dashboardMetrics: [
-        { label: 'Receita do periodo', value: formatCurrency(exportTotalEntries) },
-        { label: 'Despesa do periodo', value: formatCurrency(exportTotalOutcomes) },
-        { label: 'Lucro liquido', value: formatCurrency(exportResultBalance) },
-        { label: 'Saldo anterior', value: formatCurrency(previousAccountBalance) },
-        { label: 'Saldo atual', value: formatCurrency(currentAccountBalance) },
-        {
-          label: 'Margem',
-          value: exportTotalEntries > 0 ? `${((exportResultBalance / exportTotalEntries) * 100).toFixed(2)}%` : 'N/D'
-        }
-      ]
-    }
-
-    try {
-      await financeService.exportReportPdf(payload)
-      setIsExportModalOpen(false)
-    } catch {
-      setExportFeedback('Nao foi possivel exportar o relatorio em PDF.')
-    } finally {
-      setIsExporting(false)
-    }
-  }
-
-  const handleCreateCategory = async (
-    type: TransactionType,
-    options?: {
-      onSaved?: (name: string) => void
-    }
-  ): Promise<void> => {
-    const normalizedName = normalizeCategoryValue(newCategoryName)
-    if (!normalizedName) {
-      setCreateFeedback('Informe um nome valido para a categoria.')
-      setCategoryFeedback('Informe um nome valido para a categoria.')
-      return
-    }
-
-    setIsSavingCategory(true)
-    setCreateFeedback('')
-    setCategoryFeedback('')
-
-    try {
-      await financeService.saveCategory(normalizedName, type)
-      await loadCategories()
-      options?.onSaved?.(normalizedName)
-      setNewCategoryName('')
-    } catch {
-      setCreateFeedback('Nao foi possivel salvar a categoria.')
-      setCategoryFeedback('Nao foi possivel salvar a categoria.')
-    } finally {
-      setIsSavingCategory(false)
-    }
-  }
-
-  const handleUpdateCategory = async (categoryId: string): Promise<void> => {
-    const normalizedName = normalizeCategoryValue(editingCategoryName)
-    if (!normalizedName) {
-      setCategoryFeedback('Informe um nome valido para a categoria.')
-      return
-    }
-
-    setCategoryUpdatingId(categoryId)
-    setCategoryFeedback('')
-    try {
-      await financeService.updateCategory(categoryId, normalizedName, categoryType)
-      await loadCategories()
-      setEditingCategoryId(null)
-      setEditingCategoryName('')
-      setCategoryFeedback('Categoria atualizada com sucesso.')
-    } catch {
-      setCategoryFeedback('Nao foi possivel atualizar a categoria.')
-    } finally {
-      setCategoryUpdatingId(null)
-    }
-  }
-
-  const handleDeleteCategory = async (categoryId: string): Promise<void> => {
-    setCategoryDeletingId(categoryId)
-    setCategoryFeedback('')
-    try {
-      await financeService.deleteCategory(categoryId)
-      await loadCategories()
-      if (editingCategoryId === categoryId) {
-        setEditingCategoryId(null)
-        setEditingCategoryName('')
-      }
-      setCategoryFeedback('Categoria excluida com sucesso.')
-    } catch {
-      setCategoryFeedback('Nao foi possivel excluir a categoria.')
-    } finally {
-      setCategoryDeletingId(null)
-    }
-  }
 
   const handleOpenCreateTransaction = (): void => {
-    setCreateFeedback('')
-    setNewCategoryName('')
-    setCreateForm((prev) => ({
+    create.setCreateFeedback('')
+    categories.setNewCategoryName('')
+    create.setCreateForm((prev) => ({
       ...prev,
       paymentMethod: getDefaultPaymentMethodByType(transactionSettings, prev.type),
       isMonthlyCost: prev.type === 'saida' ? transactionSettings.defaultMonthlyCostSaida : false,
       installmentCount: 1,
       category: categoryOptions[prev.type][0]?.name ?? ''
     }))
-    setIsCreateModalOpen(true)
+    create.setIsCreateModalOpen(true)
     setIsMobileActionsDrawerOpen(false)
   }
 
   const handleOpenCategories = (): void => {
-    setCategoryType('saida')
-    setCategoryFeedback('')
-    setNewCategoryName('')
-    setIsCreateCategoryOpen(false)
-    setEditingCategoryId(null)
-    setEditingCategoryName('')
-    setIsCategoryModalOpen(true)
+    categories.setCategoryType('saida')
+    categories.setCategoryFeedback('')
+    categories.setNewCategoryName('')
+    categories.setIsCreateCategoryOpen(false)
+    categories.setEditingCategoryId(null)
+    categories.setEditingCategoryName('')
+    categories.setIsCategoryModalOpen(true)
     setIsMobileActionsDrawerOpen(false)
   }
 
   const handleOpenExportModal = (): void => {
-    setExportFeedback('')
-    setExportForm((prev) => ({
+    reportExport.setExportFeedback('')
+    reportExport.setExportForm((prev) => ({
       ...prev,
-      year: exportYearOptions[0] ?? prev.year,
-      day: exportDayOptions[0] ?? prev.day
+      year: reportExport.exportYearOptions[0] ?? prev.year,
+      day: reportExport.exportDayOptions[0] ?? prev.day
     }))
-    setIsExportModalOpen(true)
+    reportExport.setIsExportModalOpen(true)
     setIsMobileActionsDrawerOpen(false)
   }
 
@@ -1325,773 +124,185 @@ export const ReportPage = (): JSX.Element => {
         onManageCategories={handleOpenCategories}
         onExportReport={handleOpenExportModal}
         onOpenMobileActions={() => setIsMobileActionsDrawerOpen(true)}
-        isExporting={isExporting}
+        isExporting={reportExport.isExporting}
         disabled={isLoading}
       />
 
-      {isMobileActionsDrawerOpen ? (
-        <div className={styles.mobileActionsDrawerOverlay} onClick={() => setIsMobileActionsDrawerOpen(false)}>
-          <aside
-            className={styles.mobileActionsDrawer}
-            role="dialog"
-            aria-label="Acoes do relatorio"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <div className={styles.mobileActionsDrawerHeader}>
-              <strong>Acoes</strong>
-              <button
-                type="button"
-                className={styles.mobileActionsDrawerClose}
-                aria-label="Fechar menu de acoes"
-                onClick={() => setIsMobileActionsDrawerOpen(false)}
-              >
-                <FiX />
-              </button>
-            </div>
-            <div className={styles.mobileActionsDrawerButtons}>
-              <Button type="button" variant="secondary" onClick={handleOpenCreateTransaction}>
-                Nova transacao
-              </Button>
-              <Button type="button" variant="ghost" onClick={handleOpenCategories}>
-                Categorias
-              </Button>
-              <ButtonLoading
-                type="button"
-                variant="primary"
-                loading={isExporting}
-                disabled={isLoading}
-                onClick={handleOpenExportModal}
-              >
-                Exportar relatorio
-              </ButtonLoading>
-            </div>
-          </aside>
-        </div>
-      ) : null}
+      <MobileActionsDrawer
+        open={isMobileActionsDrawerOpen}
+        isExporting={reportExport.isExporting}
+        disabled={isLoading}
+        onClose={() => setIsMobileActionsDrawerOpen(false)}
+        onCreate={handleOpenCreateTransaction}
+        onManageCategories={handleOpenCategories}
+        onExportReport={handleOpenExportModal}
+      />
 
-      <div className={styles.searchFilterBar}>
-        <label className={styles.searchInputWrap}>
-          <FiSearch />
-          <input
-            type="text"
-            value={searchTerm}
-            onChange={(event) => setSearchTerm(event.target.value)}
-            placeholder="Pesquisar por nome, valor ou descricao"
-          />
-        </label>
-        <button
-          type="button"
-          className={`${styles.filterIconButton} ${hasActiveCombinedFilter ? styles.filterIconButtonActive : ''}`.trim()}
-          aria-label="Abrir filtros"
-          onClick={() => {
-            setDraftCombinedFilter({
-              selectedYear,
-              selectedMonth,
-              selectedDay,
-              operationType: appliedListFilter.operationType,
-              maxAmountLimit: appliedListFilter.maxAmountLimit
-            })
-            setIsListFilterModalOpen(true)
-          }}
-        >
-          <FiFilter />
-        </button>
-        {hasActiveCombinedFilter ? (
-          <Button type="button" variant="ghost" className={styles.clearFilterButton} onClick={handleClearListFilter}>
-            Limpar filtros
-          </Button>
-        ) : null}
-      </div>
+      <ReportSearchFilterBar
+        searchTerm={filters.searchTerm}
+        hasActiveFilter={filters.hasActiveCombinedFilter}
+        onSearchChange={filters.setSearchTerm}
+        onOpenFilters={() => {
+          filters.setDraftCombinedFilter({
+            selectedYear: filters.selectedYear,
+            selectedMonth: filters.selectedMonth,
+            selectedDay: filters.selectedDay,
+            operationType: filters.appliedListFilter.operationType,
+            maxAmountLimit: filters.appliedListFilter.maxAmountLimit
+          })
+          filters.setIsListFilterModalOpen(true)
+        }}
+        onClearFilters={filters.handleClearListFilter}
+      />
 
-      {isLoading && <LoadingState label="Carregando transacoes..." />}
+      {isLoading && <LoadingState label="Carregando transações..." />}
       {error && <p className={styles.error}>{error}</p>}
       {toastMessage ? <div className={styles.toastSuccess}>{toastMessage}</div> : null}
 
       {!isLoading && !error && (
-        <>
-            <div
-              className={`${styles.resultHeader} ${
-                resultBalance >= 0 ? styles.resultHeaderPositive : styles.resultHeaderNegative
-              }`.trim()}
-            >
-              <span>Resultado</span>
-              <strong className={resultBalance >= 0 ? styles.resultPositive : styles.resultNegative}>
-                {formatCurrency(resultBalance)}
-              </strong>
-            </div>
-
-          <div className={styles.grid}>
-            <TransactionsTable
-              title="Entradas"
-              totalLabel={formatCurrency(totalEntries)}
-              totalTone="entrada"
-              transactions={entries}
-              emptyMessage="Sem entradas até hoje."
-              categoryOptions={categoryOptions.entrada.map((item) => item.name)}
-              onDelete={handleDelete}
-              onDuplicate={handleDuplicateTransaction}
-              onEditStart={handleEditStart}
-              onEditCancel={handleEditCancel}
-              onEditChange={handleEditChange}
-              onEditSave={handleEditSave}
-              deletingId={deletingId}
-              editingId={editingId}
-              editingDraft={editingDraft}
-              isSavingEdit={isSavingEdit}
-              formatCurrency={formatCurrency}
-              formatDate={formatDate}
-            />
-            <TransactionsTable
-              title="Saidas"
-              totalLabel={formatCurrency(totalOutcomes)}
-              totalTone="saida"
-              transactions={outcomes}
-              emptyMessage="Sem saídas até hoje."
-              categoryOptions={categoryOptions.saida.map((item) => item.name)}
-              onDelete={handleDelete}
-              onDuplicate={handleDuplicateTransaction}
-              onEditStart={handleEditStart}
-              onEditCancel={handleEditCancel}
-              onEditChange={handleEditChange}
-              onEditSave={handleEditSave}
-              deletingId={deletingId}
-              editingId={editingId}
-              editingDraft={editingDraft}
-              isSavingEdit={isSavingEdit}
-              formatCurrency={formatCurrency}
-              formatDate={formatDate}
-            />
-            <TransactionsTable
-              title="Entradas futuras"
-              totalLabel={formatCurrency(totalFutureEntries)}
-              totalTone="entrada"
-              transactions={futureEntries}
-              emptyMessage="Sem entradas futuras."
-              categoryOptions={categoryOptions.entrada.map((item) => item.name)}
-              onDelete={handleDelete}
-              onDuplicate={handleDuplicateTransaction}
-              onEditStart={handleEditStart}
-              onEditCancel={handleEditCancel}
-              onEditChange={handleEditChange}
-              onEditSave={handleEditSave}
-              deletingId={deletingId}
-              editingId={editingId}
-              editingDraft={editingDraft}
-              isSavingEdit={isSavingEdit}
-              formatCurrency={formatCurrency}
-              formatDate={formatDate}
-              variant="future"
-            />
-            <TransactionsTable
-              title="Saidas futuras"
-              totalLabel={formatCurrency(totalFutureOutcomes)}
-              totalTone="saida"
-              transactions={futureOutcomes}
-              emptyMessage="Sem saídas futuras."
-              categoryOptions={categoryOptions.saida.map((item) => item.name)}
-              onDelete={handleDelete}
-              onDuplicate={handleDuplicateTransaction}
-              onEditStart={handleEditStart}
-              onEditCancel={handleEditCancel}
-              onEditChange={handleEditChange}
-              onEditSave={handleEditSave}
-              deletingId={deletingId}
-              editingId={editingId}
-              editingDraft={editingDraft}
-              isSavingEdit={isSavingEdit}
-              formatCurrency={formatCurrency}
-              formatDate={formatDate}
-              variant="future"
-            />
-          </div>
-
-        </>
+        <ReportTransactionsGrid
+          entries={entries}
+          outcomes={outcomes}
+          futureEntries={futureEntries}
+          futureOutcomes={futureOutcomes}
+          totalEntries={totalEntries}
+          totalOutcomes={totalOutcomes}
+          totalFutureEntries={totalFutureEntries}
+          totalFutureOutcomes={totalFutureOutcomes}
+          resultBalance={resultBalance}
+          categoryOptions={{
+            entrada: categoryOptions.entrada.map((item) => item.name),
+            saida: categoryOptions.saida.map((item) => item.name)
+          }}
+          deletingId={transactionActions.deletingId}
+          confirmingId={transactionActions.confirmingId}
+          editingId={transactionActions.editingId}
+          editingDraft={transactionActions.editingDraft}
+          isSavingEdit={transactionActions.isSavingEdit}
+          formatCurrency={formatCurrency}
+          formatDate={formatDate}
+          onDelete={transactionActions.handleDelete}
+          onConfirmStart={transactionActions.handleConfirmStart}
+          onDuplicate={transactionActions.handleDuplicateTransaction}
+          onEditStart={transactionActions.handleEditStart}
+          onEditCancel={transactionActions.handleEditCancel}
+          onEditChange={transactionActions.handleEditChange}
+          onEditSave={transactionActions.handleEditSave}
+        />
       )}
 
-      <ModalBase
-        open={isListFilterModalOpen}
-        title="Filtros"
-        onClose={() => setIsListFilterModalOpen(false)}
-      >
-        <form
-          className={styles.listFilterForm}
-          onSubmit={(event) => {
-            event.preventDefault()
-            handleApplyListFilter()
-          }}
-        >
-          <div className={styles.listFilterAmountGrid}>
-            <label className={styles.createField}>
-              <span>Ano</span>
-              <select
-                value={draftCombinedFilter.selectedYear}
-                onChange={(event) =>
-                  setDraftCombinedFilter((prev) => ({
-                    ...prev,
-                    selectedYear: event.target.value,
-                    selectedDay: 'all'
-                  }))
-                }
-              >
-                <option value="all">Todos os anos</option>
-                {yearOptions
-                  .filter((year) => year !== 'all')
-                  .map((year) => (
-                    <option key={year} value={year}>
-                      {year}
-                    </option>
-                  ))}
-              </select>
-            </label>
+      <ReportListFilterModal
+        open={filters.isListFilterModalOpen}
+        draft={filters.draftCombinedFilter}
+        yearOptions={filters.yearOptions}
+        dayOptions={filters.combinedFilterDayOptions}
+        amountRangeMax={filters.amountRangeMax}
+        formatCurrency={formatCurrency}
+        setDraft={filters.setDraftCombinedFilter}
+        onClose={() => filters.setIsListFilterModalOpen(false)}
+        onApply={filters.handleApplyListFilter}
+        onClear={filters.handleClearListFilter}
+      />
 
-            <label className={styles.createField}>
-              <span>Mes</span>
-              <select
-                value={draftCombinedFilter.selectedMonth}
-                onChange={(event) =>
-                  setDraftCombinedFilter((prev) => ({
-                    ...prev,
-                    selectedMonth: event.target.value,
-                    selectedDay: 'all'
-                  }))
-                }
-              >
-                {Object.entries(MONTH_LABELS).map(([value, label]) => (
-                  <option key={value} value={value}>
-                    {label}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label className={styles.createField}>
-              <span>Dia</span>
-              <select
-                value={draftCombinedFilter.selectedDay}
-                onChange={(event) =>
-                  setDraftCombinedFilter((prev) => ({
-                    ...prev,
-                    selectedDay: event.target.value
-                  }))
-                }
-              >
-                <option value="all">Todos os dias</option>
-                {combinedFilterDayOptions
-                  .filter((day) => day !== 'all')
-                  .map((day) => (
-                    <option key={day} value={day}>
-                      {day}
-                    </option>
-                  ))}
-              </select>
-            </label>
-          </div>
-
-          <label className={styles.createField}>
-            <span>Tipo de operacao</span>
-            <select
-              value={draftCombinedFilter.operationType}
-              onChange={(event) =>
-                setDraftCombinedFilter((prev) => ({
-                  ...prev,
-                  operationType: event.target.value as ListFilterState['operationType']
-                }))
-              }
-            >
-              <option value="all">Todos</option>
-              <option value="entrada">Entrada</option>
-              <option value="saida">Saida</option>
-            </select>
-          </label>
-
-          <div className={styles.valueRangeField}>
-            <div className={styles.valueRangeHeader}>
-              <span>Faixa de valor</span>
-              <strong>
-                {formatCurrency(0)} ate{' '}
-                {formatCurrency(
-                  draftCombinedFilter.maxAmountLimit.trim() === ''
-                    ? amountRangeMax
-                    : Number(draftCombinedFilter.maxAmountLimit)
-                )}
-              </strong>
-            </div>
-            <input
-              type="range"
-              min="0"
-              max={String(amountRangeMax)}
-              step="10"
-              value={
-                draftCombinedFilter.maxAmountLimit.trim() === ''
-                  ? String(amountRangeMax)
-                  : draftCombinedFilter.maxAmountLimit
-              }
-              onChange={(event) =>
-                setDraftCombinedFilter((prev) => ({
-                  ...prev,
-                  maxAmountLimit: event.target.value
-                }))
-              }
-            />
-            <div className={styles.valueRangeScale}>
-              <span>{formatCurrency(0)}</span>
-              <span>{formatCurrency(amountRangeMax)}</span>
-            </div>
-          </div>
-
-          <div className={styles.createActions}>
-            <Button type="button" variant="ghost" onClick={handleClearListFilter}>
-              Limpar
-            </Button>
-            <Button type="submit">Aplicar filtros</Button>
-          </div>
-        </form>
-      </ModalBase>
-
-      <ModalBase
-        open={deleteCandidate !== null}
-        title="Mover para lixeira"
+      <DeleteTransactionModal
+        transaction={transactionActions.deleteCandidate}
+        deletingId={transactionActions.deletingId}
         onClose={() => {
-          if (deletingId !== null) return
-          setDeleteCandidate(null)
+          if (transactionActions.deletingId !== null) return
+          transactionActions.setDeleteCandidate(null)
         }}
-      >
-        <div className={styles.confirmDeleteContent}>
-          <p>
-            Deseja mover esta transacao para a lixeira?
-          </p>
-          {deleteCandidate?.installmentCount && deleteCandidate.installmentCount > 1 ? (
-            <p className={styles.confirmDeleteWarning}>
-              Esta transacao faz parte de um parcelamento. Ao confirmar, todas as parcelas desse grupo vao para a lixeira.
-            </p>
-          ) : null}
+        onConfirm={() => void transactionActions.handleConfirmDelete()}
+      />
 
-          <div className={styles.createActions}>
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => setDeleteCandidate(null)}
-              disabled={deletingId !== null}
-            >
-              Cancelar
-            </Button>
-            <ButtonLoading
-              type="button"
-              variant="danger"
-              loading={deletingId !== null}
-              onClick={() => {
-                void handleConfirmDelete()
-              }}
-            >
-              Confirmar exclusao
-            </ButtonLoading>
-          </div>
-        </div>
-      </ModalBase>
-
-      <ModalBase
-        open={isExportModalOpen}
-        title="Exportar relatorio"
+      <ConfirmTransactionModal
+        transaction={transactionActions.confirmCandidate}
+        confirmingId={transactionActions.confirmingId}
         onClose={() => {
-          if (isExporting) return
-          setIsExportModalOpen(false)
-          setExportFeedback('')
+          if (transactionActions.confirmingId !== null) return
+          transactionActions.setConfirmCandidate(null)
         }}
-      >
-        <form
-          className={styles.exportForm}
-          onSubmit={(event) => {
-            event.preventDefault()
-            void handleExportReport()
-          }}
-        >
-          <label className={styles.createField}>
-            <span>Nome do arquivo</span>
-            <input
-              type="text"
-              value={exportForm.fileName}
-              onChange={(event) => setExportForm((prev) => ({ ...prev, fileName: event.target.value }))}
-              placeholder="relatorio-financeiro"
-            />
-          </label>
+        onConfirm={() => void transactionActions.handleConfirmTransaction()}
+      />
 
-          <label className={styles.createField}>
-            <span>Periodo de exportacao</span>
-            <select
-              value={exportForm.periodType}
-              onChange={(event) =>
-                setExportForm((prev) => ({
-                  ...prev,
-                  periodType: event.target.value as ExportFormState['periodType']
-                }))
-              }
-            >
-              <option value="year">Ano</option>
-              <option value="month">Mes</option>
-              <option value="day">Dia</option>
-            </select>
-          </label>
-
-          <div className={styles.exportPeriodGrid}>
-            <label className={styles.createField}>
-              <span>Ano</span>
-              <select
-                value={exportForm.year}
-                onChange={(event) => setExportForm((prev) => ({ ...prev, year: event.target.value }))}
-              >
-                {exportYearOptions.map((year) => (
-                  <option key={year} value={year}>
-                    {year}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            {exportForm.periodType !== 'year' ? (
-              <label className={styles.createField}>
-                <span>Mes</span>
-                <select
-                  value={exportForm.month}
-                  onChange={(event) => setExportForm((prev) => ({ ...prev, month: event.target.value }))}
-                >
-                  {Object.entries(MONTH_LABELS)
-                    .filter(([value]) => value !== 'all')
-                    .map(([value, label]) => (
-                      <option key={value} value={value}>
-                        {label}
-                      </option>
-                    ))}
-                </select>
-              </label>
-            ) : null}
-
-            {exportForm.periodType === 'day' ? (
-              <label className={styles.createField}>
-                <span>Dia</span>
-                <select
-                  value={exportForm.day}
-                  onChange={(event) => setExportForm((prev) => ({ ...prev, day: event.target.value }))}
-                >
-                  {exportDayOptions.map((day) => (
-                    <option key={day} value={day}>
-                      {day}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            ) : null}
-          </div>
-
-          <div className={styles.exportPreview}>
-            <p><strong>Entradas:</strong> {formatCurrency(exportTotalEntries)}</p>
-            <p><strong>Saidas:</strong> {formatCurrency(exportTotalOutcomes)}</p>
-            <p><strong>Resultado:</strong> {formatCurrency(exportResultBalance)}</p>
-          </div>
-
-          {exportFeedback ? <p className={styles.createFeedback}>{exportFeedback}</p> : null}
-
-          <div className={styles.createActions}>
-            <Button type="button" variant="ghost" onClick={() => setIsExportModalOpen(false)} disabled={isExporting}>
-              Cancelar
-            </Button>
-            <ButtonLoading type="submit" loading={isExporting}>
-              Gerar PDF
-            </ButtonLoading>
-          </div>
-        </form>
-      </ModalBase>
-
-      <ModalBase
-        open={isCreateModalOpen}
-        title="Nova transacao"
+      <ExportReportModal
+        open={reportExport.isExportModalOpen}
+        form={reportExport.exportForm}
+        yearOptions={reportExport.exportYearOptions}
+        dayOptions={reportExport.exportDayOptions}
+        totalEntries={reportExport.exportTotalEntries}
+        totalOutcomes={reportExport.exportTotalOutcomes}
+        resultBalance={reportExport.exportResultBalance}
+        feedback={reportExport.exportFeedback}
+        isExporting={reportExport.isExporting}
+        formatCurrency={formatCurrency}
+        setForm={reportExport.setExportForm}
         onClose={() => {
-          if (isCreating) return
-          setIsCreateModalOpen(false)
-          setCreateFeedback('')
-          setNewCategoryName('')
+          if (reportExport.isExporting) return
+          reportExport.setIsExportModalOpen(false)
+          reportExport.setExportFeedback('')
         }}
-      >
-        <form
-          className={styles.createForm}
-          onSubmit={(event) => {
-            event.preventDefault()
-            void handleCreateSubmit()
-          }}
-        >
-          <label className={`${styles.createField} ${styles.createFieldType}`}>
-            <span>Tipo</span>
-            <select
-              value={createForm.type}
-              onChange={(event) =>
-                setCreateForm((prev) => ({
-                  ...prev,
-                  type: event.target.value as Transaction['type'],
-                  category: '',
-                  isMonthlyCost:
-                    event.target.value === 'saida' ? transactionSettings.defaultMonthlyCostSaida : false,
-                  paymentMethod: getDefaultPaymentMethodByType(
-                    transactionSettings,
-                    event.target.value as Transaction['type']
-                  ),
-                  installmentCount: 1
-                }))
-              }
-            >
-              <option value="entrada">Entrada</option>
-              <option value="saida">Saida</option>
-            </select>
-          </label>
+        onSubmit={() => void reportExport.handleExportReport()}
+      />
 
-          {createForm.type === 'saida' ? (
-            <label className={`${styles.createCheck} ${styles.createFieldFull}`}>
-              <input
-                type="checkbox"
-                checked={createForm.isMonthlyCost}
-                onChange={(event) => setCreateForm((prev) => ({ ...prev, isMonthlyCost: event.target.checked }))}
-              />
-              <span>Marcar como custo mensal</span>
-            </label>
-          ) : null}
-
-          <label className={styles.createField}>
-            <span>Valor</span>
-            <input
-              type="number"
-              step="0.01"
-              min="0"
-              value={createForm.amount}
-              onChange={(event) => setCreateForm((prev) => ({ ...prev, amount: event.target.value }))}
-              placeholder="0.00"
-            />
-          </label>
-
-          <label className={styles.createField}>
-            <span>Data</span>
-            <input
-              type="date"
-              min={auditLockCutoffDate}
-              value={createForm.date}
-              onChange={(event) => setCreateForm((prev) => ({ ...prev, date: event.target.value }))}
-            />
-          </label>
-
-          <label className={styles.createField}>
-            <span>Categoria</span>
-            <select
-              value={createForm.category}
-              onChange={(event) => setCreateForm((prev) => ({ ...prev, category: event.target.value }))}
-            >
-              <option value="">Selecione...</option>
-              {categoryOptions[createForm.type].map((option) => (
-                <option key={option.id} value={option.name}>
-                  {option.name}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className={styles.createField}>
-            <span>Forma de pagamento</span>
-            <select
-              value={createForm.paymentMethod}
-              onChange={(event) =>
-                setCreateForm((prev) => ({
-                  ...prev,
-                  paymentMethod: event.target.value as PaymentMethod,
-                  installmentCount: event.target.value === 'credito' ? prev.installmentCount : 1
-                }))
-              }
-            >
-              <option value="pix">Pix</option>
-              <option value="debito">Debito</option>
-              <option value="dinheiro">Dinheiro</option>
-              <option value="credito">Credito</option>
-            </select>
-          </label>
-
-          {createForm.paymentMethod === 'credito' ? (
-            <label className={styles.createField}>
-              <span>Parcelas</span>
-              <input
-                type="number"
-                min="1"
-                max="48"
-                step="1"
-                value={String(createForm.installmentCount)}
-                onChange={(event) =>
-                  setCreateForm((prev) => ({
-                    ...prev,
-                    installmentCount: Math.max(1, Math.min(48, Number(event.target.value) || 1))
-                  }))
-                }
-              />
-            </label>
-          ) : null}
-
-          <label className={`${styles.createField} ${styles.createFieldFull}`}>
-            <span>Descricao</span>
-            <textarea
-              value={createForm.description}
-              onChange={(event) => setCreateForm((prev) => ({ ...prev, description: event.target.value }))}
-              rows={3}
-              placeholder="Descreva a transacao"
-            />
-          </label>
-
-          {createFeedback ? <p className={styles.createFeedback}>{createFeedback}</p> : null}
-
-          <div className={styles.createActions}>
-            <Button type="button" variant="ghost" onClick={() => setIsCreateModalOpen(false)} disabled={isCreating}>
-              Cancelar
-            </Button>
-            <ButtonLoading type="submit" loading={isCreating}>
-              Salvar transacao
-            </ButtonLoading>
-          </div>
-        </form>
-      </ModalBase>
-
-      <ModalBase
-        open={isCategoryModalOpen}
-        title="Gerenciar categorias"
+      <CreateTransactionModal
+        open={create.isCreateModalOpen}
+        form={create.createForm}
+        categoryOptions={categoryOptions}
+        transactionSettings={transactionSettings}
+        feedback={create.createFeedback}
+        isCreating={create.isCreating}
+        auditLockCutoffDate={auditLockCutoffDate}
+        setForm={create.setCreateForm}
         onClose={() => {
-          if (categoryUpdatingId !== null || categoryDeletingId !== null || isSavingCategory) return
-          setIsCategoryModalOpen(false)
-          setCategoryFeedback('')
-          setIsCreateCategoryOpen(false)
-          setEditingCategoryId(null)
-          setEditingCategoryName('')
+          if (create.isCreating) return
+          create.setIsCreateModalOpen(false)
+          create.setCreateFeedback('')
+          categories.setNewCategoryName('')
         }}
-      >
-        <div className={styles.categoryManager}>
-          <div className={styles.categoryTopBar}>
-            <label className={styles.createField}>
-              <span>Tipo</span>
-              <select
-                value={categoryType}
-                onChange={(event) => {
-                  setCategoryType(event.target.value as TransactionType)
-                  setIsCreateCategoryOpen(false)
-                  setEditingCategoryId(null)
-                  setEditingCategoryName('')
-                  setCategoryFeedback('')
-                }}
-              >
-                <option value="entrada">Entrada</option>
-                <option value="saida">Saida</option>
-              </select>
-            </label>
+        onSubmit={() => void create.handleCreateSubmit()}
+      />
 
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() => {
-                setIsCreateCategoryOpen((prev) => !prev)
-                setCategoryFeedback('')
-              }}
-            >
-              {isCreateCategoryOpen ? 'Cancelar nova categoria' : 'Criar nova categoria'}
-            </Button>
-          </div>
-
-          {isCreateCategoryOpen ? (
-            <label className={styles.createField}>
-              <span>Nova categoria</span>
-              <div className={styles.categoryInline}>
-                <input
-                  type="text"
-                  value={newCategoryName}
-                  onChange={(event) => setNewCategoryName(event.target.value)}
-                  placeholder="Ex: Alimentacao"
-                />
-                <ButtonLoading
-                  type="button"
-                  loading={isSavingCategory}
-                  onClick={() => void handleCreateCategory(categoryType)}
-                >
-                  Adicionar
-                </ButtonLoading>
-              </div>
-            </label>
-          ) : null}
-
-          <div className={styles.categoryList}>
-            {categoryOptions[categoryType].length === 0 ? (
-              <p className={styles.empty}>Nenhuma categoria cadastrada para este tipo.</p>
-            ) : (
-              categoryOptions[categoryType].map((item) => (
-                <article key={item.id} className={styles.categoryItem}>
-                  <div className={styles.categoryItemInfo}>
-                    {editingCategoryId === item.id ? (
-                      <input
-                        type="text"
-                        className={styles.cellInput}
-                        value={editingCategoryName}
-                        onChange={(event) => setEditingCategoryName(event.target.value)}
-                      />
-                    ) : (
-                      <strong className={styles.categoryName}>{item.name}</strong>
-                    )}
-                  </div>
-
-                  <div className={styles.categoryActions}>
-                    {editingCategoryId === item.id ? (
-                      <>
-                        <ButtonLoading
-                          type="button"
-                          loading={categoryUpdatingId === item.id}
-                          disabled={!editingCategoryName.trim() || categoryDeletingId === item.id}
-                          onClick={() => void handleUpdateCategory(item.id)}
-                        >
-                          Salvar
-                        </ButtonLoading>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          disabled={categoryUpdatingId === item.id}
-                          onClick={() => {
-                            setEditingCategoryId(null)
-                            setEditingCategoryName('')
-                          }}
-                        >
-                          Cancelar
-                        </Button>
-                      </>
-                    ) : (
-                      <>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          disabled={categoryDeletingId === item.id}
-                          onClick={() => {
-                            setEditingCategoryId(item.id)
-                            setEditingCategoryName(item.name)
-                          }}
-                        >
-                          Editar
-                        </Button>
-                        <ButtonLoading
-                          type="button"
-                          variant="danger"
-                          loading={categoryDeletingId === item.id}
-                          disabled={categoryUpdatingId === item.id}
-                          onClick={() => void handleDeleteCategory(item.id)}
-                        >
-                          Apagar
-                        </ButtonLoading>
-                      </>
-                    )}
-                  </div>
-                </article>
-              ))
-            )}
-          </div>
-
-          {categoryFeedback ? <p className={styles.createFeedback}>{categoryFeedback}</p> : null}
-        </div>
-      </ModalBase>
+      <CategoryManagerModal
+        open={categories.isCategoryModalOpen}
+        categoryType={categories.categoryType}
+        categoryOptions={categoryOptions}
+        isCreateOpen={categories.isCreateCategoryOpen}
+        newCategoryName={categories.newCategoryName}
+        editingCategoryId={categories.editingCategoryId}
+        editingCategoryName={categories.editingCategoryName}
+        feedback={categories.categoryFeedback}
+        isSaving={categories.isSavingCategory}
+        updatingId={categories.categoryUpdatingId}
+        deletingId={categories.categoryDeletingId}
+        onClose={() => {
+          if (categories.categoryUpdatingId !== null || categories.categoryDeletingId !== null || categories.isSavingCategory) return
+          categories.resetCategoryModal()
+        }}
+        onTypeChange={(type) => {
+          categories.setCategoryType(type)
+          categories.setIsCreateCategoryOpen(false)
+          categories.setEditingCategoryId(null)
+          categories.setEditingCategoryName('')
+          categories.setCategoryFeedback('')
+        }}
+        onToggleCreate={() => {
+          categories.setIsCreateCategoryOpen((prev) => !prev)
+          categories.setCategoryFeedback('')
+        }}
+        onNewCategoryNameChange={categories.setNewCategoryName}
+        onCreateCategory={() => void categories.handleCreateCategory(categories.categoryType)}
+        onStartEdit={(item) => {
+          categories.setEditingCategoryId(item.id)
+          categories.setEditingCategoryName(item.name)
+        }}
+        onCancelEdit={() => {
+          categories.setEditingCategoryId(null)
+          categories.setEditingCategoryName('')
+        }}
+        onEditingNameChange={categories.setEditingCategoryName}
+        onUpdateCategory={(categoryId) => void categories.handleUpdateCategory(categoryId)}
+        onDeleteCategory={(categoryId) => void categories.handleDeleteCategory(categoryId)}
+      />
     </PageTemplate>
   )
 }
-
-

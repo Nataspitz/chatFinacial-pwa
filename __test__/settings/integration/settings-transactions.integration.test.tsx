@@ -64,11 +64,11 @@ describe('Settings - transactions section integration', () => {
       expect(transactionSettingsService.getSettings).toHaveBeenCalled()
     })
 
-    expect(screen.getByLabelText('Pagamento padrao (entrada)')).toHaveValue('pix')
-    expect(screen.getByLabelText('Pagamento padrao (saida)')).toHaveValue('pix')
-    expect(screen.getByLabelText('Entrada nasce confirmada por padrao')).toBeChecked()
-    expect(screen.getByLabelText('Saida nasce confirmada por padrao')).toBeChecked()
-    expect(screen.getByLabelText('Saida nasce como custo mensal por padrao')).not.toBeChecked()
+    expect(screen.getByLabelText('Pagamento padrão (entrada)')).toHaveValue('pix')
+    expect(screen.getByLabelText('Pagamento padrão (saída)')).toHaveValue('pix')
+    expect(screen.getByLabelText('Entrada nasce confirmada por padrão')).toBeChecked()
+    expect(screen.getByLabelText('Saída nasce confirmada por padrão')).toBeChecked()
+    expect(screen.getByLabelText('Saída nasce como custo mensal por padrão')).not.toBeChecked()
   })
 
   it('salva configuracoes chamando o service com o draft atualizado', async () => {
@@ -79,9 +79,9 @@ describe('Settings - transactions section integration', () => {
       expect(transactionSettingsService.getSettings).toHaveBeenCalled()
     })
 
-    await user.selectOptions(screen.getByLabelText('Pagamento padrao (saida)'), 'credito')
-    await user.click(screen.getByLabelText('Saida nasce como custo mensal por padrao'))
-    await user.click(screen.getByRole('button', { name: 'Salvar configuracoes' }))
+    await user.selectOptions(screen.getByLabelText('Pagamento padrão (saída)'), 'credito')
+    await user.click(screen.getByLabelText('Saída nasce como custo mensal por padrão'))
+    await user.click(screen.getByRole('button', { name: 'Salvar configurações' }))
 
     await waitFor(() => {
       expect(transactionSettingsService.saveSettings).toHaveBeenCalledWith(
@@ -91,7 +91,7 @@ describe('Settings - transactions section integration', () => {
         })
       )
     })
-    expect(await screen.findByText('Configuracoes salvas com sucesso.')).toBeInTheDocument()
+    expect(await screen.findByText('Configurações salvas com sucesso.')).toBeInTheDocument()
   })
 
   it('restaura padroes localmente e atualiza os campos do formulario', async () => {
@@ -101,16 +101,16 @@ describe('Settings - transactions section integration', () => {
     render(<Settings />)
 
     await waitFor(() => {
-      expect(screen.getByLabelText('Pagamento padrao (entrada)')).toHaveValue('credito')
+      expect(screen.getByLabelText('Pagamento padrão (entrada)')).toHaveValue('credito')
     })
 
-    await user.click(screen.getByRole('button', { name: 'Restaurar padroes' }))
+    await user.click(screen.getByRole('button', { name: 'Restaurar padrões' }))
 
-    expect(screen.getByLabelText('Pagamento padrao (entrada)')).toHaveValue('pix')
-    expect(screen.getByLabelText('Pagamento padrao (saida)')).toHaveValue('pix')
-    expect(screen.getByLabelText('Entrada nasce confirmada por padrao')).toBeChecked()
-    expect(screen.getByLabelText('Saida nasce confirmada por padrao')).toBeChecked()
-    expect(screen.getByLabelText('Saida nasce como custo mensal por padrao')).not.toBeChecked()
-    expect(screen.getByText('Padroes restaurados localmente. Clique em Salvar para aplicar.')).toBeInTheDocument()
+    expect(screen.getByLabelText('Pagamento padrão (entrada)')).toHaveValue('pix')
+    expect(screen.getByLabelText('Pagamento padrão (saída)')).toHaveValue('pix')
+    expect(screen.getByLabelText('Entrada nasce confirmada por padrão')).toBeChecked()
+    expect(screen.getByLabelText('Saída nasce confirmada por padrão')).toBeChecked()
+    expect(screen.getByLabelText('Saída nasce como custo mensal por padrão')).not.toBeChecked()
+    expect(screen.getByText('Padrões restaurados localmente. Clique em Salvar para aplicar.')).toBeInTheDocument()
   })
 })

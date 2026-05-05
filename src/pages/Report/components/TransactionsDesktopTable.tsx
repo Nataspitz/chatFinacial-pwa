@@ -44,13 +44,13 @@ export const TransactionsDesktopTable = ({
           <tr>
             <th>Data</th>
             <th>Categoria</th>
-            <th>Descricao</th>
+            <th>Descrição</th>
             <th>Valor</th>
             <th>Pagamento</th>
             <th>Parcela</th>
             <th>Confirmado</th>
             <th>Custo mensal</th>
-            <th aria-label="Acoes da transacao" />
+            <th aria-label="Ações da transação" />
           </tr>
         </thead>
         <tbody>

@@ -82,7 +82,7 @@ export const TransactionMobileItem = ({
             </div>
           </div>
           <div className={styles.mobileRow}>
-            <span className={styles.mobileLabel}>Descricao</span>
+            <span className={styles.mobileLabel}>Descrição</span>
             <div className={styles.mobileValue}>
               <input
                 type="text"
@@ -114,9 +114,9 @@ export const TransactionMobileItem = ({
                 onChange={(event) => onEditChange('paymentMethod', event.target.value)}
               >
                 <option value="pix">Pix</option>
-                <option value="debito">Debito</option>
+                <option value="debito">Débito</option>
                 <option value="dinheiro">Dinheiro</option>
-                <option value="credito">Credito</option>
+                <option value="credito">Crédito</option>
               </select>
             </div>
           </div>
@@ -205,7 +205,7 @@ export const TransactionMobileItem = ({
           >
             <div className={styles.mobileExpandedDetailsInner}>
               <div className={styles.mobileRow}>
-                <span className={styles.mobileLabel}>Descricao</span>
+                 <span className={styles.mobileLabel}>Descrição</span>
                 <div className={styles.mobileValue}>{transaction.description}</div>
               </div>
               <div className={styles.mobileRow}>
@@ -222,16 +222,16 @@ export const TransactionMobileItem = ({
               </div>
               <div className={styles.mobileRow}>
                 <span className={styles.mobileLabel}>Confirmado</span>
-                <div className={styles.mobileValue}>{transaction.isConfirmed ? 'Sim' : 'Nao'}</div>
+                <div className={styles.mobileValue}>{transaction.isConfirmed ? 'Sim' : 'Não'}</div>
               </div>
               <div className={styles.mobileRow}>
                 <span className={styles.mobileLabel}>Custo mensal</span>
                 <div className={`${styles.mobileValue} ${styles.mobileRowActions}`.trim()}>
-                  <span>{transaction.type === 'saida' ? (transaction.isMonthlyCost ? 'Sim' : 'Nao') : '-'}</span>
+                  <span>{transaction.type === 'saida' ? (transaction.isMonthlyCost ? 'Sim' : 'Não') : '-'}</span>
                   <button
                     type="button"
                     className={styles.rowMenuButton}
-                    aria-label="Abrir menu da transacao"
+                    aria-label="Abrir menu da transação"
                     onClick={handleOpenMenu}
                   >
                     <FiMoreVertical />

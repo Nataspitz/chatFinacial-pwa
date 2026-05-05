@@ -17,4 +17,6 @@ export interface Transaction {
   installmentCount: number
   totalAmount: number
   isInstallment: boolean
+  monthlyEndDate?: string | null
+  monthlyCostStartDate?: string
 }

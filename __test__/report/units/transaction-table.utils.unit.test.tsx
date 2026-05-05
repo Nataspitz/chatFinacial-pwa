@@ -27,8 +27,8 @@ describe('transactionTable.utils', () => {
   })
 
   it('formata metodo de pagamento em texto amigavel', () => {
-    expect(formatPaymentMethod('credito')).toBe('Credito')
-    expect(formatPaymentMethod('debito')).toBe('Debito')
+    expect(formatPaymentMethod('credito')).toBe('Crédito')
+    expect(formatPaymentMethod('debito')).toBe('Débito')
     expect(formatPaymentMethod('dinheiro')).toBe('Dinheiro')
     expect(formatPaymentMethod('pix')).toBe('Pix')
   })

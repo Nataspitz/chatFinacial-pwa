@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import '../../setup'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { getReportSectionByTitle } from '../mocks/report-dom.helpers'
 import { createReportCategoryMap, createReportTransaction } from '../mocks/report-transactions.mock'
 import {
@@ -51,9 +51,15 @@ const withMonthOffset = (base: Date, monthOffset: number, day: number): string =
 
 describe('ReportPage - integration - fluxos de futuro', () => {
   beforeEach(() => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    vi.setSystemTime(new Date(2026, 3, 15))
     resetFinanceServiceMock()
     resetTransactionSettingsServiceMock()
     resetAuthMockState()
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
   })
 
   it('classifica entradas e saidas futuras em grupos separados', async () => {
@@ -76,7 +82,8 @@ describe('ReportPage - integration - fluxos de futuro', () => {
           category: 'Contrato pendente',
           amount: 950.6,
           date: addDays(now, 4),
-          description: 'Receita futura'
+          description: 'Receita futura',
+          isConfirmed: false
         }),
         createReportTransaction({
           id: 'saida-atual',
@@ -92,7 +99,8 @@ describe('ReportPage - integration - fluxos de futuro', () => {
           category: 'Fornecedor',
           amount: 199.99,
           date: addDays(now, 5),
-          description: 'Despesa futura'
+          description: 'Despesa futura',
+          isConfirmed: false
         })
       ]
     })
@@ -102,8 +110,8 @@ describe('ReportPage - integration - fluxos de futuro', () => {
 
     const entradas = getReportSectionByTitle('Entradas')
     const entradasFuturas = getReportSectionByTitle('Entradas futuras')
-    const saidas = getReportSectionByTitle('Saidas')
-    const saidasFuturas = getReportSectionByTitle('Saidas futuras')
+    const saidas = getReportSectionByTitle('Saídas')
+    const saidasFuturas = getReportSectionByTitle('Saídas futuras')
 
     expect(within(entradas).getAllByText('Receita entregue').length).toBeGreaterThan(0)
     expect(within(entradas).queryAllByText('Receita futura')).toHaveLength(0)
@@ -141,9 +149,9 @@ describe('ReportPage - integration - fluxos de futuro', () => {
     await screen.findByRole('heading', { name: 'Entradas futuras' })
 
     const entradas = getReportSectionByTitle('Entradas')
-    const saidas = getReportSectionByTitle('Saidas')
+    const saidas = getReportSectionByTitle('Saídas')
     const entradasFuturas = getReportSectionByTitle('Entradas futuras')
-    const saidasFuturas = getReportSectionByTitle('Saidas futuras')
+    const saidasFuturas = getReportSectionByTitle('Saídas futuras')
 
     expect(within(entradas).getAllByText('Receita de hoje').length).toBeGreaterThan(0)
     expect(within(saidas).getAllByText('Despesa de hoje').length).toBeGreaterThan(0)
@@ -186,9 +194,9 @@ describe('ReportPage - integration - fluxos de futuro', () => {
     })
 
     render(<ReportPage />)
-    await screen.findByRole('heading', { name: 'Saidas' })
+    await screen.findByRole('heading', { name: 'Saídas' })
 
-    const saidas = getReportSectionByTitle('Saidas')
+    const saidas = getReportSectionByTitle('Saídas')
     expect(within(saidas).getAllByText('Aluguel recorrente').length).toBeGreaterThan(0)
 
     fireEvent.click(screen.getByRole('button', { name: /abrir filtros/i }))
@@ -201,7 +209,7 @@ describe('ReportPage - integration - fluxos de futuro', () => {
     fireEvent.click(within(modal).getByRole('button', { name: /aplicar filtros/i }))
 
     await waitFor(() => {
-      const saidasFiltradas = getReportSectionByTitle('Saidas')
+      const saidasFiltradas = getReportSectionByTitle('Saídas')
       expect(within(saidasFiltradas).queryByText('Aluguel recorrente')).not.toBeInTheDocument()
       expect(within(saidasFiltradas).getByText(/sem sa[ií]das at[eé] hoje/i)).toBeInTheDocument()
     })

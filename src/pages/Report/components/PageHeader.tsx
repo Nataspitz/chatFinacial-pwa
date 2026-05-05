@@ -22,14 +22,14 @@ export const PageHeader = ({
 }: PageHeaderProps): JSX.Element => {
   return (
     <PageIntro
-      title="Relatorio"
-      description="Visualizacao de transacoes por conta."
+      title="Relatório"
+      description="Visualização de transações por conta."
       className={styles.pageHeader}
       action={
         <div className={styles.headerActions}>
           <div className={styles.desktopHeaderActions}>
             <Button type="button" variant="secondary" className={styles.addButton} onClick={onCreate}>
-              Nova transacao
+              Nova transação
             </Button>
             <Button type="button" variant="ghost" className={styles.addButton} onClick={onManageCategories}>
               Categorias
@@ -42,14 +42,14 @@ export const PageHeader = ({
               disabled={disabled}
               onClick={onExportReport}
             >
-              Relatorio PDF
+              Relatório PDF
             </ButtonLoading>
           </div>
 
           <button
             type="button"
             className={styles.mobileHeaderMenuButton}
-            aria-label="Abrir acoes do relatorio"
+            aria-label="Abrir ações do relatório"
             onClick={onOpenMobileActions}
           >
             <FiMenu />

@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import '../../setup'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Transaction } from '../../../src/types/transaction.types'
 import { createReportCategoryMap, createReportTransaction } from '../mocks/report-transactions.mock'
 import {
@@ -69,12 +69,21 @@ const withMonthOffset = (base: Date, monthOffset: number, day: number): string =
   return toIsoDate(new Date(base.getFullYear(), base.getMonth() + monthOffset, day))
 }
 
+const getReportTable = (title: string): { transactions: Transaction[]; totalLabel: string } | undefined =>
+  tablePropsStore.byTitle.get(title)
+
 describe('ReportPage - unit - classificacao de futuro', () => {
   beforeEach(() => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    vi.setSystemTime(new Date(2026, 3, 15))
     tablePropsStore.byTitle.clear()
     resetFinanceServiceMock()
     resetTransactionSettingsServiceMock()
     resetAuthMockState()
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
   })
 
   it('separa transacoes com data maior que hoje em grupos futuros', async () => {
@@ -95,7 +104,8 @@ describe('ReportPage - unit - classificacao de futuro', () => {
           type: 'entrada',
           amount: 900,
           date: addDays(now, 3),
-          description: 'Receita futura'
+          description: 'Receita futura',
+          isConfirmed: false
         }),
         createReportTransaction({
           id: 'saida-hoje',
@@ -109,7 +119,8 @@ describe('ReportPage - unit - classificacao de futuro', () => {
           type: 'saida',
           amount: 300,
           date: addDays(now, 5),
-          description: 'Despesa futura'
+          description: 'Despesa futura',
+          isConfirmed: false
         })
       ]
     })
@@ -122,8 +133,8 @@ describe('ReportPage - unit - classificacao de futuro', () => {
 
     const entradas = tablePropsStore.byTitle.get('Entradas')
     const entradasFuturas = tablePropsStore.byTitle.get('Entradas futuras')
-    const saidas = tablePropsStore.byTitle.get('Saidas')
-    const saidasFuturas = tablePropsStore.byTitle.get('Saidas futuras')
+    const saidas = tablePropsStore.byTitle.get('Saídas')
+    const saidasFuturas = tablePropsStore.byTitle.get('Saídas futuras')
 
     expect(entradas?.transactions.map((item) => item.id)).toEqual(['entrada-hoje'])
     expect(entradasFuturas?.transactions.map((item) => item.id)).toEqual(['entrada-futura'])
@@ -153,7 +164,8 @@ describe('ReportPage - unit - classificacao de futuro', () => {
           id: 'entrada-amanha',
           type: 'entrada',
           amount: 50,
-          date: addDays(now, 1)
+          date: addDays(now, 1),
+          isConfirmed: false
         }),
         createReportTransaction({
           id: 'saida-hoje',
@@ -172,13 +184,67 @@ describe('ReportPage - unit - classificacao de futuro', () => {
 
     const entradas = tablePropsStore.byTitle.get('Entradas')
     const entradasFuturas = tablePropsStore.byTitle.get('Entradas futuras')
-    const saidas = tablePropsStore.byTitle.get('Saidas')
-    const saidasFuturas = tablePropsStore.byTitle.get('Saidas futuras')
+    const saidas = tablePropsStore.byTitle.get('Saídas')
+    const saidasFuturas = tablePropsStore.byTitle.get('Saídas futuras')
 
     expect(entradas?.transactions.map((item) => item.id)).toEqual(['entrada-ontem', 'entrada-hoje'])
     expect(entradasFuturas?.transactions.map((item) => item.id)).toEqual(['entrada-amanha'])
     expect(saidas?.transactions.map((item) => item.id)).toEqual(['saida-hoje'])
     expect(saidasFuturas?.transactions).toEqual([])
+  })
+
+  it('move transacao futura confirmada para os grupos principais', async () => {
+    const now = new Date()
+
+    setFinanceServiceMockData({
+      categories: createReportCategoryMap(),
+      transactions: [
+        createReportTransaction({
+          id: 'entrada-futura-confirmada',
+          type: 'entrada',
+          amount: 250,
+          date: addDays(now, 7),
+          isConfirmed: true
+        }),
+        createReportTransaction({
+          id: 'saida-futura-confirmada',
+          type: 'saida',
+          amount: 80,
+          date: addDays(now, 7),
+          isConfirmed: true
+        }),
+        createReportTransaction({
+          id: 'saida-futura-aberta',
+          type: 'saida',
+          amount: 90,
+          date: addDays(now, 7),
+          isConfirmed: false
+        })
+      ]
+    })
+
+    render(<ReportPage />)
+
+    await waitFor(() => {
+      expect(tablePropsStore.byTitle.size).toBe(4)
+    })
+
+    const entradas = tablePropsStore.byTitle.get('Entradas')
+    const entradasFuturas = tablePropsStore.byTitle.get('Entradas futuras')
+    const saidas = tablePropsStore.byTitle.get('SaÃ­das')
+    const saidasFuturas = tablePropsStore.byTitle.get('SaÃ­das futuras')
+
+    expect(entradas?.transactions.map((item) => item.id)).toEqual(['entrada-futura-confirmada'])
+    expect(entradasFuturas?.transactions).toEqual([])
+    const saidaConfirmadaTable = Array.from(tablePropsStore.byTitle.entries()).find(([, table]) =>
+      table.transactions.some((item) => item.id === 'saida-futura-confirmada')
+    )
+    const saidaAbertaTable = Array.from(tablePropsStore.byTitle.entries()).find(([, table]) =>
+      table.transactions.some((item) => item.id === 'saida-futura-aberta')
+    )
+
+    expect(saidaConfirmadaTable?.[0].toLowerCase()).not.toContain('futuras')
+    expect(saidaAbertaTable?.[0].toLowerCase()).toContain('futuras')
   })
 
   it('regressao: custo mensal respeita filtro de dia sem quebrar classificacao', async () => {
@@ -208,7 +274,7 @@ describe('ReportPage - unit - classificacao de futuro', () => {
     render(<ReportPage />)
 
     await waitFor(() => {
-      const saidas = tablePropsStore.byTitle.get('Saidas')
+      const saidas = tablePropsStore.byTitle.get('Saídas')
       expect(saidas?.transactions.map((item) => item.id)).toEqual(['aluguel-base'])
       expect(saidas?.transactions[0]?.date).toBe(withMonthOffset(now, 0, 1))
     })
@@ -223,7 +289,7 @@ describe('ReportPage - unit - classificacao de futuro', () => {
     fireEvent.click(within(modal).getByRole('button', { name: /aplicar filtros/i }))
 
     await waitFor(() => {
-      const saidas = tablePropsStore.byTitle.get('Saidas')
+      const saidas = tablePropsStore.byTitle.get('Saídas')
       expect(saidas?.transactions).toEqual([])
     })
   })

@@ -83,11 +83,11 @@ describe('Settings integration', () => {
     render(<Settings />)
 
     await waitFor(() => {
-      expect(screen.getByLabelText('Pagamento padrao (entrada)')).toHaveValue('credito')
+      expect(screen.getByLabelText('Pagamento padrão (entrada)')).toHaveValue('credito')
     })
 
-    expect(screen.getByLabelText('Pagamento padrao (saida)')).toHaveValue('debito')
-    expect(screen.getByText('Configuracoes de transacoes')).toBeInTheDocument()
+    expect(screen.getByLabelText('Pagamento padrão (saída)')).toHaveValue('debito')
+    expect(screen.getByText('Configurações de transações')).toBeInTheDocument()
   })
 
   it('restaura padroes e salva no servico', async () => {
@@ -98,17 +98,17 @@ describe('Settings integration', () => {
     render(<Settings />)
 
     await waitFor(() => {
-      expect(screen.getByLabelText('Pagamento padrao (entrada)')).toBeInTheDocument()
+      expect(screen.getByLabelText('Pagamento padrão (entrada)')).toBeInTheDocument()
     })
 
-    fireEvent.click(screen.getByRole('button', { name: 'Restaurar padroes' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Salvar configuracoes' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Restaurar padrões' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Salvar configurações' }))
 
     await waitFor(() => {
       expect(saveSettingsMock).toHaveBeenCalledWith(DEFAULT_TRANSACTION_SETTINGS)
     })
 
-    expect(await screen.findByText('Configuracoes salvas com sucesso.')).toBeInTheDocument()
+    expect(await screen.findByText('Configurações salvas com sucesso.')).toBeInTheDocument()
   })
 
   it('executa logout na secao de conta', async () => {
@@ -164,6 +164,6 @@ describe('Settings integration', () => {
         })
       })
     )
-    expect(await screen.findByText('Configuracoes da conta atualizadas com sucesso.')).toBeInTheDocument()
+    expect(await screen.findByText('Configurações da conta atualizadas com sucesso.')).toBeInTheDocument()
   })
 })
