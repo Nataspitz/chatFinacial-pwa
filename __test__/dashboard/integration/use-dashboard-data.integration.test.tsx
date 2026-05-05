@@ -6,6 +6,7 @@ import { useDashboardData } from '../../../src/pages/Dashboard/hooks/useDashboar
 import { businessService } from '../../../src/services/business.service'
 import { financialSummaryService } from '../../../src/services/financial-summary.service'
 import { financeService } from '../../../src/services/finance.service'
+import type { FinancialMonthlySummary } from '../../../src/types/financial-summary.types'
 import { businessSettingsFixture, dashboardTransactionsFixture } from '../mocks/dashboard-fixtures'
 
 vi.mock('../../../src/services/finance.service', () => ({
@@ -28,6 +29,28 @@ vi.mock('../../../src/services/financial-summary.service', () => ({
 }))
 
 describe('useDashboardData - integration', () => {
+  const buildYearSummaries = (
+    year: number,
+    overrides: Record<number, Partial<FinancialMonthlySummary>> = {}
+  ): FinancialMonthlySummary[] =>
+    Array.from({ length: 12 }, (_, index) => {
+      const month = index + 1
+      const monthRef = `${year}-${String(month).padStart(2, '0')}-01`
+      return {
+        id: `summary-${monthRef}`,
+        userId: 'company-1',
+        monthRef,
+        totalEntries: 0,
+        totalOutcomes: 0,
+        resultBalance: 0,
+        accountBalance: 0,
+        calculatedAt: '2026-04-17T12:00:00.000Z',
+        createdAt: '2026-04-17T12:00:00.000Z',
+        updatedAt: '2026-04-17T12:00:00.000Z',
+        ...overrides[month]
+      }
+    })
+
   beforeEach(() => {
     vi.clearAllMocks()
     vi.useFakeTimers()
@@ -36,6 +59,7 @@ describe('useDashboardData - integration', () => {
     vi.mocked(financeService.getTransactions).mockResolvedValue(dashboardTransactionsFixture)
     vi.mocked(businessService.getBusinessSettings).mockResolvedValue(businessSettingsFixture)
     vi.mocked(financialSummaryService.listYear).mockResolvedValue([])
+    vi.mocked(financialSummaryService.refreshYear).mockResolvedValue([])
   })
 
   afterEach(() => {
@@ -82,5 +106,43 @@ describe('useDashboardData - integration', () => {
     expect(aprilPoint).toBeDefined()
     expect(aprilPoint?.revenue).toBe(750)
     expect(aprilPoint?.expense).toBe(0)
+  })
+
+  it('atualiza automaticamente o resumo salvo quando ele diverge dos totais do report', async () => {
+    vi.mocked(financialSummaryService.listYear).mockResolvedValue(
+      buildYearSummaries(2026, {
+        4: {
+          totalEntries: 999,
+          totalOutcomes: 0,
+          resultBalance: 999,
+          accountBalance: 999
+        }
+      })
+    )
+    vi.mocked(financialSummaryService.refreshYear).mockResolvedValue(
+      buildYearSummaries(2026, {
+        4: {
+          totalEntries: 750,
+          totalOutcomes: 100,
+          resultBalance: 650,
+          accountBalance: 650
+        }
+      })
+    )
+
+    const { result } = renderHook(() => useDashboardData())
+
+    await act(async () => {
+      await Promise.resolve()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(financialSummaryService.refreshYear).toHaveBeenCalledWith(2026)
+    expect(result.current.currentTotals).toMatchObject({
+      revenue: 750,
+      expense: 100,
+      profit: 650
+    })
   })
 })

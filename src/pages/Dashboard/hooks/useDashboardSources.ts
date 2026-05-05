@@ -4,7 +4,8 @@ import { financialSummaryService } from '../../../services/financial-summary.ser
 import { financeService } from '../../../services/finance.service'
 import type { FinancialMonthlySummary } from '../../../types/financial-summary.types'
 import { parseTransactionDate } from '../dashboard-calculations'
-import type { NormalizedTransaction } from '../types'
+import { toMonthRef } from './dashboard-summary.utils'
+import type { NormalizedTransaction, PeriodTotals } from '../types'
 
 const normalizeDashboardTransactions = (transactions: Awaited<ReturnType<typeof financeService.getTransactions>>): NormalizedTransaction[] =>
   transactions
@@ -21,6 +22,84 @@ const normalizeDashboardTransactions = (transactions: Awaited<ReturnType<typeof 
         : null
     })
     .filter((item): item is NormalizedTransaction => item !== null)
+
+const MONEY_TOLERANCE = 0.01
+
+const toIsoDate = (date: Date): string =>
+  `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+
+const isOpenFutureTransaction = (dateValue: string, isConfirmed: boolean, todayDate: string): boolean =>
+  dateValue > todayDate && !isConfirmed
+
+const calculateReportMonthTotals = (
+  transactions: NormalizedTransaction[],
+  year: number,
+  month: number,
+  todayDate: string
+): PeriodTotals => {
+  return transactions.reduce<PeriodTotals>((totals, item) => {
+    let occurrenceDate = item.date.slice(0, 10)
+    let occurrenceConfirmed = item.isConfirmed
+
+    if (!(item.year === year && item.month === month)) {
+      if (item.type !== 'saida' || !item.isMonthlyCost) {
+        return totals
+      }
+
+      const isAfterStartMonth = year > item.year || (year === item.year && month >= item.month)
+      if (!isAfterStartMonth) {
+        return totals
+      }
+
+      const lastDayInTargetMonth = new Date(year, month, 0).getDate()
+      const adjustedDay = Math.min(item.day, lastDayInTargetMonth)
+      occurrenceDate = `${year}-${String(month).padStart(2, '0')}-${String(adjustedDay).padStart(2, '0')}`
+      if (item.monthlyEndDate && occurrenceDate > item.monthlyEndDate) {
+        return totals
+      }
+      occurrenceConfirmed = Boolean(item.isConfirmed) && occurrenceDate <= todayDate
+    }
+
+    if (isOpenFutureTransaction(occurrenceDate, occurrenceConfirmed, todayDate)) {
+      return totals
+    }
+
+    if (item.type === 'entrada') {
+      totals.revenue += item.amount
+    } else {
+      totals.expense += item.amount
+    }
+    totals.profit = totals.revenue - totals.expense
+    return totals
+  }, { revenue: 0, expense: 0, profit: 0 })
+}
+
+const amountsDiffer = (left: number, right: number): boolean => Math.abs(left - right) > MONEY_TOLERANCE
+
+const summariesDifferFromReport = (
+  summaries: FinancialMonthlySummary[],
+  transactions: NormalizedTransaction[],
+  year: number
+): boolean => {
+  if (summaries.length !== 12) {
+    return true
+  }
+
+  const todayDate = toIsoDate(new Date())
+  return Array.from({ length: 12 }, (_, index) => index + 1).some((month) => {
+    const summary = summaries.find((item) => item.monthRef === toMonthRef(year, month))
+    if (!summary) {
+      return true
+    }
+
+    const totals = calculateReportMonthTotals(transactions, year, month, todayDate)
+    return (
+      amountsDiffer(summary.totalEntries, totals.revenue)
+      || amountsDiffer(summary.totalOutcomes, totals.expense)
+      || amountsDiffer(summary.resultBalance, totals.profit)
+    )
+  })
+}
 
 export const useDashboardSources = (currentYear: number, selectedYear: number) => {
   const [transactions, setTransactions] = useState<NormalizedTransaction[]>([])
@@ -53,8 +132,12 @@ export const useDashboardSources = (currentYear: number, selectedYear: number) =
       financialSummaryService.listYear(currentYear)
     ])
 
+    const normalizedTransactions = transactionsResult.status === 'fulfilled'
+      ? normalizeDashboardTransactions(transactionsResult.value)
+      : []
+
     if (transactionsResult.status === 'fulfilled') {
-      setTransactions(normalizeDashboardTransactions(transactionsResult.value))
+      setTransactions(normalizedTransactions)
       setError('')
     } else {
       setError('Nao foi possivel carregar os dados da dashboard.')
@@ -71,7 +154,20 @@ export const useDashboardSources = (currentYear: number, selectedYear: number) =
     }
 
     if (summaryResult.status === 'fulfilled') {
-      setSummariesByYear((prev) => ({ ...prev, [currentYear]: summaryResult.value }))
+      const currentSummaries = summaryResult.value
+      if (
+        transactionsResult.status === 'fulfilled'
+        && summariesDifferFromReport(currentSummaries, normalizedTransactions, currentYear)
+      ) {
+        try {
+          const refreshed = await financialSummaryService.refreshYear(currentYear)
+          setSummariesByYear((prev) => ({ ...prev, [currentYear]: refreshed }))
+        } catch {
+          setSummariesByYear((prev) => ({ ...prev, [currentYear]: currentSummaries }))
+        }
+      } else {
+        setSummariesByYear((prev) => ({ ...prev, [currentYear]: currentSummaries }))
+      }
     }
 
     setIsTransactionsLoading(false)
