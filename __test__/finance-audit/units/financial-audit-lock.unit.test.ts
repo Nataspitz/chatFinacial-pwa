@@ -1,15 +1,20 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
 import {
   FINANCIAL_AUDIT_LOCK_MESSAGE,
   assertFinancialPeriodUnlocked,
   getFinancialAuditLockCutoffDate,
   hasLockedFinancialPeriod,
-  isFinancialPeriodLocked
+  isFinancialPeriodLocked,
+  setFinancialAuditLockedPeriods
 } from '../../../src/services/financial-audit-lock'
 
 const aprilReferenceDate = new Date(2026, 3, 26)
 
 describe('financial audit lock helpers', () => {
+  afterEach(() => {
+    setFinancialAuditLockedPeriods([])
+  })
+
   it('usa o primeiro dia do mes atual como limite de edicao', () => {
     expect(getFinancialAuditLockCutoffDate(aprilReferenceDate)).toBe('2026-04-01')
   })
@@ -29,5 +34,19 @@ describe('financial audit lock helpers', () => {
     expect(() => assertFinancialPeriodUnlocked(['2026-03-31'], aprilReferenceDate)).toThrow(
       FINANCIAL_AUDIT_LOCK_MESSAGE
     )
+  })
+
+  it('bloqueia datas dentro de fatias de auditoria confirmadas', () => {
+    setFinancialAuditLockedPeriods([{ startDate: '2026-05-01', endDate: '2026-05-10' }])
+
+    expect(isFinancialPeriodLocked('2026-05-01', new Date(2026, 4, 11))).toBe(true)
+    expect(isFinancialPeriodLocked('2026-05-10', new Date(2026, 4, 11))).toBe(true)
+    expect(isFinancialPeriodLocked('2026-05-11', new Date(2026, 4, 11))).toBe(false)
+  })
+
+  it('avanca a data minima de criacao quando o inicio do mes atual ja foi auditado', () => {
+    setFinancialAuditLockedPeriods([{ startDate: '2026-05-01', endDate: '2026-05-10' }])
+
+    expect(getFinancialAuditLockCutoffDate(new Date(2026, 4, 11))).toBe('2026-05-11')
   })
 })

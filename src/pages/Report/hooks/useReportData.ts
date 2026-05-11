@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
 import { financeService, type CategoryItem } from '../../../services/finance.service'
+import { financialAuditService } from '../../../services/financial-audit.service'
+import { setFinancialAuditLockedPeriods } from '../../../services/financial-audit-lock'
 import { transactionSettingsService } from '../../../services/transaction-settings.service'
 import {
   DEFAULT_TRANSACTION_SETTINGS,
@@ -55,9 +57,18 @@ export const useReportData = () => {
     }
   }
 
+  const loadAuditLocks = async (): Promise<void> => {
+    try {
+      const periods = await financialAuditService.getConfirmedLockedPeriods()
+      setFinancialAuditLockedPeriods(periods)
+    } catch {
+      setFinancialAuditLockedPeriods([])
+    }
+  }
+
   useEffect(() => {
     void (async () => {
-      await Promise.allSettled([loadTransactions(), loadCategories(), loadTransactionSettings()])
+      await Promise.allSettled([loadTransactions(), loadCategories(), loadTransactionSettings(), loadAuditLocks()])
       setIsLoading(false)
     })()
   }, [])
@@ -83,6 +94,7 @@ export const useReportData = () => {
     toastMessage,
     setToastMessage,
     loadTransactions,
-    loadCategories
+    loadCategories,
+    loadAuditLocks
   }
 }

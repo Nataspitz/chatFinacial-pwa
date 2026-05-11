@@ -27,7 +27,7 @@ import styles from '../Report.module.css'
 export const ReportPage = (): JSX.Element => {
   const { user } = useAuth()
   const [isMobileActionsDrawerOpen, setIsMobileActionsDrawerOpen] = useState(false)
-  const auditLockCutoffDate = useMemo(() => getFinancialAuditLockCutoffDate(), [])
+  const auditLockCutoffDate = getFinancialAuditLockCutoffDate()
   const {
     transactions,
     setTransactions,

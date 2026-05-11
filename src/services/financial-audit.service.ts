@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase'
+import type { FinancialAuditLockedPeriod } from './financial-audit-lock'
 import type { FinancialAudit, FinancialAuditStatus } from '../types/financial-audit.types'
 
 interface FinancialAuditRow {
@@ -149,6 +150,24 @@ export const financialAuditService = {
     }
 
     return ((data ?? []) as FinancialAuditRow[]).map(mapRow)
+  },
+
+  getConfirmedLockedPeriods: async (): Promise<FinancialAuditLockedPeriod[]> => {
+    const userId = await getUserId()
+    const { data, error } = await supabase
+      .from('financial_audits')
+      .select('period_start, period_end')
+      .eq('user_id', userId)
+      .eq('status', 'confirmed')
+
+    if (error) {
+      throw error
+    }
+
+    return ((data ?? []) as Array<Pick<FinancialAuditRow, 'period_start' | 'period_end'>>).map((row) => ({
+      startDate: normalizeDate(row.period_start),
+      endDate: normalizeDate(row.period_end)
+    }))
   },
 
   confirmAuditSliceWithCertificate: async (audit: Pick<FinancialAudit, 'monthRef' | 'auditSlice'>, file: File): Promise<FinancialAudit> => {
