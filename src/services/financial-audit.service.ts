@@ -80,6 +80,36 @@ const readCertificatePayload = async (file: File): Promise<Record<string, unknow
   return parsed as Record<string, unknown>
 }
 
+const getPayloadText = (payload: Record<string, unknown>, field: string): string => {
+  const value = payload[field]
+  return typeof value === 'string' ? normalizeDate(value) : ''
+}
+
+const validateCertificatePayload = (
+  audit: Pick<FinancialAudit, 'monthRef' | 'auditSlice'>,
+  payload: Record<string, unknown>
+): void => {
+  if (payload.version !== 1) {
+    throw new Error('Certificado recusado: campo version invalido.')
+  }
+
+  if (getPayloadText(payload, 'month_ref') !== normalizeDate(audit.monthRef)) {
+    throw new Error('Certificado recusado: o mes do certificado nao corresponde a auditoria selecionada.')
+  }
+
+  if (Number(payload.audit_slice) !== audit.auditSlice) {
+    throw new Error('Certificado recusado: a fatia do certificado nao corresponde a auditoria selecionada.')
+  }
+
+  if (payload.verdict !== 'approved') {
+    throw new Error('Certificado recusado: o parecer precisa estar aprovado.')
+  }
+
+  if (!getPayloadText(payload, 'generated_at')) {
+    throw new Error('Certificado recusado: campo generated_at ausente.')
+  }
+}
+
 export const financialAuditService = {
   mandatoryStartMonth: MANDATORY_AUDIT_START_MONTH,
 
@@ -128,6 +158,7 @@ export const financialAuditService = {
 
     const userId = await getUserId()
     const certificatePayload = await readCertificatePayload(file)
+    validateCertificatePayload(audit, certificatePayload)
     const certificateMimeType = 'application/json'
     const monthKey = normalizeDate(audit.monthRef).slice(0, 7)
     const certificatePath = `${userId}/${monthKey}/slice-${audit.auditSlice}.json`
@@ -140,7 +171,7 @@ export const financialAuditService = {
       })
 
     if (uploadError) {
-      throw uploadError
+      throw new Error(`Certificado recusado: ${uploadError.message}`)
     }
 
     const { data, error } = await supabase
@@ -156,7 +187,7 @@ export const financialAuditService = {
       .single()
 
     if (error) {
-      throw error
+      throw new Error(`Certificado recusado: ${error.message}`)
     }
 
     return mapRow(data as FinancialAuditRow)

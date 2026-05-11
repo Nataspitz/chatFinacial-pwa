@@ -5,45 +5,6 @@
   padding-bottom: var(--space-4);
 }
 
-.notice {
-  position: relative;
-  display: flex;
-  gap: var(--space-3);
-  align-items: flex-start;
-  padding: var(--space-4);
-  border: 1px solid color-mix(in srgb, var(--warning-500) 45%, var(--border-color));
-  border-radius: var(--radius-md);
-  background:
-    radial-gradient(120% 140% at 0% 0%, color-mix(in srgb, var(--warning-500) 22%, transparent), transparent 56%),
-    linear-gradient(155deg, color-mix(in srgb, var(--warning-500) 12%, var(--bg-secondary)), var(--bg-secondary));
-  box-shadow: var(--shadow-sm);
-  overflow: hidden;
-}
-
-.notice::after {
-  content: '';
-  position: absolute;
-  inset: auto 0 0 0;
-  height: 3px;
-  background: linear-gradient(90deg, var(--warning-500), color-mix(in srgb, var(--warning-500) 45%, var(--brand-500)));
-}
-
-.notice svg {
-  margin-top: 2px;
-  color: color-mix(in srgb, var(--warning-500) 76%, var(--brand-800));
-  flex-shrink: 0;
-}
-
-.notice strong {
-  display: block;
-  margin-bottom: var(--space-1);
-}
-
-.notice p {
-  margin: 0;
-  color: var(--text-secondary);
-}
-
 .section {
   display: flex;
   flex-direction: column;
@@ -285,6 +246,12 @@
 .errorMessage {
   margin: 0;
   color: color-mix(in srgb, var(--danger-500) 84%, var(--text-primary));
+  font-weight: var(--font-weight-semibold);
+}
+
+.successMessage {
+  margin: 0;
+  color: color-mix(in srgb, var(--success-500) 84%, var(--text-primary));
   font-weight: var(--font-weight-semibold);
 }
 

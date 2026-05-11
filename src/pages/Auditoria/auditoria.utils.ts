@@ -31,7 +31,6 @@ export interface AuditSliceCardItem {
   canUploadCertificate: boolean
 }
 
-export const APRIL_2026 = '2026-04-01'
 export const AUDITOR_AGENT_URL = 'https://chatgpt.com/g/g-69ee3a17ba28819189e965fe55a2e163-chatfinancial-auditor'
 
 export const normalizeDate = (value: string): string => value.match(/^\d{4}-\d{2}-\d{2}/)?.[0] ?? value
@@ -96,7 +95,7 @@ export const mapAuditSlices = (audits: FinancialAudit[]): AuditSliceCardItem[] =
       monthRef: item.monthRef,
       auditSlice: item.auditSlice,
       sliceLabel: `${item.auditSlice}/3`,
-      periodLabel: `${formatDate(item.periodStart)} até ${formatDate(item.periodEnd)}`,
+      periodLabel: `${formatDate(item.periodStart)} ate ${formatDate(item.periodEnd)}`,
       unlockLabel: formatDate(item.unlockAt),
       statusLabel: item.status === 'confirmed' ? 'Confirmada' : 'Pendente',
       tone: item.status === 'confirmed' ? 'confirmed' : 'pending',
@@ -110,9 +109,9 @@ export const mapUpcomingMandatorySlices = (mandatoryMonth: string): AuditSliceCa
     monthRef: mandatoryMonth,
     auditSlice: slice.auditSlice,
     sliceLabel: `${slice.auditSlice}/3`,
-    periodLabel: `${formatDate(slice.periodStart)} até ${formatDate(slice.periodEnd)}`,
+    periodLabel: `${formatDate(slice.periodStart)} ate ${formatDate(slice.periodEnd)}`,
     unlockLabel: formatDate(slice.unlockAt),
-    statusLabel: 'Obrigatória',
+    statusLabel: 'Obrigatoria',
     tone: 'pending',
     status: 'pending',
     canUploadCertificate: false
@@ -128,24 +127,9 @@ export const buildAuditHistory = (historyAudits: FinancialAudit[]): HistoryMonth
     groups.set(key, current)
   })
 
-  if (!groups.has(APRIL_2026)) {
-    groups.set(APRIL_2026, [])
-  }
-
   return Array.from(groups.entries())
     .sort((a, b) => (a[0] < b[0] ? 1 : -1))
     .map(([monthRef, rows]) => {
-      if (monthRef === APRIL_2026 && rows.length === 0) {
-        return {
-          monthRef,
-          tone: 'skipped',
-          label: 'Pulado',
-          detail: 'Mês inicial pulado por regra de implantação.',
-          confirmedCount: 0,
-          totalCount: 0
-        }
-      }
-
       const totalCount = rows.length
       const confirmedCount = rows.filter((item) => item.status === 'confirmed').length
 
@@ -174,7 +158,7 @@ export const buildAuditHistory = (historyAudits: FinancialAudit[]): HistoryMonth
       return {
         monthRef,
         tone: 'confirmed',
-        label: 'Concluída',
+        label: 'Concluida',
         detail: 'Todas as faixas confirmadas.',
         confirmedCount,
         totalCount

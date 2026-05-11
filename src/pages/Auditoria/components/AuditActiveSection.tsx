@@ -30,16 +30,20 @@ export const AuditActiveSection = ({
     </header>
 
     {isActiveMonthMandatory ? (
-      <div className={styles.cardGrid}>
-        {activeSlices.map((item) => (
-          <AuditCard
-            key={item.key}
-            item={item}
-            isUploading={uploadingCertificateKey === item.key}
-            onUploadCertificate={onUploadCertificate}
-          />
-        ))}
-      </div>
+      activeSlices.length > 0 ? (
+        <div className={styles.cardGrid}>
+          {activeSlices.map((item) => (
+            <AuditCard
+              key={item.key}
+              item={item}
+              isUploading={uploadingCertificateKey === item.key}
+              onUploadCertificate={onUploadCertificate}
+            />
+          ))}
+        </div>
+      ) : (
+        <p className={styles.stateMessage}>Todas as auditorias liberadas deste mes ja foram concluidas.</p>
+      )
     ) : (
       <div className={styles.preMandatoryWrap}>
         <SkippedAuditCard />

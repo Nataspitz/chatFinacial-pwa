@@ -12,6 +12,7 @@ export const useAuditoriaData = () => {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState('')
   const [certificateFeedback, setCertificateFeedback] = useState('')
+  const [certificateFeedbackTone, setCertificateFeedbackTone] = useState<'success' | 'error'>('success')
   const [uploadingCertificateKey, setUploadingCertificateKey] = useState<string | null>(null)
   const [activeAudits, setActiveAudits] = useState<FinancialAudit[]>([])
   const [historyAudits, setHistoryAudits] = useState<FinancialAudit[]>([])
@@ -45,6 +46,7 @@ export const useAuditoriaData = () => {
 
   const handleUploadCertificate = async (item: AuditSliceCardItem, file: File): Promise<void> => {
     setCertificateFeedback('')
+    setCertificateFeedbackTone('success')
     setUploadingCertificateKey(item.key)
 
     try {
@@ -56,9 +58,11 @@ export const useAuditoriaData = () => {
         file
       )
       setCertificateFeedback('Certificado enviado e auditoria confirmada.')
+      setCertificateFeedbackTone('success')
       await loadAudits()
     } catch (uploadError) {
-      const message = uploadError instanceof Error && uploadError.message ? uploadError.message : 'Nao foi possivel enviar o certificado.'
+      const message = uploadError instanceof Error && uploadError.message ? uploadError.message : 'Certificado recusado. Verifique o arquivo JSON e tente novamente.'
+      setCertificateFeedbackTone('error')
       setCertificateFeedback(message)
     } finally {
       setUploadingCertificateKey(null)
@@ -66,7 +70,7 @@ export const useAuditoriaData = () => {
   }
 
   const activeSlices = useMemo(
-    () => (isActiveMonthMandatory ? mapAuditSlices(activeAudits) : []),
+    () => (isActiveMonthMandatory ? mapAuditSlices(activeAudits.filter((audit) => audit.status === 'pending')) : []),
     [activeAudits, isActiveMonthMandatory]
   )
 
@@ -84,6 +88,7 @@ export const useAuditoriaData = () => {
     isLoading,
     error,
     certificateFeedback,
+    certificateFeedbackTone,
     uploadingCertificateKey,
     activeSlices,
     upcomingMandatorySlices,

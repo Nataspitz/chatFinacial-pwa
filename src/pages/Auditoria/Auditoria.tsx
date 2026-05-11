@@ -4,7 +4,6 @@ import { PageTemplate } from '../../components/templates/PageTemplate/PageTempla
 import { AUDITOR_AGENT_URL } from './auditoria.utils'
 import { AuditActiveSection } from './components/AuditActiveSection'
 import { AuditHistorySection } from './components/AuditHistorySection'
-import { AuditNotice } from './components/AuditNotice'
 import styles from './Auditoria.module.css'
 import { useAuditoriaData } from './hooks/useAuditoriaData'
 
@@ -16,6 +15,7 @@ export const Auditoria = (): JSX.Element => {
     isLoading,
     error,
     certificateFeedback,
+    certificateFeedbackTone,
     uploadingCertificateKey,
     activeSlices,
     upcomingMandatorySlices,
@@ -41,11 +41,11 @@ export const Auditoria = (): JSX.Element => {
         }
       />
 
-      <AuditNotice />
-
       {isLoading ? <p className={styles.stateMessage}>Carregando auditorias...</p> : null}
       {!isLoading && error ? <p className={styles.errorMessage}>{error}</p> : null}
-      {!isLoading && certificateFeedback ? <p className={styles.stateMessage}>{certificateFeedback}</p> : null}
+      {!isLoading && certificateFeedback ? (
+        <p className={certificateFeedbackTone === 'error' ? styles.errorMessage : styles.successMessage}>{certificateFeedback}</p>
+      ) : null}
 
       {!isLoading && !error ? (
         <>
