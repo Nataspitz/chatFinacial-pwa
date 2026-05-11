@@ -16,6 +16,16 @@ export interface HistoryMonthItem {
   detail: string
   confirmedCount: number
   totalCount: number
+  slices: HistorySliceItem[]
+}
+
+export interface HistorySliceItem {
+  key: string
+  auditSlice: 1 | 2 | 3
+  periodLabel: string
+  statusLabel: string
+  tone: Extract<HistoryStateTone, 'pending' | 'confirmed'>
+  certificateLabel: string
 }
 
 export interface AuditSliceCardItem {
@@ -130,6 +140,17 @@ export const buildAuditHistory = (historyAudits: FinancialAudit[]): HistoryMonth
   return Array.from(groups.entries())
     .sort((a, b) => (a[0] < b[0] ? 1 : -1))
     .map(([monthRef, rows]) => {
+      const slices = rows
+        .slice()
+        .sort((a, b) => a.auditSlice - b.auditSlice)
+        .map((audit): HistorySliceItem => ({
+          key: `${audit.monthRef}-${audit.auditSlice}`,
+          auditSlice: audit.auditSlice,
+          periodLabel: `${formatDate(audit.periodStart)} ate ${formatDate(audit.periodEnd)}`,
+          statusLabel: audit.status === 'confirmed' ? 'Certificado enviado' : 'Pendente',
+          tone: audit.status === 'confirmed' ? 'confirmed' : 'pending',
+          certificateLabel: audit.certificatePath ? `Arquivo: ${audit.certificatePath.split('/').pop() ?? audit.certificatePath}` : 'Sem certificado'
+        }))
       const totalCount = rows.length
       const confirmedCount = rows.filter((item) => item.status === 'confirmed').length
 
@@ -140,7 +161,8 @@ export const buildAuditHistory = (historyAudits: FinancialAudit[]): HistoryMonth
           label: 'Pendente',
           detail: 'Sem faixas confirmadas.',
           confirmedCount,
-          totalCount
+          totalCount,
+          slices
         }
       }
 
@@ -151,7 +173,8 @@ export const buildAuditHistory = (historyAudits: FinancialAudit[]): HistoryMonth
           label: 'Parcial',
           detail: `${confirmedCount} de ${totalCount} faixas confirmadas.`,
           confirmedCount,
-          totalCount
+          totalCount,
+          slices
         }
       }
 
@@ -161,7 +184,8 @@ export const buildAuditHistory = (historyAudits: FinancialAudit[]): HistoryMonth
         label: 'Concluida',
         detail: 'Todas as faixas confirmadas.',
         confirmedCount,
-        totalCount
+        totalCount,
+        slices
       }
     })
 }

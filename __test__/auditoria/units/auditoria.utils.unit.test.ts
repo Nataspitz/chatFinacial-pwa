@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { buildSlicesForMonth, mapAuditSlices } from '../../../src/pages/Auditoria/auditoria.utils'
+import { buildAuditHistory, buildSlicesForMonth, mapAuditSlices } from '../../../src/pages/Auditoria/auditoria.utils'
 import type { FinancialAudit } from '../../../src/types/financial-audit.types'
 
 const buildAudit = (overrides: Partial<FinancialAudit>): FinancialAudit => ({
@@ -64,5 +64,36 @@ describe('auditoria utils', () => {
     expect(released.canUploadCertificate).toBe(true)
     expect(future.canUploadCertificate).toBe(false)
     expect(confirmed.canUploadCertificate).toBe(false)
+  })
+
+  it('inclui detalhes das fatias no historico mensal', () => {
+    const [month] = buildAuditHistory([
+      buildAudit({
+        auditSlice: 1,
+        status: 'confirmed',
+        certificatePath: 'user-1/2026-05/slice-1.json'
+      }),
+      buildAudit({
+        auditSlice: 2,
+        periodStart: '2026-05-11',
+        periodEnd: '2026-05-20',
+        unlockAt: '2026-05-21',
+        status: 'pending'
+      })
+    ])
+
+    expect(month.label).toBe('Parcial')
+    expect(month.slices).toMatchObject([
+      {
+        auditSlice: 1,
+        statusLabel: 'Certificado enviado',
+        certificateLabel: 'Arquivo: slice-1.json'
+      },
+      {
+        auditSlice: 2,
+        statusLabel: 'Pendente',
+        certificateLabel: 'Sem certificado'
+      }
+    ])
   })
 })
