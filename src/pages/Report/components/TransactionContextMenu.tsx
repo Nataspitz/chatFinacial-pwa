@@ -7,6 +7,7 @@ import styles from '../Report.module.css'
 interface TransactionContextMenuProps {
   canConfirm: boolean
   coordinates: TransactionContextMenuCoordinates | null
+  isLocked: boolean
   isConfirming: boolean
   isDeleting: boolean
   isOpen: boolean
@@ -34,6 +35,7 @@ const getSafeCoordinates = (coordinates: TransactionContextMenuCoordinates): Tra
 export const TransactionContextMenu = ({
   canConfirm,
   coordinates,
+  isLocked,
   isConfirming,
   isDeleting,
   isOpen,
@@ -85,7 +87,7 @@ export const TransactionContextMenu = ({
         style={{ left: safeCoordinates.x, top: safeCoordinates.y }}
         onContextMenu={(event) => event.preventDefault()}
       >
-        <button type="button" role="menuitem" className={styles.contextMenuItem} onClick={onEdit}>
+        <button type="button" role="menuitem" className={styles.contextMenuItem} disabled={isLocked} title={isLocked ? 'Periodo auditado bloqueado' : undefined} onClick={onEdit}>
           <FiEdit2 aria-hidden />
           <span>Editar</span>
         </button>
@@ -100,7 +102,8 @@ export const TransactionContextMenu = ({
             type="button"
             role="menuitem"
             className={styles.contextMenuItem}
-            disabled={isConfirming}
+            disabled={isConfirming || isLocked}
+            title={isLocked ? 'Periodo auditado bloqueado' : undefined}
             onClick={onConfirm}
           >
             <FiCheckCircle aria-hidden />
@@ -112,7 +115,8 @@ export const TransactionContextMenu = ({
           type="button"
           role="menuitem"
           className={`${styles.contextMenuItem} ${styles.contextMenuItemDanger}`.trim()}
-          disabled={isDeleting}
+          disabled={isDeleting || isLocked}
+          title={isLocked ? 'Periodo auditado bloqueado' : undefined}
           onClick={onDelete}
         >
           <FiTrash2 aria-hidden />

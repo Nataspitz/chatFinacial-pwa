@@ -24,6 +24,7 @@ export interface TransactionsTableProps {
   onEditCancel: () => void
   onEditChange: (field: EditField, value: string | boolean) => void
   onEditSave: () => Promise<void>
+  isActionLocked: (transaction: Transaction) => boolean
   deletingId: string | null
   confirmingId: string | null
   editingId: string | null
@@ -44,6 +45,7 @@ export interface TransactionActionContext {
   onEditCancel: () => void
   onEditSave: () => Promise<void>
   onEditStart: (transaction: Transaction) => void
+  isActionLocked: (transaction: Transaction) => boolean
 }
 
 export interface TransactionContextMenuCoordinates {

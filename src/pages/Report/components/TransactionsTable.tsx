@@ -25,6 +25,7 @@ export const TransactionsTable = ({
   onEditCancel,
   onEditChange,
   onEditSave,
+  isActionLocked,
   deletingId,
   confirmingId,
   editingId,
@@ -54,8 +55,9 @@ export const TransactionsTable = ({
     onDuplicate,
     onEditCancel,
     onEditSave,
-    onEditStart
-  }), [confirmingId, deletingId, isSavingEdit, onConfirmStart, onDelete, onDuplicate, onEditCancel, onEditSave, onEditStart])
+    onEditStart,
+    isActionLocked
+  }), [confirmingId, deletingId, isSavingEdit, onConfirmStart, onDelete, onDuplicate, onEditCancel, onEditSave, onEditStart, isActionLocked])
 
   const openContextMenu = (
     transaction: Transaction,
@@ -161,6 +163,7 @@ export const TransactionsTable = ({
 
           <TransactionContextMenu
             canConfirm={contextMenuState ? !contextMenuState.transaction.isConfirmed : false}
+            isLocked={contextMenuState ? isActionLocked(contextMenuState.transaction) : false}
             coordinates={contextMenuState?.coordinates ?? null}
             isConfirming={Boolean(contextMenuState && confirmingId === contextMenuState.transaction.id)}
             isDeleting={Boolean(contextMenuState && deletingId === contextMenuState.transaction.id)}

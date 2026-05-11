@@ -159,7 +159,7 @@ export const ReportPage = (): JSX.Element => {
       {error && <p className={styles.error}>{error}</p>}
       {toastMessage ? <div className={styles.toastSuccess}>{toastMessage}</div> : null}
 
-      {!isLoading && !error && (
+      {!isLoading && (
         <ReportTransactionsGrid
           entries={entries}
           outcomes={outcomes}
@@ -188,6 +188,7 @@ export const ReportPage = (): JSX.Element => {
           onEditCancel={transactionActions.handleEditCancel}
           onEditChange={transactionActions.handleEditChange}
           onEditSave={transactionActions.handleEditSave}
+          isActionLocked={transactionActions.isActionLocked}
         />
       )}
 

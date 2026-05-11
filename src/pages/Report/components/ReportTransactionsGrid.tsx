@@ -31,6 +31,7 @@ interface ReportTransactionsGridProps {
   onEditCancel: () => void
   onEditChange: (field: EditField, value: string | boolean) => void
   onEditSave: () => Promise<void>
+  isActionLocked: (transaction: Transaction) => boolean
 }
 
 export const ReportTransactionsGrid = ({
@@ -57,7 +58,8 @@ export const ReportTransactionsGrid = ({
   onEditStart,
   onEditCancel,
   onEditChange,
-  onEditSave
+  onEditSave,
+  isActionLocked
 }: ReportTransactionsGridProps): JSX.Element => {
   const commonProps = {
     onDelete,
@@ -67,6 +69,7 @@ export const ReportTransactionsGrid = ({
     onEditCancel,
     onEditChange,
     onEditSave,
+    isActionLocked,
     deletingId,
     confirmingId,
     editingId,

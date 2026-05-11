@@ -53,10 +53,17 @@ export const useReportTransactionActions = ({
   const [editingDraft, setEditingDraft] = useState<Transaction | null>(null)
   const [isSavingEdit, setIsSavingEdit] = useState(false)
 
+  const showActionFeedback = (message: string): void => {
+    setError('')
+    setToastMessage(message)
+  }
+
+  const isActionLocked = (transaction: Transaction): boolean => isFinancialPeriodLocked(transaction.date)
+
   const handleDelete = async (id: string): Promise<void> => {
     const transaction = transactions.find((item) => item.id === id) ?? null
-    if (transaction && isFinancialPeriodLocked(transaction.date)) {
-      setError(FINANCIAL_AUDIT_LOCK_MESSAGE)
+    if (transaction && isActionLocked(transaction)) {
+      showActionFeedback(FINANCIAL_AUDIT_LOCK_MESSAGE)
       return
     }
     setDeleteCandidate(transaction)
@@ -78,7 +85,7 @@ export const useReportTransactionActions = ({
       setError('')
       setToastMessage('Transação movida para a lixeira!')
     } catch (deleteError) {
-      setError(getErrorMessage(deleteError, 'Não foi possível apagar a transação.'))
+      showActionFeedback(getErrorMessage(deleteError, 'Nao foi possivel apagar a transacao.'))
     } finally {
       setDeletingId(null)
     }
@@ -88,8 +95,8 @@ export const useReportTransactionActions = ({
     if (transaction.isConfirmed) {
       return
     }
-    if (isFinancialPeriodLocked(transaction.date)) {
-      setError(FINANCIAL_AUDIT_LOCK_MESSAGE)
+    if (isActionLocked(transaction)) {
+      showActionFeedback(FINANCIAL_AUDIT_LOCK_MESSAGE)
       return
     }
     setConfirmCandidate(transaction)
@@ -106,7 +113,7 @@ export const useReportTransactionActions = ({
       && confirmCandidate.monthlyCostStartDate !== confirmCandidate.date
 
     if (hasLockedFinancialPeriod(isMonthlyCostOccurrenceEdit ? [confirmCandidate.date] : [originalTransaction?.date ?? confirmCandidate.date, confirmCandidate.date])) {
-      setError(FINANCIAL_AUDIT_LOCK_MESSAGE)
+      showActionFeedback(FINANCIAL_AUDIT_LOCK_MESSAGE)
       return
     }
 
@@ -130,15 +137,15 @@ export const useReportTransactionActions = ({
       setError('')
       setToastMessage('TransaÃ§Ã£o validada!')
     } catch (confirmError) {
-      setError(getErrorMessage(confirmError, 'NÃ£o foi possÃ­vel validar a transaÃ§Ã£o.'))
+      showActionFeedback(getErrorMessage(confirmError, 'Nao foi possivel validar a transacao.'))
     } finally {
       setConfirmingId(null)
     }
   }
 
   const handleEditStart = (transaction: Transaction): void => {
-    if (isFinancialPeriodLocked(transaction.date)) {
-      setError(FINANCIAL_AUDIT_LOCK_MESSAGE)
+    if (isActionLocked(transaction)) {
+      showActionFeedback(FINANCIAL_AUDIT_LOCK_MESSAGE)
       return
     }
     const installmentCount = transaction.paymentMethod === 'credito' ? Math.max(1, transaction.installmentCount) : 1
@@ -228,7 +235,7 @@ export const useReportTransactionActions = ({
       : [originalTransaction?.date ?? editingDraft.date, editingDraft.date]
 
     if (hasLockedFinancialPeriod(datesToValidate)) {
-      setError(FINANCIAL_AUDIT_LOCK_MESSAGE)
+      showActionFeedback(FINANCIAL_AUDIT_LOCK_MESSAGE)
       return
     }
     if (!editingDraft.category.trim() || !editingDraft.description.trim() || editingDraft.amount <= 0 || !editingDraft.date) {
@@ -279,7 +286,7 @@ export const useReportTransactionActions = ({
       setError('')
       notifyFinancialDataUpdated()
     } catch (editError) {
-      setError(getErrorMessage(editError, 'Não foi possível editar a transação.'))
+      showActionFeedback(getErrorMessage(editError, 'Nao foi possivel editar a transacao.'))
     } finally {
       setIsSavingEdit(false)
     }
@@ -306,6 +313,7 @@ export const useReportTransactionActions = ({
       setEditingDraft(null)
     },
     handleEditChange,
-    handleEditSave
+    handleEditSave,
+    isActionLocked
   }
 }
