@@ -18,7 +18,9 @@ export const initialExportFormState: ExportFormState = {
   periodType: 'month',
   year: String(new Date().getFullYear()),
   month: String(new Date().getMonth() + 1).padStart(2, '0'),
-  day: String(new Date().getDate()).padStart(2, '0')
+  day: String(new Date().getDate()).padStart(2, '0'),
+  startDay: '01',
+  endDay: String(new Date().getDate()).padStart(2, '0')
 }
 
 export const initialListFilterState: ListFilterState = {

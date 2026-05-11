@@ -5,6 +5,7 @@ import type { ExportReportPdfPayload } from '../../../types/report-export.types'
 import type { Transaction } from '../../../types/transaction.types'
 import {
   getPreviousDate,
+  getLastDayOfMonth,
   getTodayDate,
   normalizeTransactionDate
 } from '../components/report-page.date-utils'
@@ -37,14 +38,9 @@ export const useReportExport = (transactions: Transaction[], userMetadata: Recor
   }, [transactions])
 
   const exportDayOptions = useMemo(() => {
-    const days = transactions
-      .map((item) => normalizeTransactionDate(item.date))
-      .filter((value): value is string => Boolean(value))
-      .filter((value) => value.slice(0, 4) === exportForm.year && value.slice(5, 7) === exportForm.month)
-      .map((value) => value.slice(8, 10))
-    const uniqueDays = Array.from(new Set(days)).sort((a, b) => Number(a) - Number(b))
-    return uniqueDays.length > 0 ? uniqueDays : ['01']
-  }, [exportForm.month, exportForm.year, transactions])
+    const lastDay = Number(getLastDayOfMonth(exportForm.year, exportForm.month).slice(8, 10))
+    return Array.from({ length: lastDay }, (_, index) => String(index + 1).padStart(2, '0'))
+  }, [exportForm.month, exportForm.year])
 
   useEffect(() => {
     if (!exportYearOptions.includes(exportForm.year)) {
@@ -56,11 +52,19 @@ export const useReportExport = (transactions: Transaction[], userMetadata: Recor
     if (!exportDayOptions.includes(exportForm.day)) {
       setExportForm((prev) => ({ ...prev, day: exportDayOptions[0] }))
     }
-  }, [exportDayOptions, exportForm.day])
+    if (!exportDayOptions.includes(exportForm.startDay)) {
+      setExportForm((prev) => ({ ...prev, startDay: exportDayOptions[0] }))
+    }
+    if (!exportDayOptions.includes(exportForm.endDay)) {
+      setExportForm((prev) => ({ ...prev, endDay: exportDayOptions[exportDayOptions.length - 1] ?? exportDayOptions[0] }))
+    }
+  }, [exportDayOptions, exportForm.day, exportForm.endDay, exportForm.startDay])
 
   const exportTransactions = useMemo(
-    () =>
-      transactions.flatMap((item) => {
+    () => {
+      const exportRange = getExportDateRange(exportForm)
+
+      return transactions.flatMap((item) => {
         const normalizedDate = normalizeTransactionDate(item.date)
         if (!normalizedDate) return []
 
@@ -72,11 +76,26 @@ export const useReportExport = (transactions: Transaction[], userMetadata: Recor
           return monthlyCostInPeriod ? [monthlyCostInPeriod] : []
         }
 
+        if (exportForm.periodType === 'monthRange') {
+          if (year === exportForm.year && month === exportForm.month && normalizedDate >= exportRange.startDate && normalizedDate <= exportRange.endDate) {
+            return [item]
+          }
+
+          const monthlyCostInPeriod = buildMonthlyCostForPeriod(item, exportForm.year, exportForm.month, 'all')
+          if (!monthlyCostInPeriod) return []
+
+          const monthlyCostDate = normalizeTransactionDate(monthlyCostInPeriod.date)
+          return monthlyCostDate && monthlyCostDate >= exportRange.startDate && monthlyCostDate <= exportRange.endDate
+            ? [monthlyCostInPeriod]
+            : []
+        }
+
         if (year === exportForm.year && month === exportForm.month && day === exportForm.day) return [item]
         const monthlyCostInPeriod = buildMonthlyCostForPeriod(item, exportForm.year, exportForm.month, exportForm.day)
         return monthlyCostInPeriod ? [monthlyCostInPeriod] : []
-      }),
-    [exportForm.day, exportForm.month, exportForm.periodType, exportForm.year, transactions]
+      })
+    },
+    [exportForm, transactions]
   )
 
   const exportEntries = useMemo(
@@ -95,6 +114,9 @@ export const useReportExport = (transactions: Transaction[], userMetadata: Recor
     if (exportForm.periodType === 'year') return `Ano: ${exportForm.year}`
     const monthLabel = MONTH_LABELS[exportForm.month] ?? exportForm.month
     if (exportForm.periodType === 'month') return `Mês: ${monthLabel}/${exportForm.year}`
+    if (exportForm.periodType === 'monthRange') {
+      return `Período: ${exportForm.startDay}/${exportForm.month}/${exportForm.year} a ${exportForm.endDay}/${exportForm.month}/${exportForm.year} (${monthLabel})`
+    }
     return `Dia: ${exportForm.day}/${exportForm.month}/${exportForm.year} (${monthLabel})`
   }
 
@@ -106,6 +128,10 @@ export const useReportExport = (transactions: Transaction[], userMetadata: Recor
     }
     if (exportForm.periodType === 'day' && !exportForm.day) {
       setExportFeedback('Selecione o dia para exportar.')
+      return
+    }
+    if (exportForm.periodType === 'monthRange' && exportForm.startDay > exportForm.endDay) {
+      setExportFeedback('Selecione um período com dia inicial menor ou igual ao dia final.')
       return
     }
 

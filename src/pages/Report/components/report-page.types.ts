@@ -13,10 +13,12 @@ export interface CreateFormState {
 
 export interface ExportFormState {
   fileName: string
-  periodType: 'year' | 'month' | 'day'
+  periodType: 'year' | 'month' | 'day' | 'monthRange'
   year: string
   month: string
   day: string
+  startDay: string
+  endDay: string
 }
 
 export interface ListFilterState {

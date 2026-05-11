@@ -42,6 +42,13 @@ export const getExportDateRange = (form: ExportFormState): { startDate: string; 
     return { startDate: `${form.year}-${form.month}-01`, endDate: getLastDayOfMonth(form.year, form.month) }
   }
 
+  if (form.periodType === 'monthRange') {
+    return {
+      startDate: `${form.year}-${form.month}-${form.startDay}`,
+      endDate: `${form.year}-${form.month}-${form.endDay}`
+    }
+  }
+
   const selectedDate = `${form.year}-${form.month}-${form.day}`
   return { startDate: selectedDate, endDate: selectedDate }
 }

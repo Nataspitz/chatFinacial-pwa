@@ -62,6 +62,7 @@ export const ExportReportModal = ({
         >
           <option value="year">Ano</option>
           <option value="month">Mês</option>
+          <option value="monthRange">Período do mês</option>
           <option value="day">Dia</option>
         </select>
       </label>
@@ -104,6 +105,32 @@ export const ExportReportModal = ({
               ))}
             </select>
           </label>
+        ) : null}
+
+        {form.periodType === 'monthRange' ? (
+          <>
+            <label className={styles.createField}>
+              <span>Dia inicial</span>
+              <select value={form.startDay} onChange={(event) => setForm((prev) => ({ ...prev, startDay: event.target.value }))}>
+                {dayOptions.map((day) => (
+                  <option key={day} value={day}>
+                    {day}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className={styles.createField}>
+              <span>Dia final</span>
+              <select value={form.endDay} onChange={(event) => setForm((prev) => ({ ...prev, endDay: event.target.value }))}>
+                {dayOptions.map((day) => (
+                  <option key={day} value={day}>
+                    {day}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </>
         ) : null}
       </div>
 
