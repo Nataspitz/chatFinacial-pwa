@@ -50,27 +50,30 @@ export const buildSlicesForMonth = (monthRef: string): SlicePlan[] => {
   const normalized = normalizeDate(monthRef)
   const [year, month] = normalized.split('-').map(Number)
   const lastDay = new Date(year, month, 0)
+  const nextMonthFirstDay = new Date(year, month, 1)
   const date = (day: number): string =>
     `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+  const formatLocalDate = (value: Date): string =>
+    `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, '0')}-${String(value.getDate()).padStart(2, '0')}`
 
   return [
     {
       auditSlice: 1,
       periodStart: date(1),
       periodEnd: date(10),
-      unlockAt: date(10)
+      unlockAt: date(11)
     },
     {
       auditSlice: 2,
       periodStart: date(11),
       periodEnd: date(20),
-      unlockAt: date(20)
+      unlockAt: date(21)
     },
     {
       auditSlice: 3,
       periodStart: date(21),
       periodEnd: date(lastDay.getDate()),
-      unlockAt: date(lastDay.getDate())
+      unlockAt: formatLocalDate(nextMonthFirstDay)
     }
   ]
 }
