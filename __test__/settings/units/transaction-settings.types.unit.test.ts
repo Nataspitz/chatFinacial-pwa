@@ -34,6 +34,8 @@ describe('transaction settings helpers', () => {
   it('retorna confirmado padrao por tipo', () => {
     expect(getDefaultConfirmedByType(DEFAULT_TRANSACTION_SETTINGS, 'entrada', '2026-04-17')).toBe(true)
     expect(getDefaultConfirmedByType(DEFAULT_TRANSACTION_SETTINGS, 'saida', '2026-04-17')).toBe(true)
+    expect(getDefaultConfirmedByType(DEFAULT_TRANSACTION_SETTINGS, 'entrada', '2999-01-01')).toBe(false)
+    expect(getDefaultConfirmedByType(DEFAULT_TRANSACTION_SETTINGS, 'saida', '2999-01-01')).toBe(false)
   })
 
   it('normaliza transacao nao credito para parcela unica', () => {

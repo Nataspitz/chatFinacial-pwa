@@ -92,6 +92,7 @@ export const useReportCreateTransaction = ({
     const transactionsToCreate: Transaction[] = amounts.map((amount, index) => {
       const date = isInstallment ? addMonthsKeepingDay(firstDate, index) : firstDate
       const transactionDate = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+      const isConfirmed = getDefaultConfirmedByType(transactionSettings, createForm.type, transactionDate)
       return {
         id: crypto.randomUUID(),
         type: createForm.type,
@@ -99,7 +100,8 @@ export const useReportCreateTransaction = ({
         date: transactionDate,
         category,
         description,
-        isConfirmed: getDefaultConfirmedByType(transactionSettings, createForm.type, transactionDate),
+        isConfirmed,
+        confirmedAt: isConfirmed ? new Date().toISOString() : null,
         isMonthlyCost: createForm.type === 'saida' ? createForm.isMonthlyCost && !isInstallment : false,
         paymentMethod: createForm.paymentMethod,
         installmentGroupId,

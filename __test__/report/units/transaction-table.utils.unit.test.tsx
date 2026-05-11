@@ -1,3 +1,4 @@
+import { isValidElement } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 import { formatPaymentMethod, getCategorySelectOptions, getConfirmedValue, getMonthlyCostValue } from '../../../src/pages/Report/components/transactionTable.utils'
 import type { Transaction } from '../../../src/types/transaction.types'
@@ -10,6 +11,7 @@ const baseTransaction: Transaction = {
   description: 'Despesa',
   date: '2026-04-17',
   isConfirmed: true,
+  confirmedAt: '2026-04-17T12:00:00.000Z',
   isMonthlyCost: true,
   paymentMethod: 'pix',
   installmentGroupId: null,
@@ -33,8 +35,8 @@ describe('transactionTable.utils', () => {
     expect(formatPaymentMethod('pix')).toBe('Pix')
   })
 
-  it('retorna valores textuais fora do modo de edicao', () => {
+  it('retorna valores fora do modo de edicao', () => {
     expect(getMonthlyCostValue(null, false, vi.fn(), baseTransaction)).toBe('Sim')
-    expect(getConfirmedValue(null, false, vi.fn(), baseTransaction)).toBe('Sim')
+    expect(isValidElement(getConfirmedValue(null, false, vi.fn(), baseTransaction))).toBe(true)
   })
 })

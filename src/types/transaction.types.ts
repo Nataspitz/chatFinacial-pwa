@@ -10,6 +10,7 @@ export interface Transaction {
   date: string
   createdAt?: string
   isConfirmed: boolean
+  confirmedAt?: string | null
   isMonthlyCost: boolean
   paymentMethod: PaymentMethod
   installmentGroupId: string | null

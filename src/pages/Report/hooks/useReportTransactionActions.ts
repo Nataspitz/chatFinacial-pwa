@@ -121,7 +121,8 @@ export const useReportTransactionActions = ({
     try {
       const confirmedTransaction: Transaction = {
         ...confirmCandidate,
-        isConfirmed: true
+        isConfirmed: true,
+        confirmedAt: new Date().toISOString()
       }
 
       if (isMonthlyCostOccurrenceEdit && originalTransaction) {

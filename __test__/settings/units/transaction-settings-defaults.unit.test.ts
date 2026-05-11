@@ -23,5 +23,7 @@ describe('Transaction settings defaults - unit', () => {
     expect(getDefaultPaymentMethodByType(DEFAULT_TRANSACTION_SETTINGS, 'saida')).toBe('pix')
     expect(getDefaultConfirmedByType(DEFAULT_TRANSACTION_SETTINGS, 'entrada', '2026-04-17')).toBe(true)
     expect(getDefaultConfirmedByType(DEFAULT_TRANSACTION_SETTINGS, 'saida', '2026-04-17')).toBe(true)
+    expect(getDefaultConfirmedByType(DEFAULT_TRANSACTION_SETTINGS, 'entrada', '2999-01-01')).toBe(false)
+    expect(getDefaultConfirmedByType(DEFAULT_TRANSACTION_SETTINGS, 'saida', '2999-01-01')).toBe(false)
   })
 })

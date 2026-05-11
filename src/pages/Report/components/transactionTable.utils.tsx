@@ -1,6 +1,20 @@
 import type { Transaction } from '../../../types/transaction.types'
 import type { EditField } from './transactions-table.types'
 
+const normalizeDate = (value: string): string | null => value.match(/^\d{4}-\d{2}-\d{2}/)?.[0] ?? null
+
+const formatConfirmedAt = (value?: string | null): string => {
+  if (!value) return 'data nao registrada'
+
+  const normalized = normalizeDate(value)
+  if (normalized) {
+    const [year, month, day] = normalized.split('-').map(Number)
+    return new Intl.DateTimeFormat('pt-BR').format(new Date(year, month - 1, day))
+  }
+
+  return new Intl.DateTimeFormat('pt-BR').format(new Date(value))
+}
+
 export const getCategorySelectOptions = (
   categoryOptions: string[],
   currentCategory: string
@@ -46,7 +60,7 @@ export const getMonthlyCostValue = (
     return '-'
   }
 
-  return transaction.isMonthlyCost ? 'Sim' : 'Não'
+  return transaction.isMonthlyCost ? 'Sim' : 'Nao'
 }
 
 export const getConfirmedValue = (
@@ -57,13 +71,21 @@ export const getConfirmedValue = (
 ): JSX.Element | string => {
   if (isEditing && editingDraft) {
     return (
-      <input
-        type="checkbox"
-        checked={editingDraft.isConfirmed}
-        onChange={(event) => onEditChange('isConfirmed', event.target.checked)}
-      />
+      <span>
+        <input
+          type="checkbox"
+          checked={editingDraft.isConfirmed}
+          onChange={(event) => onEditChange('isConfirmed', event.target.checked)}
+        />
+        {editingDraft.isConfirmed ? <small>Confirmada em {formatConfirmedAt(editingDraft.confirmedAt)}</small> : null}
+      </span>
     )
   }
 
-  return transaction.isConfirmed ? 'Sim' : 'Não'
+  return transaction.isConfirmed ? (
+    <span>
+      Sim
+      <small>Confirmada em {formatConfirmedAt(transaction.confirmedAt)}</small>
+    </span>
+  ) : 'Nao'
 }

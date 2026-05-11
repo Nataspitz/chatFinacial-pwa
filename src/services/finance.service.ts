@@ -12,6 +12,7 @@ interface TransactionRow {
   date: string
   created_at: string | null
   is_confirmed: boolean
+  confirmed_at?: string | null
   is_monthly_cost: boolean
   payment_method: PaymentMethod
   installment_group_id: string | null
@@ -42,7 +43,7 @@ export interface CategoryItem {
 }
 
 const TRANSACTION_FIELDS =
-  'id, type, category, amount, description, date, created_at, is_confirmed, is_monthly_cost, payment_method, installment_group_id, installment_number, installment_count, total_amount, is_installment, deleted_at'
+  'id, type, category, amount, description, date, created_at, is_confirmed, confirmed_at, is_monthly_cost, payment_method, installment_group_id, installment_number, installment_count, total_amount, is_installment, deleted_at'
 const TRANSACTION_FIELDS_WITH_MONTHLY_END_DATE = TRANSACTION_FIELDS.replace(', deleted_at', ', monthly_end_date, deleted_at')
 const TRANSACTION_FIELDS_WITHOUT_DELETED_AT = TRANSACTION_FIELDS.replace(', deleted_at', '')
 const TRANSACTION_FIELDS_WITH_MONTHLY_END_DATE_WITHOUT_DELETED_AT = TRANSACTION_FIELDS_WITH_MONTHLY_END_DATE.replace(', deleted_at', '')
@@ -70,6 +71,23 @@ const getTodayDate = (): string => {
 const getDefaultConfirmedByDate = (dateValue: string): boolean => {
   const normalizedDate = normalizeDate(dateValue)
   return normalizedDate <= getTodayDate()
+}
+
+const getConfirmationTimestamp = (transaction: Transaction): string | null => {
+  if (!transaction.isConfirmed) return null
+  return transaction.confirmedAt ?? new Date().toISOString()
+}
+
+const normalizeTransactionForCreate = (transaction: Transaction): Transaction => {
+  const date = normalizeDate(transaction.date)
+  const isConfirmed = date <= getTodayDate()
+
+  return {
+    ...transaction,
+    date,
+    isConfirmed,
+    confirmedAt: isConfirmed ? transaction.confirmedAt ?? new Date().toISOString() : null
+  }
 }
 
 const formatCurrency = (value: number): string =>
@@ -272,6 +290,7 @@ const mapRow = (row: TransactionRow): Transaction => ({
   date: normalizeDate(row.date),
   createdAt: row.created_at ?? undefined,
   isConfirmed: Boolean(row.is_confirmed),
+  confirmedAt: row.confirmed_at ?? null,
   isMonthlyCost: Boolean(row.is_monthly_cost),
   paymentMethod: normalizePaymentMethod(row.payment_method),
   installmentGroupId: row.installment_group_id,
@@ -291,6 +310,7 @@ const toInsertPayload = (transaction: Transaction, userId: string): Record<strin
   description: transaction.description,
   date: normalizeDate(transaction.date),
   is_confirmed: transaction.isConfirmed,
+  confirmed_at: getConfirmationTimestamp(transaction),
   is_monthly_cost: transaction.type === 'saida' ? transaction.isMonthlyCost : false,
   payment_method: transaction.paymentMethod,
   installment_group_id: transaction.installmentGroupId,
@@ -586,7 +606,7 @@ export const financeService = {
     assertFinancialPeriodUnlocked(transactions.map((item) => item.date))
 
     const userId = await getUserId()
-    const payload = transactions.map((item) => toInsertPayload(item, userId))
+    const payload = transactions.map((item) => toInsertPayload(normalizeTransactionForCreate(item), userId))
     await insertTransactionsWithFallback(payload)
   },
 
@@ -602,6 +622,7 @@ export const financeService = {
       description: transaction.description,
       date: normalizeDate(transaction.date),
       is_confirmed: transaction.isConfirmed,
+      confirmed_at: getConfirmationTimestamp(transaction),
       is_monthly_cost: transaction.type === 'saida' ? transaction.isMonthlyCost : false,
       payment_method: transaction.paymentMethod,
       installment_group_id: transaction.installmentGroupId,

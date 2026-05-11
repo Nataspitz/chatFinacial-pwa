@@ -1,5 +1,12 @@
 import type { PaymentMethod, Transaction } from './transaction.types'
 
+const normalizeDate = (value: string): string => value.match(/^\d{4}-\d{2}-\d{2}/)?.[0] ?? value
+
+const getTodayDate = (): string => {
+  const now = new Date()
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+}
+
 export interface TransactionSettings {
   defaultPaymentMethodEntrada: PaymentMethod
   defaultPaymentMethodSaida: PaymentMethod
@@ -26,10 +33,10 @@ export const getDefaultPaymentMethodByType = (
 ): PaymentMethod => (type === 'entrada' ? settings.defaultPaymentMethodEntrada : settings.defaultPaymentMethodSaida)
 
 export const getDefaultConfirmedByType = (
-  settings: TransactionSettings,
-  type: Transaction['type'],
-  _date: string
-): boolean => (type === 'entrada' ? settings.defaultConfirmedEntrada : settings.defaultConfirmedSaida)
+  _settings: TransactionSettings,
+  _type: Transaction['type'],
+  date: string
+): boolean => normalizeDate(date) <= getTodayDate()
 
 export const normalizeTransactionBySettings = (
   transaction: Transaction,
