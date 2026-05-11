@@ -21,6 +21,7 @@ interface FinancialAuditRow {
 }
 
 const MANDATORY_AUDIT_START_MONTH = '2026-05-01'
+const CERTIFICATE_BUCKET = 'financial-audit-certificates'
 
 const normalizeDate = (value: string): string => value.match(/^\d{4}-\d{2}-\d{2}/)?.[0] ?? value
 
@@ -62,6 +63,23 @@ const getUserId = async (): Promise<string> => {
   return data.user.id
 }
 
+const readCertificatePayload = async (file: File): Promise<Record<string, unknown>> => {
+  const text = await file.text()
+  let parsed: unknown
+
+  try {
+    parsed = JSON.parse(text) as unknown
+  } catch {
+    throw new Error('Certificado invalido. Envie um arquivo JSON valido.')
+  }
+
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    throw new Error('Certificado invalido. Envie um arquivo JSON valido.')
+  }
+
+  return parsed as Record<string, unknown>
+}
+
 export const financialAuditService = {
   mandatoryStartMonth: MANDATORY_AUDIT_START_MONTH,
 
@@ -101,5 +119,46 @@ export const financialAuditService = {
     }
 
     return ((data ?? []) as FinancialAuditRow[]).map(mapRow)
+  },
+
+  confirmAuditSliceWithCertificate: async (audit: Pick<FinancialAudit, 'monthRef' | 'auditSlice'>, file: File): Promise<FinancialAudit> => {
+    if (file.type && file.type !== 'application/json') {
+      throw new Error('Certificado invalido. Envie um arquivo JSON.')
+    }
+
+    const userId = await getUserId()
+    const certificatePayload = await readCertificatePayload(file)
+    const certificateMimeType = 'application/json'
+    const monthKey = normalizeDate(audit.monthRef).slice(0, 7)
+    const certificatePath = `${userId}/${monthKey}/slice-${audit.auditSlice}.json`
+
+    const { error: uploadError } = await supabase.storage
+      .from(CERTIFICATE_BUCKET)
+      .upload(certificatePath, file, {
+        contentType: certificateMimeType,
+        upsert: true
+      })
+
+    if (uploadError) {
+      throw uploadError
+    }
+
+    const { data, error } = await supabase
+      .rpc('confirm_financial_audit_slice', {
+        p_month: normalizeDate(audit.monthRef),
+        p_audit_slice: audit.auditSlice,
+        p_certificate_bucket: CERTIFICATE_BUCKET,
+        p_certificate_path: certificatePath,
+        p_certificate_mime_type: certificateMimeType,
+        p_certificate_size_bytes: file.size,
+        p_certificate_payload: certificatePayload
+      })
+      .single()
+
+    if (error) {
+      throw error
+    }
+
+    return mapRow(data as FinancialAuditRow)
   }
 }

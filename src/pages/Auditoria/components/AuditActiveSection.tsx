@@ -10,6 +10,8 @@ interface AuditActiveSectionProps {
   isActiveMonthMandatory: boolean
   activeSlices: AuditSliceCardItem[]
   upcomingMandatorySlices: AuditSliceCardItem[]
+  uploadingCertificateKey: string | null
+  onUploadCertificate: (item: AuditSliceCardItem, file: File) => void
 }
 
 export const AuditActiveSection = ({
@@ -17,7 +19,9 @@ export const AuditActiveSection = ({
   mandatoryMonth,
   isActiveMonthMandatory,
   activeSlices,
-  upcomingMandatorySlices
+  upcomingMandatorySlices,
+  uploadingCertificateKey,
+  onUploadCertificate
 }: AuditActiveSectionProps): JSX.Element => (
   <section className={styles.section}>
     <header className={styles.sectionHeader}>
@@ -28,7 +32,12 @@ export const AuditActiveSection = ({
     {isActiveMonthMandatory ? (
       <div className={styles.cardGrid}>
         {activeSlices.map((item) => (
-          <AuditCard key={item.key} item={item} />
+          <AuditCard
+            key={item.key}
+            item={item}
+            isUploading={uploadingCertificateKey === item.key}
+            onUploadCertificate={onUploadCertificate}
+          />
         ))}
       </div>
     ) : (

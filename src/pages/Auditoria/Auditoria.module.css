@@ -160,6 +160,45 @@
   flex-shrink: 0;
 }
 
+.uploadCertificateButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: 38px;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-md);
+  border: 1px solid color-mix(in srgb, var(--brand-500) 48%, var(--border-color));
+  background: color-mix(in srgb, var(--brand-500) 12%, var(--bg-secondary));
+  color: color-mix(in srgb, var(--brand-700) 92%, var(--text-primary));
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.uploadCertificateButton:hover {
+  border-color: color-mix(in srgb, var(--brand-500) 72%, var(--border-color));
+  background: color-mix(in srgb, var(--brand-500) 18%, var(--bg-secondary));
+}
+
+.uploadCertificateButton input {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.disabledAction {
+  opacity: 0.56;
+  cursor: not-allowed;
+}
+
+.disabledAction:hover {
+  border-color: color-mix(in srgb, var(--brand-500) 48%, var(--border-color));
+  background: color-mix(in srgb, var(--brand-500) 12%, var(--bg-secondary));
+}
+
 .badge {
   display: inline-flex;
   align-items: center;

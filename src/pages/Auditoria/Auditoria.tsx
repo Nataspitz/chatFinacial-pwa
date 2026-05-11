@@ -15,9 +15,12 @@ export const Auditoria = (): JSX.Element => {
     isActiveMonthMandatory,
     isLoading,
     error,
+    certificateFeedback,
+    uploadingCertificateKey,
     activeSlices,
     upcomingMandatorySlices,
-    historyByMonth
+    historyByMonth,
+    handleUploadCertificate
   } = useAuditoriaData()
 
   return (
@@ -42,6 +45,7 @@ export const Auditoria = (): JSX.Element => {
 
       {isLoading ? <p className={styles.stateMessage}>Carregando auditorias...</p> : null}
       {!isLoading && error ? <p className={styles.errorMessage}>{error}</p> : null}
+      {!isLoading && certificateFeedback ? <p className={styles.stateMessage}>{certificateFeedback}</p> : null}
 
       {!isLoading && !error ? (
         <>
@@ -51,6 +55,8 @@ export const Auditoria = (): JSX.Element => {
             isActiveMonthMandatory={isActiveMonthMandatory}
             activeSlices={activeSlices}
             upcomingMandatorySlices={upcomingMandatorySlices}
+            uploadingCertificateKey={uploadingCertificateKey}
+            onUploadCertificate={(item, file) => void handleUploadCertificate(item, file)}
           />
           <AuditHistorySection historyByMonth={historyByMonth} />
         </>

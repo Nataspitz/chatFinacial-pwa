@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { financialAuditService } from '../../../services/financial-audit.service'
 import type { FinancialAudit } from '../../../types/financial-audit.types'
+import type { AuditSliceCardItem } from '../auditoria.utils'
 import {
   buildAuditHistory,
   mapAuditSlices,
@@ -10,6 +11,8 @@ import {
 export const useAuditoriaData = () => {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState('')
+  const [certificateFeedback, setCertificateFeedback] = useState('')
+  const [uploadingCertificateKey, setUploadingCertificateKey] = useState<string | null>(null)
   const [activeAudits, setActiveAudits] = useState<FinancialAudit[]>([])
   const [historyAudits, setHistoryAudits] = useState<FinancialAudit[]>([])
 
@@ -17,26 +20,50 @@ export const useAuditoriaData = () => {
   const mandatoryMonth = financialAuditService.mandatoryStartMonth
   const isActiveMonthMandatory = financialAuditService.isMonthMandatory(activeMonth)
 
-  useEffect(() => {
-    void (async () => {
-      setIsLoading(true)
-      setError('')
+  const loadAudits = useCallback(async (): Promise<void> => {
+    setIsLoading(true)
+    setError('')
 
-      try {
-        const activePromise = isActiveMonthMandatory
-          ? financialAuditService.ensureAuditsForMonth(activeMonth)
-          : Promise.resolve([])
+    try {
+      const activePromise = isActiveMonthMandatory
+        ? financialAuditService.ensureAuditsForMonth(activeMonth)
+        : Promise.resolve([])
 
-        const [activeRows, historyRows] = await Promise.all([activePromise, financialAuditService.getHistory()])
-        setActiveAudits(activeRows)
-        setHistoryAudits(historyRows)
-      } catch {
-        setError('Não foi possível carregar a visão de auditoria.')
-      } finally {
-        setIsLoading(false)
-      }
-    })()
+      const [activeRows, historyRows] = await Promise.all([activePromise, financialAuditService.getHistory()])
+      setActiveAudits(activeRows)
+      setHistoryAudits(historyRows)
+    } catch {
+      setError('Nao foi possivel carregar a visao de auditoria.')
+    } finally {
+      setIsLoading(false)
+    }
   }, [activeMonth, isActiveMonthMandatory])
+
+  useEffect(() => {
+    void loadAudits()
+  }, [loadAudits])
+
+  const handleUploadCertificate = async (item: AuditSliceCardItem, file: File): Promise<void> => {
+    setCertificateFeedback('')
+    setUploadingCertificateKey(item.key)
+
+    try {
+      await financialAuditService.confirmAuditSliceWithCertificate(
+        {
+          monthRef: item.monthRef,
+          auditSlice: item.auditSlice
+        },
+        file
+      )
+      setCertificateFeedback('Certificado enviado e auditoria confirmada.')
+      await loadAudits()
+    } catch (uploadError) {
+      const message = uploadError instanceof Error && uploadError.message ? uploadError.message : 'Nao foi possivel enviar o certificado.'
+      setCertificateFeedback(message)
+    } finally {
+      setUploadingCertificateKey(null)
+    }
+  }
 
   const activeSlices = useMemo(
     () => (isActiveMonthMandatory ? mapAuditSlices(activeAudits) : []),
@@ -56,8 +83,11 @@ export const useAuditoriaData = () => {
     isActiveMonthMandatory,
     isLoading,
     error,
+    certificateFeedback,
+    uploadingCertificateKey,
     activeSlices,
     upcomingMandatorySlices,
-    historyByMonth
+    historyByMonth,
+    handleUploadCertificate
   }
 }

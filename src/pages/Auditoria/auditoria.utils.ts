@@ -20,11 +20,15 @@ export interface HistoryMonthItem {
 
 export interface AuditSliceCardItem {
   key: string
+  monthRef: string
+  auditSlice: 1 | 2 | 3
   sliceLabel: string
   periodLabel: string
   unlockLabel: string
   statusLabel: string
   tone: Extract<HistoryStateTone, 'pending' | 'confirmed'>
+  status: FinancialAudit['status']
+  canUploadCertificate: boolean
 }
 
 export const APRIL_2026 = '2026-04-01'
@@ -44,6 +48,11 @@ export const formatMonthLabel = (monthRef: string): string => {
   const [year, month] = normalized.split('-').map(Number)
   const local = new Date(year, month - 1, 1)
   return new Intl.DateTimeFormat('pt-BR', { month: 'long', year: 'numeric' }).format(local)
+}
+
+const getTodayDate = (): string => {
+  const now = new Date()
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
 }
 
 export const buildSlicesForMonth = (monthRef: string): SlicePlan[] => {
@@ -84,21 +93,29 @@ export const mapAuditSlices = (audits: FinancialAudit[]): AuditSliceCardItem[] =
     .sort((a, b) => a.auditSlice - b.auditSlice)
     .map((item) => ({
       key: `${item.monthRef}-${item.auditSlice}`,
+      monthRef: item.monthRef,
+      auditSlice: item.auditSlice,
       sliceLabel: `${item.auditSlice}/3`,
       periodLabel: `${formatDate(item.periodStart)} até ${formatDate(item.periodEnd)}`,
       unlockLabel: formatDate(item.unlockAt),
       statusLabel: item.status === 'confirmed' ? 'Confirmada' : 'Pendente',
-      tone: item.status === 'confirmed' ? 'confirmed' : 'pending'
+      tone: item.status === 'confirmed' ? 'confirmed' : 'pending',
+      status: item.status,
+      canUploadCertificate: item.status === 'pending' && normalizeDate(item.unlockAt) <= getTodayDate()
     }))
 
 export const mapUpcomingMandatorySlices = (mandatoryMonth: string): AuditSliceCardItem[] =>
   buildSlicesForMonth(mandatoryMonth).map((slice) => ({
     key: `${mandatoryMonth}-${slice.auditSlice}`,
+    monthRef: mandatoryMonth,
+    auditSlice: slice.auditSlice,
     sliceLabel: `${slice.auditSlice}/3`,
     periodLabel: `${formatDate(slice.periodStart)} até ${formatDate(slice.periodEnd)}`,
     unlockLabel: formatDate(slice.unlockAt),
     statusLabel: 'Obrigatória',
-    tone: 'pending'
+    tone: 'pending',
+    status: 'pending',
+    canUploadCertificate: false
   }))
 
 export const buildAuditHistory = (historyAudits: FinancialAudit[]): HistoryMonthItem[] => {
