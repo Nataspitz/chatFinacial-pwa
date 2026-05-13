@@ -64,7 +64,7 @@ export const DashboardContent = ({
 
   return (
     <div className={styles.layout}>
-      <SectionContainer title="Resumo executivo" description={`Periodo selecionado: ${periodLabel}`}>
+      <SectionContainer title="Resumo executivo" description={`Período selecionado: ${periodLabel}`}>
         <ExecutiveCards
           revenue={withPrivacyMask(formatCurrency(revenue))}
           expense={withPrivacyMask(formatCurrency(expense))}
@@ -77,7 +77,7 @@ export const DashboardContent = ({
 
       <SectionContainer
         title="Visao geral de desempenho"
-        description="Saldo em conta por periodo (acumulado), sem considerar lancamentos futuros."
+        description="Saldo em conta por período (acumulado), sem considerar lançamentos futuros."
       >
         <PerformanceOverviewChart
           currentYear={performanceOverviewCurrentYear}
@@ -87,11 +87,11 @@ export const DashboardContent = ({
       </SectionContainer>
 
       <div className={styles.twoColumns}>
-        <SectionContainer title="Evolucao da receita" description="Faturamento por periodo (mes ou ano).">
+        <SectionContainer title="Evolução da receita" description="Faturamento por período (mês ou ano).">
           <GrowthLineChart data={lineSeries} />
         </SectionContainer>
 
-        <SectionContainer title="Receita vs despesa" description="Comparativo do periodo selecionado.">
+        <SectionContainer title="Receita vs despesa" description="Comparativo do período selecionado.">
           <RevenueExpenseBarChart revenue={revenue} expense={expense} label={periodLabel} />
         </SectionContainer>
       </div>
@@ -103,7 +103,7 @@ export const DashboardContent = ({
           expenseGrowth={withPrivacyMask(formatPercent(healthSnapshot.expenseGrowth))}
           trend={healthSnapshot.trend}
           expenseGrowingFaster={
-            healthSnapshot.expenseGrowingFaster === null ? 'N/D' : healthSnapshot.expenseGrowingFaster ? 'Sim' : 'Nao'
+            healthSnapshot.expenseGrowingFaster === null ? 'N/D' : healthSnapshot.expenseGrowingFaster ? 'Sim' : 'Não'
           }
         />
       </SectionContainer>
@@ -111,7 +111,7 @@ export const DashboardContent = ({
       <div className={styles.twoColumns}>
         <SectionContainer title="ROI e acumulado" description="Base para estrategia de investimento.">
           {businessSettingsFailed ? (
-            <p className={styles.roiFallback}>Nao foi possivel carregar as configuracoes empresariais no momento.</p>
+            <p className={styles.roiFallback}>Não foi possível carregar as configurações empresariais no momento.</p>
           ) : null}
 
           <RoiSection
@@ -121,7 +121,7 @@ export const DashboardContent = ({
           />
         </SectionContainer>
 
-        <SectionContainer title="Tendencia e direcao" description="Leitura rapida de aceleracao ou desaceleracao.">
+        <SectionContainer title="Tendência e direção" description="Leitura rápida de aceleração ou desaceleração.">
           <TrendIndicators variation={variationPercent} trend={healthSnapshot.trend} valuesVisible={valuesVisible} />
         </SectionContainer>
       </div>

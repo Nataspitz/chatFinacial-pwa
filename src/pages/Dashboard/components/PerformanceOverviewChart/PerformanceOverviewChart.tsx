@@ -57,8 +57,8 @@ const PerformanceTooltip = ({ active, payload, label }: TooltipProps<ValueType, 
       <span>Saldo em conta: {formatCurrency(point.cumulativeProfit)}</span>
       <span style={{ color: delta === null ? 'var(--text-secondary)' : isPositive ? '#16a34a' : '#ef4444' }}>
         {delta === null
-          ? 'Resultado vs mes anterior: sem base'
-          : `Resultado vs mes anterior: ${isPositive ? '+' : '-'}${formatCurrency(Math.abs(delta))}`}
+          ? 'Resultado vs mês anterior: sem base'
+          : `Resultado vs mês anterior: ${isPositive ? '+' : '-'}${formatCurrency(Math.abs(delta))}`}
       </span>
     </div>
   )
@@ -83,12 +83,12 @@ export const PerformanceOverviewChart = ({
   )
 
   if (chartData.length === 0) {
-    return <p className={styles.empty}>Sem dados para montar a visao de desempenho.</p>
+    return <p className={styles.empty}>Sem dados para montar a visão de desempenho.</p>
   }
 
   return (
     <div className={styles.wrapper}>
-      <div className={styles.scopeToggle} role="group" aria-label="Filtro da visao de desempenho">
+      <div className={styles.scopeToggle} role="group" aria-label="Filtro da visão de desempenho">
         <button
           type="button"
           className={scope === 'current_year' ? `${styles.scopeButton} ${styles.scopeButtonActive}` : styles.scopeButton}
@@ -101,7 +101,7 @@ export const PerformanceOverviewChart = ({
           className={scope === 'total_annual' ? `${styles.scopeButton} ${styles.scopeButtonActive}` : styles.scopeButton}
           onClick={() => setScope('total_annual')}
         >
-          Periodo total (anual)
+          Período total (anual)
         </button>
       </div>
 

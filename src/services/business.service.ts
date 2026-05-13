@@ -152,7 +152,7 @@ const selectBusinessSettingsRowWithFallback = async (userId: string): Promise<Bu
     workingColumns = nextColumns
   }
 
-  throw new Error('Nao foi possivel carregar configuracoes empresariais por incompatibilidade de schema.')
+  throw new Error('Não foi possível carregar configurações empresariais por incompatibilidade de schema.')
 }
 
 const insertBusinessSettingsRowWithFallback = async (
@@ -198,7 +198,7 @@ const insertBusinessSettingsRowWithFallback = async (
     }
   }
 
-  throw new Error('Nao foi possivel criar configuracoes empresariais por incompatibilidade de schema.')
+  throw new Error('Não foi possível criar configurações empresariais por incompatibilidade de schema.')
 }
 
 const upsertBusinessSettingsRowWithFallback = async (
@@ -245,7 +245,7 @@ const upsertBusinessSettingsRowWithFallback = async (
     }
   }
 
-  throw new Error('Nao foi possivel salvar configuracoes empresariais por incompatibilidade de schema.')
+  throw new Error('Não foi possível salvar configurações empresariais por incompatibilidade de schema.')
 }
 
 const getUserId = async (): Promise<string> => {
@@ -255,7 +255,7 @@ const getUserId = async (): Promise<string> => {
   }
 
   if (!data.user?.id) {
-    throw new Error('Usuario nao autenticado')
+    throw new Error('Usuário não autenticado')
   }
 
   return data.user.id

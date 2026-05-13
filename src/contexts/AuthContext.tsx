@@ -52,7 +52,7 @@ export const AuthProvider = ({ children }: PropsWithChildren): JSX.Element => {
 
   const signUp = async (email: string, password: string): Promise<void> => {
     if (!isSupabaseConfigured) {
-      throw new Error('Supabase nao configurado no ambiente.')
+      throw new Error('Supabase não configurado no ambiente.')
     }
 
     const { error } = await supabase.auth.signUp({ email, password })
@@ -63,7 +63,7 @@ export const AuthProvider = ({ children }: PropsWithChildren): JSX.Element => {
 
   const signIn = async (email: string, password: string): Promise<void> => {
     if (!isSupabaseConfigured) {
-      throw new Error('Supabase nao configurado no ambiente.')
+      throw new Error('Supabase não configurado no ambiente.')
     }
 
     const { error } = await supabase.auth.signInWithPassword({ email, password })
@@ -74,7 +74,7 @@ export const AuthProvider = ({ children }: PropsWithChildren): JSX.Element => {
 
   const signOut = async (): Promise<void> => {
     if (!isSupabaseConfigured) {
-      throw new Error('Supabase nao configurado no ambiente.')
+      throw new Error('Supabase não configurado no ambiente.')
     }
 
     const { error } = await supabase.auth.signOut()

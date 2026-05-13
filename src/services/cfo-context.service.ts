@@ -206,8 +206,8 @@ const buildAlerts = (
   if (totals.profit < 0) {
     alerts.push({
       code: 'negative_profit',
-      title: 'Lucro negativo no periodo',
-      description: 'As despesas do periodo superaram as receitas.',
+      title: 'Lucro negativo no período',
+      description: 'As despesas do período superaram as receitas.',
       severity: 'critical'
     })
   }
@@ -216,7 +216,7 @@ const buildAlerts = (
     alerts.push({
       code: 'expense_over_revenue',
       title: 'Despesa acima da receita',
-      description: 'A operacao atual esta consumindo mais caixa do que gera.',
+      description: 'A operação atual está consumindo mais caixa do que gera.',
       severity: 'critical'
     })
   }
@@ -225,7 +225,7 @@ const buildAlerts = (
     alerts.push({
       code: 'expense_growth_over_revenue_growth',
       title: 'Despesa crescendo mais que receita',
-      description: 'A velocidade de crescimento de custos esta maior que a de faturamento.',
+      description: 'A velocidade de crescimento de custos está maior que a de faturamento.',
       severity: 'warning'
     })
   }
@@ -234,8 +234,8 @@ const buildAlerts = (
   if (currentProfit < previousProfit && previousProfit < olderProfit) {
     alerts.push({
       code: 'downward_profit_trend',
-      title: 'Tendencia de queda no lucro',
-      description: 'Os ultimos 3 periodos mostram deterioracao sequencial do resultado.',
+      title: 'Tendência de queda no lucro',
+      description: 'Os últimos 3 períodos mostram deterioração sequencial do resultado.',
       severity: 'warning'
     })
   }
@@ -253,7 +253,7 @@ const buildAlerts = (
     alerts.push({
       code: 'high_future_commitment',
       title: 'Comprometimento futuro elevado',
-      description: 'As saidas previstas para o horizonte estao maiores que a receita atual do periodo.',
+      description: 'As saídas previstas para o horizonte estão maiores que a receita atual do período.',
       severity: 'warning'
     })
   }

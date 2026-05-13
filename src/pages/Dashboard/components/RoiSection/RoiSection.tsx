@@ -17,7 +17,7 @@ export const RoiSection = ({ accumulatedProfit, roi, investmentConfigured }: Roi
         <p className={styles.label}>ROI</p>
         <strong className={styles.value}>{roi}</strong>
         {!investmentConfigured ? (
-          <small className={styles.hint}>Indisponivel: investimento base ainda nao configurado.</small>
+          <small className={styles.hint}>Indisponível: investimento base ainda não configurado.</small>
         ) : null}
       </article>
     </div>

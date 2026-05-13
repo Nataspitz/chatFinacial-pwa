@@ -24,7 +24,7 @@ interface ReportTransactionsGridProps {
   isSavingEdit: boolean
   formatCurrency: (value: number) => string
   formatDate: (value: string) => string
-  onDelete: (id: string) => Promise<void>
+  onDelete: (transaction: Transaction) => Promise<void>
   onConfirmStart: (transaction: Transaction) => void
   onDuplicate: (transaction: Transaction) => void
   onEditStart: (transaction: Transaction) => void

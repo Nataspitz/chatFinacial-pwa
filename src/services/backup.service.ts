@@ -405,7 +405,7 @@ const restoreStructuredBackup = async (bundle: BackupFolderBundle): Promise<{
         await transactionSettingsService.saveSettings(settings)
         restoredTransactionSettings = true
       } catch {
-        warnings.push('Nao foi possivel restaurar as configuracoes de transacoes.')
+        warnings.push('Não foi possível restaurar as configurações de transações.')
       }
     }
   }
@@ -423,7 +423,7 @@ const restoreStructuredBackup = async (bundle: BackupFolderBundle): Promise<{
         })
         restoredBusinessSettings = true
       } catch {
-        warnings.push('Nao foi possivel restaurar as configuracoes de saldo inicial.')
+        warnings.push('Não foi possível restaurar as configurações de saldo inicial.')
       }
     }
   }
@@ -442,11 +442,11 @@ const parseLegacyBackupContent = (rawContent: string): BackupFolderBundle => {
   try {
     parsedJson = JSON.parse(rawContent) as unknown
   } catch {
-    throw new Error('Arquivo de backup invalido.')
+    throw new Error('Arquivo de backup inválido.')
   }
 
   if (!isLegacyBackupFile(parsedJson)) {
-    throw new Error('Arquivo de backup invalido.')
+    throw new Error('Arquivo de backup inválido.')
   }
 
   return {
@@ -603,11 +603,11 @@ export const backupService = {
     try {
       metadataContent = JSON.parse(await metadataFile.text()) as unknown
     } catch {
-      throw new Error('Arquivo metadata.json invalido.')
+      throw new Error('Arquivo metadata.json inválido.')
     }
 
     if (!isBackupFolderMetadata(metadataContent)) {
-      throw new Error('Arquivo metadata.json invalido.')
+      throw new Error('Arquivo metadata.json inválido.')
     }
 
     const parseJsonFile = async <T>(fileName: string, fallbackValue: T): Promise<T> => {

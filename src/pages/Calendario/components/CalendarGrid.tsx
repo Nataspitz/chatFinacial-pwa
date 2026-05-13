@@ -42,7 +42,7 @@ export const CalendarGrid = ({
           >
             <span className={styles.dayNumber}>{cell.date.getDate()}</span>
             {cell.totals.entrada > 0 && <span className={styles.entrada}>Entradas: {formatCurrency(cell.totals.entrada)}</span>}
-            {cell.totals.saida > 0 && <span className={styles.saida}>Saidas: {formatCurrency(cell.totals.saida)}</span>}
+            {cell.totals.saida > 0 && <span className={styles.saida}>Saídas: {formatCurrency(cell.totals.saida)}</span>}
           </article>
         ))}
       </div>

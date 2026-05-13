@@ -42,7 +42,7 @@ export const AuditActiveSection = ({
           ))}
         </div>
       ) : (
-        <p className={styles.stateMessage}>Todas as auditorias liberadas deste mes ja foram concluidas.</p>
+        <p className={styles.stateMessage}>Todas as auditorias liberadas deste mês já foram concluídas.</p>
       )
     ) : (
       <div className={styles.preMandatoryWrap}>

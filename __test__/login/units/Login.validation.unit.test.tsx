@@ -38,7 +38,7 @@ describe('Login - unit validation/error states', () => {
 
     renderLogin()
 
-    expect(screen.getByText('Carregando sessao...')).toBeInTheDocument()
+    expect(screen.getByText('Carregando sessão...')).toBeInTheDocument()
   })
 
   it('validates empty credentials before calling signin', async () => {
@@ -49,7 +49,7 @@ describe('Login - unit validation/error states', () => {
     renderLogin()
     await user.click(screen.getByRole('button', { name: 'Entrar' }))
 
-    expect(screen.getByText('Preencha email e senha para continuar.')).toBeInTheDocument()
+    expect(screen.getByText('Preencha e-mail e senha para continuar.')).toBeInTheDocument()
     expect(authState.signIn).not.toHaveBeenCalled()
     expect(authState.signUp).not.toHaveBeenCalled()
   })
@@ -62,11 +62,11 @@ describe('Login - unit validation/error states', () => {
     const user = userEvent.setup()
 
     renderLogin()
-    await user.type(screen.getByLabelText('Email'), 'user@test.com')
+    await user.type(screen.getByLabelText('E-mail'), 'user@test.com')
     await user.type(screen.getByLabelText('Senha'), 'invalid-pass')
     await user.click(screen.getByRole('button', { name: 'Entrar' }))
 
-    expect(await screen.findByText('Email ou senha invalidos.')).toBeInTheDocument()
+    expect(await screen.findByText('E-mail ou senha inválidos.')).toBeInTheDocument()
     expect(authState.signIn).toHaveBeenCalledTimes(1)
   })
 })

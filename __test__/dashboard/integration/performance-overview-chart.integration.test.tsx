@@ -27,13 +27,13 @@ describe('PerformanceOverviewChart - integration', () => {
     expect(initialData[0]?.deltaFromPrevious).toBeNull()
     expect(initialData[1]?.deltaFromPrevious).toBe(-200)
     expect(screen.getByText('Saldo em conta: R$ 1000.00')).toBeInTheDocument()
-    expect(screen.getByText('Resultado vs mes anterior: sem base')).toBeInTheDocument()
+    expect(screen.getByText('Resultado vs mês anterior: sem base')).toBeInTheDocument()
 
     __rechartsMock.setTooltipPointIndex(1)
     rerender(<PerformanceOverviewChart currentYear={2026} currentYearData={currentYearData} totalAnnualData={[]} />)
 
     expect(screen.getByText('Saldo em conta: R$ 800.00')).toBeInTheDocument()
-    expect(screen.getByText('Resultado vs mes anterior: -R$ 200.00')).toBeInTheDocument()
+    expect(screen.getByText('Resultado vs mês anterior: -R$ 200.00')).toBeInTheDocument()
   })
 
   it('troca o escopo para periodo total anual com filtro interno do proprio card', async () => {
@@ -51,7 +51,7 @@ describe('PerformanceOverviewChart - integration', () => {
       />
     )
 
-    await user.click(screen.getByRole('button', { name: 'Periodo total (anual)' }))
+    await user.click(screen.getByRole('button', { name: 'Período total (anual)' }))
 
     const annualChartData = __rechartsMock.getLatestBarChartData()
     expect(annualChartData.map((item) => item.label)).toEqual(['2024', '2025'])

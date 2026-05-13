@@ -17,7 +17,7 @@ export const Dashboard = (): JSX.Element => {
       <PageTemplate className={styles.page}>
         <PageIntro
           title="Dashboard Executiva"
-          description="Acompanhamento de crescimento, margem, ROI e tendencias financeiras."
+          description="Acompanhamento de crescimento, margem, ROI e tendências financeiras."
           className={styles.pageHeader}
         />
         <DashboardSkeleton />
@@ -29,7 +29,7 @@ export const Dashboard = (): JSX.Element => {
     <PageTemplate className={styles.page}>
       <PageIntro
         title="Dashboard Executiva"
-        description="Crescimento, margem, ROI, tendencia e analise mensal/ anual em uma unica visao."
+        description="Crescimento, margem, ROI, tendência e análise mensal/anual em uma única visão."
         className={styles.pageHeader}
         action={
           <div className={styles.headerActions}>
@@ -78,8 +78,8 @@ export const Dashboard = (): JSX.Element => {
 
       {dashboard.shouldShowEmptyState ? (
         <section className={styles.emptyState}>
-          <h2>Nenhuma transacao encontrada</h2>
-          <p>Registre transacoes para visualizar crescimento, margem, ROI e tendencias.</p>
+          <h2>Nenhuma transação encontrada</h2>
+          <p>Registre transações para visualizar crescimento, margem, ROI e tendências.</p>
         </section>
       ) : null}
 

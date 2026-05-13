@@ -76,6 +76,104 @@
   padding: var(--space-2) var(--space-3);
 }
 
+.responseBlock {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.compactList {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.transactionItem {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--space-3);
+  align-items: center;
+  padding: var(--space-2);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--bg-primary) 72%, transparent);
+}
+
+.transactionItem div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.transactionItem strong,
+.transactionItem span {
+  overflow-wrap: anywhere;
+}
+
+.transactionItem span,
+.hintText,
+.draftCard span,
+.metricCard span {
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+}
+
+.draftCard,
+.metricGrid {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.draftCard {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.draftCard div,
+.metricCard {
+  display: grid;
+  gap: 2px;
+  padding: var(--space-2);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--bg-primary) 72%, transparent);
+}
+
+.metricGrid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.positiveValue {
+  color: var(--success-color);
+}
+
+.negativeValue {
+  color: var(--danger-color);
+}
+
+.actionButton,
+.actionButtonSecondary {
+  min-height: 32px;
+  border: 1px solid color-mix(in srgb, var(--brand-500) 70%, transparent);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-3);
+  color: #fff;
+  font: inherit;
+  font-size: var(--text-xs);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+}
+
+.actionButton {
+  background: var(--brand-600);
+}
+
+.actionButtonSecondary {
+  background: transparent;
+  color: var(--text-primary);
+}
+
+.actionButton:disabled,
+.actionButtonSecondary:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
 .composer {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;

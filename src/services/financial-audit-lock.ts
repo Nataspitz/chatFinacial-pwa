@@ -1,5 +1,5 @@
 export const FINANCIAL_AUDIT_LOCK_MESSAGE =
-  'Periodo financeiro ja fechado pela auditoria. Transacoes em periodos auditados nao podem ser criadas, editadas ou removidas.'
+  'Período financeiro já fechado pela auditoria. Transações em períodos auditados não podem ser criadas, editadas ou removidas.'
 
 const normalizeDate = (value: string): string | null => value.match(/^\d{4}-\d{2}-\d{2}/)?.[0] ?? null
 

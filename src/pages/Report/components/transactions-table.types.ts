@@ -18,7 +18,7 @@ export interface TransactionsTableProps {
   emptyMessage?: string
   categoryOptions: string[]
   onConfirmStart: (transaction: Transaction) => void
-  onDelete: (id: string) => Promise<void>
+  onDelete: (transaction: Transaction) => Promise<void>
   onDuplicate: (transaction: Transaction) => void
   onEditStart: (transaction: Transaction) => void
   onEditCancel: () => void
@@ -40,7 +40,7 @@ export interface TransactionActionContext {
   confirmingId: string | null
   isSavingEdit: boolean
   onConfirmStart: (transaction: Transaction) => void
-  onDelete: (id: string) => Promise<void>
+  onDelete: (transaction: Transaction) => Promise<void>
   onDuplicate: (transaction: Transaction) => void
   onEditCancel: () => void
   onEditSave: () => Promise<void>

@@ -20,6 +20,7 @@ export const financeServiceMock = {
   saveTransactions: vi.fn(async () => undefined),
   updateTransaction: vi.fn(async () => undefined),
   updateMonthlyCostFromDate: vi.fn(async () => undefined),
+  endMonthlyCostFromDate: vi.fn(async () => undefined),
   deleteTransaction: vi.fn(async () => undefined),
   getDeletedTransactions: vi.fn(async () => []),
   restoreDeletedTransactions: vi.fn(async () => 0),

@@ -18,7 +18,7 @@ export const HealthIndicators = ({
   return (
     <div className={styles.grid}>
       <article className={styles.item}>
-        <p className={styles.label}>Media de lucro (3 periodos)</p>
+        <p className={styles.label}>Média de lucro (3 períodos)</p>
         <strong className={styles.value}>{averageProfitLast3}</strong>
       </article>
       <article className={styles.item}>
@@ -34,7 +34,7 @@ export const HealthIndicators = ({
         <strong className={styles.value}>{trend}</strong>
       </article>
       <article className={styles.item}>
-        <p className={styles.label}>Despesa cresce mais rapido?</p>
+        <p className={styles.label}>Despesa cresce mais rápido?</p>
         <strong className={styles.value}>{expenseGrowingFaster}</strong>
       </article>
     </div>

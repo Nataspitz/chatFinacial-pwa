@@ -1,10 +1,11 @@
 import type { Transaction } from '../../../types/transaction.types'
 import type { EditField } from './transactions-table.types'
+import styles from '../Report.module.css'
 
 const normalizeDate = (value: string): string | null => value.match(/^\d{4}-\d{2}-\d{2}/)?.[0] ?? null
 
 const formatConfirmedAt = (value?: string | null): string => {
-  if (!value) return 'data nao registrada'
+  if (!value) return 'data não registrada'
 
   const normalized = normalizeDate(value)
   if (normalized) {
@@ -60,7 +61,7 @@ export const getMonthlyCostValue = (
     return '-'
   }
 
-  return transaction.isMonthlyCost ? 'Sim' : 'Nao'
+  return transaction.isMonthlyCost ? 'Sim' : 'Não'
 }
 
 export const getConfirmedValue = (
@@ -71,21 +72,21 @@ export const getConfirmedValue = (
 ): JSX.Element | string => {
   if (isEditing && editingDraft) {
     return (
-      <span>
+      <span className={styles.confirmedValue}>
         <input
           type="checkbox"
           checked={editingDraft.isConfirmed}
           onChange={(event) => onEditChange('isConfirmed', event.target.checked)}
         />
-        {editingDraft.isConfirmed ? <small>Confirmada em {formatConfirmedAt(editingDraft.confirmedAt)}</small> : null}
+        {editingDraft.isConfirmed ? <small className={styles.confirmedDate}>{formatConfirmedAt(editingDraft.confirmedAt)}</small> : null}
       </span>
     )
   }
 
   return transaction.isConfirmed ? (
-    <span>
-      Sim
-      <small>Confirmada em {formatConfirmedAt(transaction.confirmedAt)}</small>
+    <span className={styles.confirmedValue}>
+      <span>Sim</span>
+      <small className={styles.confirmedDate}>{formatConfirmedAt(transaction.confirmedAt)}</small>
     </span>
-  ) : 'Nao'
+  ) : 'Não'
 }

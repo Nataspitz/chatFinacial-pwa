@@ -75,14 +75,14 @@ export const validateTransactionBySettings = (
 
   if (transaction.paymentMethod === 'credito') {
     if (!Number.isInteger(transaction.installmentCount) || transaction.installmentCount < 1 || transaction.installmentCount > 48) {
-      return 'Parcelas no credito devem ficar entre 1 e 48.'
+      return 'Parcelas no crédito devem ficar entre 1 e 48.'
     }
   } else if (transaction.installmentCount !== 1 || transaction.installmentNumber !== 1 || transaction.isInstallment) {
-    return 'Pagamento sem credito deve ter parcela unica.'
+    return 'Pagamento sem crédito deve ter parcela única.'
   }
 
   if (transaction.isMonthlyCost && (transaction.type !== 'saida' || transaction.isInstallment)) {
-    return 'Custo mensal so e permitido para saida sem parcelamento.'
+    return 'Custo mensal só é permitido para saída sem parcelamento.'
   }
 
   return null

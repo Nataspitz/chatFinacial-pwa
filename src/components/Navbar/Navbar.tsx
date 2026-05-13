@@ -22,7 +22,7 @@ export const Navbar = (): JSX.Element => {
           <span className={styles.brandIcon}>CF</span>
           <div>
             <strong className={styles.brandTitle}>ChatFinacial Mobile</strong>
-            <p className={styles.brandUser}>{`Ola, ${greetingLabel}`}</p>
+            <p className={styles.brandUser}>{`Olá, ${greetingLabel}`}</p>
           </div>
         </header>
 
@@ -49,14 +49,14 @@ export const Navbar = (): JSX.Element => {
           </NavLink>
           <NavLink to="/calendario" className={getLinkClassName}>
             <FiCalendar aria-hidden />
-            <span>Calendario</span>
+            <span>Calendário</span>
           </NavLink>
         </nav>
 
         <div className={styles.actions}>
           <NavLink to="/settings" className={getLinkClassName}>
             <FiSettings aria-hidden />
-            <span>Configuracoes</span>
+            <span>Configurações</span>
           </NavLink>
           <button type="button" className={`${styles.actionButton} ${styles.logoutButton}`} onClick={() => void signOut()}>
             <FiLogOut aria-hidden />
@@ -68,7 +68,7 @@ export const Navbar = (): JSX.Element => {
       <header className={styles.mobileTopBar}>
         <strong>ChatFinacial</strong>
         <div className={styles.mobileTopActions}>
-          <NavLink to="/settings" className={styles.iconButton} aria-label="Abrir configuracoes">
+          <NavLink to="/settings" className={styles.iconButton} aria-label="Abrir configurações">
             <FiSettings aria-hidden />
           </NavLink>
           <button type="button" className={styles.iconButton} onClick={() => void signOut()}>
@@ -100,7 +100,7 @@ export const Navbar = (): JSX.Element => {
         </NavLink>
         <NavLink to="/calendario" className={getMobileLinkClassName}>
           <FiCalendar aria-hidden />
-          <span>Calendario</span>
+          <span>Calendário</span>
         </NavLink>
       </nav>
     </>

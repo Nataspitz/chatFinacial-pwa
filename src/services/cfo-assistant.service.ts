@@ -79,21 +79,21 @@ const buildForecastReply = (snapshot: CfoFinancialSnapshot): string => {
     `Projecao de caixa (${snapshot.forecast.days} dias)`,
     `Inicial ${formatCurrency(snapshot.forecast.startingBalance)} | Final ${formatCurrency(snapshot.forecast.estimatedEndingBalance)}`,
     `Pior ponto: ${worstPoint ? `${formatCurrency(worstPoint.balance)} em ${worstPoint.date}` : 'N/D'}`,
-    `Acao: proteger caixa dos proximos 7 dias e reduzir saidas variaveis.`
+    `Ação: proteger caixa dos próximos 7 dias e reduzir saídas variáveis.`
   ].join('\n')
 }
 
 const buildCostReply = (snapshot: CfoFinancialSnapshot): string => {
   const top = snapshot.topExpenseCategories
   if (top.length === 0) {
-    return 'Nao encontrei despesas no periodo atual.'
+    return 'Não encontrei despesas no período atual.'
   }
 
   const topText = top.slice(0, 3).map((item) => `${item.category} ${formatCurrency(item.amount)}`).join(' | ')
   return [
     `Top despesas (${snapshot.period.label})`,
     topText,
-    'Acao: revisar as 2 maiores categorias primeiro.'
+    'Ação: revisar as 2 maiores categorias primeiro.'
   ].join('\n')
 }
 
@@ -124,8 +124,8 @@ const buildAnalysisReply = (analysisType: CfoAnalysisType, snapshot: CfoFinancia
         `Analise Horizontal (${snapshot.period.label})`,
         `Receita: ${formatPercent(snapshot.growth.revenue)} | Despesa: ${formatPercent(snapshot.growth.expense)}`,
         `Resultado: ${formatPercent(snapshot.growth.profit)}`,
-        'Leitura: acompanhe se despesa cresce mais rapido que receita.',
-        'Acao: limitar crescimento de custo nas 2 categorias principais.'
+        'Leitura: acompanhe se a despesa cresce mais rápido que a receita.',
+        'Ação: limitar crescimento de custo nas 2 categorias principais.'
       ].join('\n')
     case 'vertical':
       return [
@@ -154,7 +154,7 @@ const buildAnalysisReply = (analysisType: CfoAnalysisType, snapshot: CfoFinancia
     case 'debt':
       return [
         `Analise de Endividamento (proxy operacional)`,
-        `Saidas previstas ${snapshot.forecast.days}d: ${formatCurrency(snapshot.forecast.estimatedExpense)}`,
+        `Saídas previstas ${snapshot.forecast.days}d: ${formatCurrency(snapshot.forecast.estimatedExpense)}`,
         `Risco de caixa: ${riskLevel}`,
         'Limite: sem passivo formal, leitura baseada em comprometimento futuro.',
         'Acao: controlar novas obrigacoes ate reduzir risco.'
@@ -172,16 +172,16 @@ const buildAnalysisReply = (analysisType: CfoAnalysisType, snapshot: CfoFinancia
         `Analise de Fluxo de Caixa (${snapshot.period.label})`,
         `Saldo inicial: ${formatCurrency(snapshot.forecast.startingBalance)}`,
         `Entradas previstas: ${formatCurrency(snapshot.forecast.estimatedRevenue)}`,
-        `Saidas previstas: ${formatCurrency(snapshot.forecast.estimatedExpense)}`,
+        `Saídas previstas: ${formatCurrency(snapshot.forecast.estimatedExpense)}`,
         `Saldo final: ${formatCurrency(snapshot.forecast.estimatedEndingBalance)}`
       ].join('\n')
     case 'benchmarking':
       return [
         `Analise de Benchmarking interno (${snapshot.period.label})`,
-        `Receita vs periodo anterior: ${formatPercent(snapshot.growth.revenue)}`,
-        `Despesa vs periodo anterior: ${formatPercent(snapshot.growth.expense)}`,
-        `Lucro vs periodo anterior: ${formatPercent(snapshot.growth.profit)}`,
-        'Leitura: comparativo interno por periodo, sem base externa de mercado.'
+        `Receita vs período anterior: ${formatPercent(snapshot.growth.revenue)}`,
+        `Despesa vs período anterior: ${formatPercent(snapshot.growth.expense)}`,
+        `Lucro vs período anterior: ${formatPercent(snapshot.growth.profit)}`,
+        'Leitura: comparativo interno por período, sem base externa de mercado.'
       ].join('\n')
     case 'credit_5c':
       return [
@@ -197,7 +197,7 @@ const buildAnalysisReply = (analysisType: CfoAnalysisType, snapshot: CfoFinancia
         `Meta 1: manter despesa abaixo de ${formatCurrency(snapshot.totals.expense)}`,
         `Meta 2: levar saldo projetado para acima de ${formatCurrency(Math.max(0, snapshot.forecast.estimatedEndingBalance))}`,
         `Meta 3: revisar semanalmente ${mainExpense ? mainExpense.category : 'custos principais'}`,
-        'Acao: operar em ciclos semanais com ajuste rapido.'
+        'Ação: operar em ciclos semanais com ajuste rápido.'
       ].join('\n')
     default:
       return buildExecutiveSummary(snapshot)

@@ -15,9 +15,9 @@ describe('Calendario integration', () => {
 
     render(<Calendario />)
 
-    expect(screen.getByText('Calendario Financeiro')).toBeInTheDocument()
+    expect(screen.getByText('Calendário Financeiro')).toBeInTheDocument()
     expect(screen.getByText('Entradas: R$ 200.00')).toBeInTheDocument()
-    expect(screen.getByText('Saidas: R$ 50.00')).toBeInTheDocument()
+    expect(screen.getByText('Saídas: R$ 50.00')).toBeInTheDocument()
   })
 
   it('renderiza estado de loading quando hook esta carregando', () => {
@@ -28,6 +28,6 @@ describe('Calendario integration', () => {
 
     render(<Calendario />)
 
-    expect(screen.getByText('Carregando calendario...')).toBeInTheDocument()
+    expect(screen.getByText('Carregando calendário...')).toBeInTheDocument()
   })
 })

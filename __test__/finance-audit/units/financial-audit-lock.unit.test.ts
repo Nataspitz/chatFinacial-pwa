@@ -44,6 +44,14 @@ describe('financial audit lock helpers', () => {
     expect(isFinancialPeriodLocked('2026-05-11', new Date(2026, 4, 11))).toBe(false)
   })
 
+  it('mantem datas atuais e futuras liberadas depois da primeira fatia auditada', () => {
+    setFinancialAuditLockedPeriods([{ startDate: '2026-05-01', endDate: '2026-05-10' }])
+
+    expect(isFinancialPeriodLocked('2026-05-12', new Date(2026, 4, 12))).toBe(false)
+    expect(isFinancialPeriodLocked('2026-05-25', new Date(2026, 4, 12))).toBe(false)
+    expect(isFinancialPeriodLocked('2026-06-01', new Date(2026, 4, 12))).toBe(false)
+  })
+
   it('avanca a data minima de criacao quando o inicio do mes atual ja foi auditado', () => {
     setFinancialAuditLockedPeriods([{ startDate: '2026-05-01', endDate: '2026-05-10' }])
 

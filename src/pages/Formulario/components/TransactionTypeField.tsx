@@ -10,7 +10,7 @@ export const TransactionTypeField = ({ value, onChange }: TransactionTypeFieldPr
   return (
     <SelectField label="Tipo" value={value} onChange={(event) => onChange(event.target.value as TransactionType)}>
         <option value="entrada">Entrada</option>
-        <option value="saida">Saida</option>
+        <option value="saida">Saída</option>
     </SelectField>
   )
 }

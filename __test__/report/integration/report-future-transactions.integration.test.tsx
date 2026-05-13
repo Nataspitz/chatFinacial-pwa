@@ -21,6 +21,7 @@ vi.mock('../../../src/services/finance.service', () => ({
     deleteTransaction: vi.fn(async () => undefined),
     updateTransaction: vi.fn(async () => undefined),
     updateMonthlyCostFromDate: vi.fn(async () => undefined),
+    endMonthlyCostFromDate: vi.fn(async () => undefined),
     saveTransactions: vi.fn(async () => undefined),
     saveCategory: vi.fn(async () => undefined),
     exportReportToPdf: vi.fn(async () => undefined),

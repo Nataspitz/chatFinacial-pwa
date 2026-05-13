@@ -8,7 +8,7 @@ interface SubmitActionProps {
 export const SubmitAction = ({ isSubmitting }: SubmitActionProps): JSX.Element => {
   return (
     <ButtonLoading variant="primary" className={styles.submitButton} type="submit" loading={isSubmitting}>
-      Salvar transacao
+      Salvar transação
     </ButtonLoading>
   )
 }

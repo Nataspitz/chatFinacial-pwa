@@ -21,6 +21,6 @@ describe('CalendarGrid', () => {
     )
 
     expect(screen.getByText('Entradas: R$ 500.00')).toBeInTheDocument()
-    expect(screen.getByText('Saidas: R$ 200.00')).toBeInTheDocument()
+    expect(screen.getByText('Saídas: R$ 200.00')).toBeInTheDocument()
   })
 })

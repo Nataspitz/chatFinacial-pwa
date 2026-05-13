@@ -183,6 +183,6 @@ describe('backupService', () => {
   })
 
   it('retorna erro quando json e invalido', async () => {
-    await expect(backupService.restoreBackup('{invalid-json')).rejects.toThrow('Arquivo de backup invalido.')
+    await expect(backupService.restoreBackup('{invalid-json')).rejects.toThrow('Arquivo de backup inválido.')
   })
 })

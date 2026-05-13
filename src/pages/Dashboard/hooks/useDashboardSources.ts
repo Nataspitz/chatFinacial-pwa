@@ -140,7 +140,7 @@ export const useDashboardSources = (currentYear: number, selectedYear: number) =
       setTransactions(normalizedTransactions)
       setError('')
     } else {
-      setError('Nao foi possivel carregar os dados da dashboard.')
+      setError('Não foi possível carregar os dados da dashboard.')
     }
 
     if (includeBusiness) {
@@ -232,7 +232,7 @@ export const useDashboardSources = (currentYear: number, selectedYear: number) =
       setSummaryFeedback('Resumo financeiro atualizado.')
       setSummaryFeedbackTone('success')
     } catch {
-      setSummaryFeedback('Nao foi possivel atualizar o resumo financeiro.')
+      setSummaryFeedback('Não foi possível atualizar o resumo financeiro.')
       setSummaryFeedbackTone('error')
     } finally {
       setIsRefreshingSummaries(false)

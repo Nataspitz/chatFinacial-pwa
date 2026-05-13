@@ -36,6 +36,7 @@ export const TransactionMobileItem = ({
 }: TransactionMobileItemProps): JSX.Element => {
   const [isExpanded, setIsExpanded] = useState(false)
   const isEditing = editingId === transaction.id && editingDraft !== null
+  const canShowActions = !actionContext.isActionLocked(transaction)
 
   const handleOpenMenu = (event: MouseEvent<HTMLButtonElement>): void => {
     event.preventDefault()
@@ -228,14 +229,16 @@ export const TransactionMobileItem = ({
                 <span className={styles.mobileLabel}>Custo mensal</span>
                 <div className={`${styles.mobileValue} ${styles.mobileRowActions}`.trim()}>
                   <span>{transaction.type === 'saida' ? (transaction.isMonthlyCost ? 'Sim' : 'Não') : '-'}</span>
-                  <button
-                    type="button"
-                    className={styles.rowMenuButton}
-                    aria-label="Abrir menu da transação"
-                    onClick={handleOpenMenu}
-                  >
-                    <FiMoreVertical />
-                  </button>
+                  {canShowActions ? (
+                    <button
+                      type="button"
+                      className={styles.rowMenuButton}
+                      aria-label="Abrir menu da transação"
+                      onClick={handleOpenMenu}
+                    >
+                      <FiMoreVertical />
+                    </button>
+                  ) : null}
                 </div>
               </div>
             </div>

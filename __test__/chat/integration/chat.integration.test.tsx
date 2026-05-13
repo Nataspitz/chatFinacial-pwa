@@ -1,40 +1,42 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { Chat } from '../../../src/pages/Chat/Chat'
-import { initialChatReplyMock } from '../mocks/chat-service.mock'
 
-const processMessageMock = vi.fn()
-const getInitialReplyMock = vi.fn()
-const getInitialSessionMock = vi.fn()
-
-vi.mock('../../../src/services/chat.service', () => ({
-  chatService: {
-    getInitialReply: () => getInitialReplyMock(),
-    getInitialSession: () => getInitialSessionMock(),
-    processMessage: (message: string, session: unknown) => processMessageMock(message, session)
-  }
+vi.mock('../../../src/contexts/AuthContext', () => ({
+  useAuth: () => ({ user: { id: 'user-1' } })
 }))
 
-describe('Chat integration', () => {
-  it('renderiza resposta inicial e processa acao rapida', async () => {
-    getInitialReplyMock.mockReturnValue(initialChatReplyMock)
-    getInitialSessionMock.mockReturnValue({ step: 'main_menu' })
-    processMessageMock.mockResolvedValue({
-      content: 'Aqui esta o resumo.',
-      actions: [],
-      nextSession: { step: 'main_menu' }
-    })
+vi.mock('../../../src/features/chat/assistant', async () => {
+  const actual = await vi.importActual<typeof import('../../../src/features/chat/assistant')>('../../../src/features/chat/assistant')
+  return {
+    ...actual,
+    handleChatMessage: vi.fn(async () => ({
+      response: { type: 'question', message: 'De qual período você quer listar as transações?', missingSlot: 'period' },
+      session: {
+        userId: 'user-1',
+        pendingIntent: 'list_transactions',
+        slots: {},
+        missingSlots: ['period'],
+        draft: null,
+        updatedAt: '2026-05-12T12:00:00.000Z'
+      }
+    }))
+  }
+})
 
+describe('Chat integration', () => {
+  it('renderiza resposta inicial e envia mensagem ao assistente', async () => {
     render(<Chat />)
 
-    expect(screen.getByText('O que voce quer fazer?')).toBeInTheDocument()
+    expect(screen.getByText(/Posso listar transações/)).toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Ver transacoes' }))
+    fireEvent.change(screen.getByPlaceholderText('Digite aqui...'), {
+      target: { value: 'quero listar transações' }
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Enviar' }))
 
     await waitFor(() => {
-      expect(processMessageMock).toHaveBeenCalledWith('/view/transactions', { step: 'main_menu' })
+      expect(screen.getByText('De qual período você quer listar as transações?')).toBeInTheDocument()
     })
-
-    expect(await screen.findByText('Aqui esta o resumo.')).toBeInTheDocument()
   })
 })

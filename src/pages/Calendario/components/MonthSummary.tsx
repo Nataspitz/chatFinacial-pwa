@@ -11,7 +11,7 @@ export const MonthSummary = ({ totalEntrada, totalSaida, formatCurrency }: Month
   return (
     <SummaryList>
       <SummaryMetric label="Entradas do mes" value={formatCurrency(totalEntrada)} />
-      <SummaryMetric label="Saidas do mes" value={formatCurrency(totalSaida)} />
+      <SummaryMetric label="Saídas do mês" value={formatCurrency(totalSaida)} />
     </SummaryList>
   )
 }

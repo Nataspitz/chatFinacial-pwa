@@ -34,7 +34,7 @@ export const useAuditoriaData = () => {
       setActiveAudits(activeRows)
       setHistoryAudits(historyRows)
     } catch {
-      setError('Nao foi possivel carregar a visao de auditoria.')
+      setError('Não foi possível carregar a visão de auditoria.')
     } finally {
       setIsLoading(false)
     }

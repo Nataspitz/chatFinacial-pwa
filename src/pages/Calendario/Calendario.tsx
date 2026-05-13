@@ -10,7 +10,7 @@ import { useCalendarData } from './hooks/useCalendarData'
 import type { CalendarCell } from './types'
 import styles from './Calendario.module.css'
 
-const WEEK_DAYS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sab']
+const WEEK_DAYS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
 
 export const Calendario = (): JSX.Element => {
   const calendar = useCalendarData()
@@ -47,7 +47,7 @@ export const Calendario = (): JSX.Element => {
         formatCurrency={calendar.formatCurrency}
       />
 
-      {calendar.isLoading && <LoadingState label="Carregando calendario..." />}
+      {calendar.isLoading && <LoadingState label="Carregando calendário..." />}
       {calendar.error && <p className={styles.error}>{calendar.error}</p>}
 
       {!calendar.isLoading && !calendar.error ? (
@@ -74,7 +74,7 @@ export const Calendario = (): JSX.Element => {
                 <strong>{calendar.formatCurrency(selectedCell.totals.entrada)}</strong>
               </article>
               <article>
-                <span>Saidas</span>
+                <span>Saídas</span>
                 <strong>{calendar.formatCurrency(selectedCell.totals.saida)}</strong>
               </article>
             </div>
@@ -99,9 +99,9 @@ export const Calendario = (): JSX.Element => {
             </section>
 
             <section className={styles.dayDetailsSection}>
-              <h3>Saidas</h3>
+              <h3>Saídas</h3>
               {selectedCell.transactions.saida.length === 0 ? (
-                <p className={styles.dayDetailsEmpty}>Nenhuma saida nesse dia.</p>
+                <p className={styles.dayDetailsEmpty}>Nenhuma saída nesse dia.</p>
               ) : (
                 <div className={styles.dayDetailsList}>
                   {selectedCell.transactions.saida.map((item) => (

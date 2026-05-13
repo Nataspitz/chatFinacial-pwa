@@ -105,7 +105,7 @@ export const TransactionsTable = ({
       return
     }
 
-    void actionContext.onDelete(contextMenuState.transaction.id)
+    void actionContext.onDelete(contextMenuState.transaction)
     closeContextMenu()
   }
 

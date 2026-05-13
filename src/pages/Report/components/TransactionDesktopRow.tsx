@@ -35,6 +35,7 @@ export const TransactionDesktopRow = ({
   transaction
 }: TransactionDesktopRowProps): JSX.Element => {
   const isEditing = editingId === transaction.id && editingDraft !== null
+  const canShowActions = !isEditing && !actionContext.isActionLocked(transaction)
 
   const handleOpenMenu = (event: MouseEvent<HTMLButtonElement>): void => {
     event.preventDefault()
@@ -172,7 +173,7 @@ export const TransactionDesktopRow = ({
         ) : null}
       </td>
       <td className={styles.rowMenuCell}>
-        {!isEditing ? (
+        {canShowActions ? (
           <button
             type="button"
             className={styles.rowMenuButton}

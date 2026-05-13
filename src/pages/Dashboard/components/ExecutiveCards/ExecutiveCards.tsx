@@ -20,36 +20,36 @@ interface ExecutiveCardItem {
 export const ExecutiveCards = ({ revenue, expense, profit, margin, variation, variationPositive }: ExecutiveCardsProps): JSX.Element => {
   const items: ExecutiveCardItem[] = [
     {
-      explanation: 'Total que entrou no caixa no periodo selecionado.',
-      label: 'Receita do periodo',
+      explanation: 'Total que entrou no caixa no período selecionado.',
+      label: 'Receita do período',
       value: revenue,
       tone: 'positive',
       variant: 'revenue'
     },
     {
-      explanation: 'Total que saiu do caixa no periodo selecionado.',
-      label: 'Despesa do periodo',
+      explanation: 'Total que saiu do caixa no período selecionado.',
+      label: 'Despesa do período',
       value: expense,
       tone: 'negative',
       variant: 'expense'
     },
     {
       explanation: 'Resultado final: receita menos despesa.',
-      label: 'Lucro liquido',
+      label: 'Lucro líquido',
       value: profit,
       tone: 'neutral',
       variant: 'balance'
     },
     {
-      explanation: 'Percentual de lucro sobre a receita do periodo.',
+      explanation: 'Percentual de lucro sobre a receita do período.',
       label: 'Margem',
       value: margin,
       tone: 'neutral',
       variant: 'margin'
     },
     {
-      explanation: 'Diferenca em reais do lucro em relacao ao periodo anterior.',
-      label: 'Variacao vs periodo anterior',
+      explanation: 'Diferença em reais do lucro em relação ao período anterior.',
+      label: 'Variação vs período anterior',
       value: variation,
       tone: variationPositive ? 'positive' : 'negative',
       variant: 'variation'

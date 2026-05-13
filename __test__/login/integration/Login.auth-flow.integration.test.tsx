@@ -46,7 +46,7 @@ describe('Login - integration auth flow', () => {
       state: { from: { pathname: '/dashboard' } }
     })
 
-    await user.type(screen.getByLabelText('Email'), '  user@test.com  ')
+    await user.type(screen.getByLabelText('E-mail'), '  user@test.com  ')
     await user.type(screen.getByLabelText('Senha'), 'StrongPass123')
     await user.click(screen.getByRole('button', { name: 'Entrar' }))
 
@@ -66,7 +66,7 @@ describe('Login - integration auth flow', () => {
     renderLogin()
     await user.click(screen.getByRole('button', { name: 'Criar nova conta' }))
 
-    await user.type(screen.getByLabelText('Email'), '  new.user@test.com ')
+    await user.type(screen.getByLabelText('E-mail'), '  new.user@test.com ')
     await user.type(screen.getByLabelText('Senha'), 'Pass1234')
     await user.click(screen.getByRole('button', { name: 'Criar conta' }))
 
@@ -74,7 +74,7 @@ describe('Login - integration auth flow', () => {
       expect(authState.signUp).toHaveBeenCalledWith('new.user@test.com', 'Pass1234')
     })
     expect(
-      await screen.findByText('Conta criada. Se o login nao entrar, confirme o email antes de acessar.')
+      await screen.findByText('Conta criada. Se o login não entrar, confirme o e-mail antes de acessar.')
     ).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Entrar' })).toBeInTheDocument()
   })
@@ -89,7 +89,7 @@ describe('Login - integration auth flow', () => {
     renderLogin()
     await user.click(screen.getByRole('button', { name: 'Criar nova conta' }))
 
-    await user.type(screen.getByLabelText('Email'), 'existing@test.com')
+    await user.type(screen.getByLabelText('E-mail'), 'existing@test.com')
     await user.type(screen.getByLabelText('Senha'), 'Pass1234')
     await user.click(screen.getByRole('button', { name: 'Criar conta' }))
 

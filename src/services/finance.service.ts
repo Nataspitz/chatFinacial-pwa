@@ -1,5 +1,4 @@
 ﻿import { supabase } from '../lib/supabase'
-import { assertFinancialPeriodUnlocked } from './financial-audit-lock'
 import type { ExportReportPdfPayload, ExportReportPdfResult } from '../types/report-export.types'
 import type { PaymentMethod, Transaction, TransactionType } from '../types/transaction.types'
 
@@ -68,6 +67,13 @@ const getTodayDate = (): string => {
   return `${year}-${month}-${day}`
 }
 
+const getPreviousDate = (dateValue: string): string => {
+  const [year, month, day] = normalizeDate(dateValue).split('-').map(Number)
+  const date = new Date(year, month - 1, day)
+  date.setDate(date.getDate() - 1)
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+}
+
 const getDefaultConfirmedByDate = (dateValue: string): boolean => {
   const normalizedDate = normalizeDate(dateValue)
   return normalizedDate <= getTodayDate()
@@ -106,7 +112,7 @@ const escapeHtml = (value: string): string =>
 
 const buildPdfRows = (transactions: ExportReportPdfPayload['entries']): string[][] => {
   if (transactions.length === 0) {
-    return [['-', 'Nenhuma transacao neste periodo.', '-', '-', '-', '-']]
+    return [['-', 'Nenhuma transação neste período.', '-', '-', '-', '-']]
   }
 
   return transactions.map((transaction) => [
@@ -167,7 +173,7 @@ const exportReportPdfOnWeb = async (payload: ExportReportPdfPayload): Promise<Ex
       ? payload.dashboardMetrics
       : [
           { label: 'Entradas', value: formatCurrency(payload.totalEntries) },
-          { label: 'Saidas', value: formatCurrency(payload.totalOutcomes) },
+          { label: 'Saídas', value: formatCurrency(payload.totalOutcomes) },
           { label: 'Resultado', value: formatCurrency(payload.resultBalance) }
         ]
 
@@ -212,7 +218,7 @@ const exportReportPdfOnWeb = async (payload: ExportReportPdfPayload): Promise<Ex
     const columnWidths = [70, 180, 110, 170, 95, 95]
     const rowHeight = 24
     const headerHeight = 28
-    const headers = ['Data', 'Descricao', 'Categoria', 'Pagamento', 'Valor', 'Total']
+    const headers = ['Data', 'Descrição', 'Categoria', 'Pagamento', 'Valor', 'Total']
 
     const drawHeader = (y: number) => {
       let currentX = marginX
@@ -258,18 +264,18 @@ const exportReportPdfOnWeb = async (payload: ExportReportPdfPayload): Promise<Ex
     return cursorY + 24
   }
 
-  drawText(payload.companyName || 'Relatorio financeiro', marginX, marginY + 8, { size: 22, style: 'bold' })
-  drawText(`Periodo: ${payload.periodLabel}`, marginX, marginY + 30, { size: 11, color: muted })
+  drawText(payload.companyName || 'Relatório financeiro', marginX, marginY + 8, { size: 22, style: 'bold' })
+  drawText(`Período: ${payload.periodLabel}`, marginX, marginY + 30, { size: 11, color: muted })
   drawText(`Gerado em: ${payload.createdAt}`, marginX, marginY + 48, { size: 11, color: muted })
 
   let cursorY = marginY + 68
   cursorY = drawMetricCards(cursorY)
   cursorY = drawTable('Entradas', buildPdfRows(payload.entries), cursorY)
-  cursorY = drawTable('Saidas', buildPdfRows(payload.outcomes), cursorY)
+  cursorY = drawTable('Saídas', buildPdfRows(payload.outcomes), cursorY)
 
   cursorY = ensureSpace(cursorY, 40)
   drawWrappedText(
-    'Este arquivo foi gerado pela versao web do ChatFinacial. As linhas do relatorio incluem descricao, categoria, forma de pagamento e informacoes de parcelas.',
+    'Este arquivo foi gerado pela versão web do ChatFinacial. As linhas do relatório incluem descrição, categoria, forma de pagamento e informações de parcelas.',
     marginX,
     cursorY,
     contentWidth,
@@ -328,7 +334,7 @@ const getUserId = async (): Promise<string> => {
   }
 
   if (!data.user?.id) {
-    throw new Error('Usuario nao autenticado')
+    throw new Error('Usuário não autenticado')
   }
 
   return data.user.id
@@ -424,7 +430,7 @@ const insertTransactionsWithFallback = async (payload: Array<Record<string, unkn
     workingPayload = workingPayload.map((row) => removeColumnFromPayload(row, missingColumn))
   }
 
-  throw new Error('Nao foi possivel salvar as transacoes por incompatibilidade de schema.')
+  throw new Error('Não foi possível salvar as transações por incompatibilidade de schema.')
 }
 
 const updateTransactionWithFallback = async (
@@ -457,11 +463,11 @@ const updateTransactionWithFallback = async (
 
     workingPayload = removeColumnFromPayload(workingPayload, missingColumn)
     if (Object.keys(workingPayload).length === 0) {
-      throw new Error('Nao foi possivel editar a transacao por incompatibilidade de schema.')
+      throw new Error('Não foi possível editar a transação por incompatibilidade de schema.')
     }
   }
 
-  throw new Error('Nao foi possivel editar a transacao por incompatibilidade de schema.')
+  throw new Error('Não foi possível editar a transação por incompatibilidade de schema.')
 }
 
 export const financeService = {
@@ -603,16 +609,12 @@ export const financeService = {
       return
     }
 
-    assertFinancialPeriodUnlocked(transactions.map((item) => item.date))
-
     const userId = await getUserId()
     const payload = transactions.map((item) => toInsertPayload(normalizeTransactionForCreate(item), userId))
     await insertTransactionsWithFallback(payload)
   },
 
   updateTransaction: async (transaction: Transaction): Promise<void> => {
-    assertFinancialPeriodUnlocked([transaction.date])
-
     const userId = await getUserId()
 
     const payload = {
@@ -639,8 +641,6 @@ export const financeService = {
   updateMonthlyCostFromDate: async (originalTransaction: Transaction, nextTransaction: Transaction): Promise<void> => {
     const originalDate = normalizeDate(originalTransaction.date)
     const nextDate = normalizeDate(nextTransaction.date)
-
-    assertFinancialPeriodUnlocked([nextDate])
 
     if (
       originalTransaction.type !== 'saida'
@@ -677,6 +677,29 @@ export const financeService = {
         userId
       )
     ])
+  },
+
+  endMonthlyCostFromDate: async (originalTransaction: Transaction, occurrenceDate: string): Promise<void> => {
+    const normalizedOccurrenceDate = normalizeDate(occurrenceDate)
+    const originalDate = normalizeDate(originalTransaction.monthlyCostStartDate ?? originalTransaction.date)
+
+    if (
+      originalTransaction.type !== 'saida'
+      || !originalTransaction.isMonthlyCost
+      || originalDate >= normalizedOccurrenceDate
+    ) {
+      await financeService.deleteTransaction(originalTransaction.id)
+      return
+    }
+
+    const userId = await getUserId()
+    await updateTransactionWithFallback(
+      {
+        monthly_end_date: getPreviousDate(normalizedOccurrenceDate)
+      },
+      originalTransaction.id,
+      userId
+    )
   },
 
   deleteTransaction: async (id: string): Promise<void> => {
@@ -716,13 +739,7 @@ export const financeService = {
       throw affectedDatesFallback.error
     }
 
-    assertFinancialPeriodUnlocked(
-      installmentGroupId
-        ? ((affectedDatesFallback?.data ?? []) as Array<Pick<TransactionDeleteScopeRow, 'date'>>).map((item) => item.date)
-        : scopeRow?.date
-          ? [scopeRow.date]
-          : []
-    )
+    const shouldDeleteOnlySelectedTransaction = false
 
     const deleteQuery = supabase
       .from('transactions')
@@ -730,7 +747,7 @@ export const financeService = {
       .eq('user_id', userId)
       .is('deleted_at', null)
 
-    const { error } = installmentGroupId
+    const { error } = installmentGroupId && !shouldDeleteOnlySelectedTransaction
       ? await deleteQuery.eq('installment_group_id', installmentGroupId)
       : await deleteQuery.eq('id', id)
 
@@ -741,7 +758,7 @@ export const financeService = {
           .delete()
           .eq('user_id', userId)
 
-        const fallbackDelete = installmentGroupId
+        const fallbackDelete = installmentGroupId && !shouldDeleteOnlySelectedTransaction
           ? await fallbackDeleteQuery.eq('installment_group_id', installmentGroupId)
           : await fallbackDeleteQuery.eq('id', id)
 
@@ -757,23 +774,6 @@ export const financeService = {
 
   restoreDeletedTransactions: async (): Promise<number> => {
     const userId = await getUserId()
-    const lockedLookup = await supabase
-      .from('transactions')
-      .select('date')
-      .eq('user_id', userId)
-      .not('deleted_at', 'is', null)
-
-    if (lockedLookup.error) {
-      if (isMissingDeletedAtColumnError(lockedLookup.error)) {
-        return 0
-      }
-      throw lockedLookup.error
-    }
-
-    assertFinancialPeriodUnlocked(
-      ((lockedLookup.data ?? []) as Array<Pick<TransactionDeleteScopeRow, 'date'>>).map((item) => item.date)
-    )
-
     const response = await supabase
       .from('transactions')
       .update({ deleted_at: null })
@@ -797,24 +797,6 @@ export const financeService = {
     }
 
     const userId = await getUserId()
-    const lockedLookup = await supabase
-      .from('transactions')
-      .select('date')
-      .eq('user_id', userId)
-      .in('id', ids)
-      .not('deleted_at', 'is', null)
-
-    if (lockedLookup.error) {
-      if (isMissingDeletedAtColumnError(lockedLookup.error)) {
-        return 0
-      }
-      throw lockedLookup.error
-    }
-
-    assertFinancialPeriodUnlocked(
-      ((lockedLookup.data ?? []) as Array<Pick<TransactionDeleteScopeRow, 'date'>>).map((item) => item.date)
-    )
-
     const response = await supabase
       .from('transactions')
       .update({ deleted_at: null })
@@ -835,23 +817,6 @@ export const financeService = {
 
   purgeDeletedTransactions: async (): Promise<number> => {
     const userId = await getUserId()
-    const lockedLookup = await supabase
-      .from('transactions')
-      .select('date')
-      .eq('user_id', userId)
-      .not('deleted_at', 'is', null)
-
-    if (lockedLookup.error) {
-      if (isMissingDeletedAtColumnError(lockedLookup.error)) {
-        return 0
-      }
-      throw lockedLookup.error
-    }
-
-    assertFinancialPeriodUnlocked(
-      ((lockedLookup.data ?? []) as Array<Pick<TransactionDeleteScopeRow, 'date'>>).map((item) => item.date)
-    )
-
     const response = await supabase
       .from('transactions')
       .delete()

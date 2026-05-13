@@ -58,7 +58,7 @@ const getUserId = async (): Promise<string> => {
   }
 
   if (!data.user?.id) {
-    throw new Error('Usuario nao autenticado')
+    throw new Error('Usuário não autenticado')
   }
 
   return data.user.id
@@ -71,11 +71,11 @@ const readCertificatePayload = async (file: File): Promise<Record<string, unknow
   try {
     parsed = JSON.parse(text) as unknown
   } catch {
-    throw new Error('Certificado invalido. Envie um arquivo JSON valido.')
+    throw new Error('Certificado inválido. Envie um arquivo JSON válido.')
   }
 
   if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-    throw new Error('Certificado invalido. Envie um arquivo JSON valido.')
+    throw new Error('Certificado inválido. Envie um arquivo JSON válido.')
   }
 
   return parsed as Record<string, unknown>
@@ -91,15 +91,15 @@ const validateCertificatePayload = (
   payload: Record<string, unknown>
 ): void => {
   if (payload.version !== 1) {
-    throw new Error('Certificado recusado: campo version invalido.')
+    throw new Error('Certificado recusado: campo version inválido.')
   }
 
   if (getPayloadText(payload, 'month_ref') !== normalizeDate(audit.monthRef)) {
-    throw new Error('Certificado recusado: o mes do certificado nao corresponde a auditoria selecionada.')
+    throw new Error('Certificado recusado: o mês do certificado não corresponde à auditoria selecionada.')
   }
 
   if (Number(payload.audit_slice) !== audit.auditSlice) {
-    throw new Error('Certificado recusado: a fatia do certificado nao corresponde a auditoria selecionada.')
+    throw new Error('Certificado recusado: a fatia do certificado não corresponde à auditoria selecionada.')
   }
 
   if (payload.verdict !== 'approved') {
@@ -172,7 +172,7 @@ export const financialAuditService = {
 
   confirmAuditSliceWithCertificate: async (audit: Pick<FinancialAudit, 'monthRef' | 'auditSlice'>, file: File): Promise<FinancialAudit> => {
     if (file.type && file.type !== 'application/json') {
-      throw new Error('Certificado invalido. Envie um arquivo JSON.')
+      throw new Error('Certificado inválido. Envie um arquivo JSON.')
     }
 
     const userId = await getUserId()

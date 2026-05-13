@@ -94,7 +94,7 @@ export const MonthlyCandleChart = ({ data, mode, hasData }: MonthlyCandleChartPr
   )
 
   if (!hasData) {
-    return <p className={styles.empty}>Sem dados para montar grafico de vela neste periodo.</p>
+    return <p className={styles.empty}>Sem dados para montar gráfico de vela neste período.</p>
   }
 
   return (

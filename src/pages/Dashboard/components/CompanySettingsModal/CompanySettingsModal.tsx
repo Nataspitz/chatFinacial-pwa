@@ -34,7 +34,7 @@ export const CompanySettingsModal = ({ open, initialSettings, onClose, onSaved }
     const parsedValue = investmentBaseAmount.trim() === '' ? null : Number(investmentBaseAmount.replace(',', '.'))
 
     if (!noInitialInvestment && (parsedValue === null || !Number.isFinite(parsedValue) || parsedValue <= 0)) {
-      setFeedback('Informe um investimento inicial maior que zero ou marque que nao houve investimento inicial.')
+      setFeedback('Informe um investimento inicial maior que zero ou marque que não houve investimento inicial.')
       return
     }
 
@@ -49,7 +49,7 @@ export const CompanySettingsModal = ({ open, initialSettings, onClose, onSaved }
       onSaved(updated)
       onClose()
     } catch {
-      setFeedback('Nao foi possivel salvar as configuracoes agora.')
+      setFeedback('Não foi possível salvar as configurações agora.')
     } finally {
       setIsSaving(false)
     }
@@ -84,7 +84,7 @@ export const CompanySettingsModal = ({ open, initialSettings, onClose, onSaved }
             checked={noInitialInvestment}
             onChange={(event) => setNoInitialInvestment(event.target.checked)}
           />
-          <span>Nao houve investimento inicial</span>
+          <span>Não houve investimento inicial</span>
         </label>
 
         {feedback ? <p className={styles.feedback}>{feedback}</p> : null}

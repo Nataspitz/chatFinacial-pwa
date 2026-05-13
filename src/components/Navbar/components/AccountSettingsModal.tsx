@@ -30,7 +30,7 @@ export const AccountSettingsModal = ({ open, user, onClose }: AccountSettingsMod
 
     if (!user) {
       setFeedbackTone('error')
-      setFeedback('Nao foi possivel identificar o usuario.')
+      setFeedback('Não foi possível identificar o usuário.')
       return
     }
 

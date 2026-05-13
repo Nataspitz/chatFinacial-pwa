@@ -87,7 +87,7 @@ export const TransactionContextMenu = ({
         style={{ left: safeCoordinates.x, top: safeCoordinates.y }}
         onContextMenu={(event) => event.preventDefault()}
       >
-        <button type="button" role="menuitem" className={styles.contextMenuItem} disabled={isLocked} title={isLocked ? 'Periodo auditado bloqueado' : undefined} onClick={onEdit}>
+        <button type="button" role="menuitem" className={styles.contextMenuItem} disabled={isLocked} title={isLocked ? 'Período auditado bloqueado' : undefined} onClick={onEdit}>
           <FiEdit2 aria-hidden />
           <span>Editar</span>
         </button>
@@ -103,7 +103,7 @@ export const TransactionContextMenu = ({
             role="menuitem"
             className={styles.contextMenuItem}
             disabled={isConfirming || isLocked}
-            title={isLocked ? 'Periodo auditado bloqueado' : undefined}
+            title={isLocked ? 'Período auditado bloqueado' : undefined}
             onClick={onConfirm}
           >
             <FiCheckCircle aria-hidden />
@@ -116,7 +116,7 @@ export const TransactionContextMenu = ({
           role="menuitem"
           className={`${styles.contextMenuItem} ${styles.contextMenuItemDanger}`.trim()}
           disabled={isDeleting || isLocked}
-          title={isLocked ? 'Periodo auditado bloqueado' : undefined}
+          title={isLocked ? 'Período auditado bloqueado' : undefined}
           onClick={onDelete}
         >
           <FiTrash2 aria-hidden />

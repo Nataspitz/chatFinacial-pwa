@@ -14,18 +14,18 @@ interface LocationState {
 
 const getAuthErrorMessage = (error: unknown): string => {
   if (!error || typeof error !== 'object') {
-    return 'Falha na autenticacao.'
+    return 'Falha na autenticação.'
   }
 
   const authError = error as Partial<AuthError>
 
   switch (authError.code) {
     case 'invalid_credentials':
-      return 'Email ou senha invalidos.'
+      return 'E-mail ou senha inválidos.'
     case 'email_not_confirmed':
-      return 'Seu email ainda nao foi confirmado. Verifique sua caixa de entrada.'
+      return 'Seu e-mail ainda não foi confirmado. Verifique sua caixa de entrada.'
     default:
-      return authError.message ?? 'Falha na autenticacao.'
+      return authError.message ?? 'Falha na autenticação.'
   }
 }
 
@@ -43,7 +43,7 @@ export const Login = (): JSX.Element => {
   const [notice, setNotice] = useState<string | null>(null)
 
   if (loading) {
-    return <LoadingState label="Carregando sessao..." centered />
+    return <LoadingState label="Carregando sessão..." centered />
   }
 
   if (isAuthenticated) {
@@ -55,7 +55,7 @@ export const Login = (): JSX.Element => {
 
     if (!email.trim() || !password.trim()) {
       setNotice(null)
-      setError('Preencha email e senha para continuar.')
+      setError('Preencha e-mail e senha para continuar.')
       return
     }
 
@@ -67,7 +67,7 @@ export const Login = (): JSX.Element => {
       if (authMode === 'signup') {
         await signUp(email.trim(), password)
         setAuthMode('signin')
-        setNotice('Conta criada. Se o login nao entrar, confirme o email antes de acessar.')
+        setNotice('Conta criada. Se o login não entrar, confirme o e-mail antes de acessar.')
         return
       }
 
@@ -86,13 +86,13 @@ export const Login = (): JSX.Element => {
         <header>
           <h1 className={styles.title}>Entrar</h1>
           <p className={styles.subtitle}>
-            {authMode === 'signin' ? 'Acesse sua conta para continuar.' : 'Crie sua conta para comecar.'}
+            {authMode === 'signin' ? 'Acesse sua conta para continuar.' : 'Crie sua conta para começar.'}
           </p>
         </header>
         <form className={styles.form} onSubmit={handleSubmit}>
           <div className={styles.field}>
             <label className={styles.label} htmlFor="login-email">
-              Email
+              E-mail
             </label>
             <Input
               id="login-email"
@@ -132,7 +132,7 @@ export const Login = (): JSX.Element => {
               setAuthMode((prev) => (prev === 'signin' ? 'signup' : 'signin'))
             }}
           >
-            {authMode === 'signin' ? 'Criar nova conta' : 'Ja tenho conta'}
+            {authMode === 'signin' ? 'Criar nova conta' : 'Já tenho conta'}
           </Button>
         </form>
       </div>

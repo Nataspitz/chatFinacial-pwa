@@ -16,8 +16,8 @@ describe('Dashboard integration', () => {
     render(<Dashboard />)
 
     expect(screen.getByText('Dashboard Executiva')).toBeInTheDocument()
-    expect(screen.getByText('Evolucao da receita')).toBeInTheDocument()
-    expect(screen.getByText('Faturamento por periodo (mes ou ano).')).toBeInTheDocument()
+    expect(screen.getByText('Evolução da receita')).toBeInTheDocument()
+    expect(screen.getByText('Faturamento por período (mês ou ano).')).toBeInTheDocument()
   })
 
   it('renderiza estado vazio quando nao ha transacoes', () => {
@@ -29,6 +29,6 @@ describe('Dashboard integration', () => {
 
     render(<Dashboard />)
 
-    expect(screen.getByText('Nenhuma transacao encontrada')).toBeInTheDocument()
+    expect(screen.getByText('Nenhuma transação encontrada')).toBeInTheDocument()
   })
 })

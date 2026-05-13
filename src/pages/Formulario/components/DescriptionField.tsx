@@ -8,12 +8,12 @@ interface DescriptionFieldProps {
 
 export const DescriptionField = ({ value, onChange }: DescriptionFieldProps): JSX.Element => {
   return (
-    <FormField label="Descricao" className={styles.field}>
+    <FormField label="Descrição" className={styles.field}>
       <textarea
         value={value}
         onChange={(event) => onChange(event.target.value)}
         rows={4}
-        placeholder="Descreva a transacao"
+        placeholder="Descreva a transação"
       />
     </FormField>
   )

@@ -14,21 +14,21 @@ interface DragState {
 }
 
 const HELP_ITEMS = [
-  ['Receita do periodo', 'Total de entradas no caixa no periodo selecionado.'],
-  ['Despesa do periodo', 'Total de saidas no mesmo periodo.'],
-  ['Lucro liquido', 'Receita menos despesa.'],
+  ['Receita do período', 'Total de entradas no caixa no período selecionado.'],
+  ['Despesa do período', 'Total de saídas no mesmo período.'],
+  ['Lucro líquido', 'Receita menos despesa.'],
   ['Margem', 'Percentual de lucro sobre a receita.'],
-  ['Variacao vs periodo anterior', 'Diferenca em reais do lucro atual em comparacao ao periodo anterior.'],
-  ['Visao geral de desempenho', 'Mostra a curva do lucro liquido em linha para leitura de subida e descida.'],
-  ['Evolucao do lucro', 'Tendencia do lucro dos ultimos 12 meses.'],
-  ['Receita vs despesa', 'Comparativo direto entre entradas e saidas do periodo.'],
-  ['Media de lucro (3 periodos)', 'Media do lucro recente para suavizar oscilacoes.'],
-  ['Crescimento da receita', 'Taxa de variacao da receita em relacao ao periodo anterior.'],
-  ['Crescimento da despesa', 'Taxa de variacao da despesa em relacao ao periodo anterior.'],
-  ['Tendencia', 'Direcao geral (subindo, descendo ou estavel) com base nas medias moveis.'],
-  ['Despesa cresce mais rapido?', 'Indica se os custos estao aumentando acima da receita.'],
+  ['Variação vs período anterior', 'Diferença em reais do lucro atual em comparação ao período anterior.'],
+  ['Visão geral de desempenho', 'Mostra a curva do lucro líquido em linha para leitura de subida e descida.'],
+  ['Evolução do lucro', 'Tendência do lucro dos últimos 12 meses.'],
+  ['Receita vs despesa', 'Comparativo direto entre entradas e saídas do período.'],
+  ['Média de lucro (3 períodos)', 'Média do lucro recente para suavizar oscilações.'],
+  ['Crescimento da receita', 'Taxa de variação da receita em relação ao período anterior.'],
+  ['Crescimento da despesa', 'Taxa de variação da despesa em relação ao período anterior.'],
+  ['Tendência', 'Direção geral (subindo, descendo ou estável) com base nas médias móveis.'],
+  ['Despesa cresce mais rápido?', 'Indica se os custos estão aumentando acima da receita.'],
   ['ROI e acumulado', 'Retorno sobre investimento inicial e lucro total acumulado.'],
-  ['Tendencia e direcao', 'Leitura rapida se o negocio esta acelerando ou desacelerando.']
+  ['Tendência e direção', 'Leitura rápida se o negócio está acelerando ou desacelerando.']
 ] as const
 
 const clamp = (value: number, min: number, max: number): number => Math.min(Math.max(value, min), max)
@@ -151,7 +151,7 @@ export const HelpPanel = ({ open, onClose }: HelpPanelProps): JSX.Element | null
       aria-label="Ajuda da dashboard"
     >
       <header className={styles.header} onPointerDown={handleDragStart}>
-        <h2>Ajuda rapida da dashboard</h2>
+        <h2>Ajuda rápida da dashboard</h2>
         <div className={styles.headerActions}>
           {isDesktop ? <span className={styles.dragHint}>Arraste aqui</span> : null}
           <button type="button" className={styles.closeButton} onClick={onClose}>

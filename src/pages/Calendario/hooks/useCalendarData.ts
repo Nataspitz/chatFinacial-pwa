@@ -193,7 +193,7 @@ export const useCalendarData = (): UseCalendarDataResult => {
       setTransactions(data)
     } catch {
       if (!silent) {
-        setError('Nao foi possivel carregar os dados do calendario.')
+        setError('Não foi possível carregar os dados do calendário.')
       }
     } finally {
       if (!silent) {
@@ -280,4 +280,3 @@ export const useCalendarData = (): UseCalendarDataResult => {
     todayKey
   }
 }
-

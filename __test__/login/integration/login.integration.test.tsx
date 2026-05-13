@@ -39,7 +39,7 @@ describe('Login page integration', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Entrar' }))
 
-    expect(await screen.findByText('Preencha email e senha para continuar.')).toBeInTheDocument()
+    expect(await screen.findByText('Preencha e-mail e senha para continuar.')).toBeInTheDocument()
   })
 
   it('realiza login e redireciona para rota de origem', async () => {
@@ -53,7 +53,7 @@ describe('Login page integration', () => {
       </MemoryRouter>
     )
 
-    fireEvent.change(screen.getByLabelText('Email'), { target: { value: '  user@test.com  ' } })
+    fireEvent.change(screen.getByLabelText('E-mail'), { target: { value: '  user@test.com  ' } })
     fireEvent.change(screen.getByLabelText('Senha'), { target: { value: '123456' } })
     fireEvent.click(screen.getByRole('button', { name: 'Entrar' }))
 
@@ -72,13 +72,13 @@ describe('Login page integration', () => {
     )
 
     fireEvent.click(screen.getByRole('button', { name: 'Criar nova conta' }))
-    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'new@test.com' } })
+    fireEvent.change(screen.getByLabelText('E-mail'), { target: { value: 'new@test.com' } })
     fireEvent.change(screen.getByLabelText('Senha'), { target: { value: 'abc123' } })
     fireEvent.click(screen.getByRole('button', { name: 'Criar conta' }))
 
     await waitFor(() => expect(signUp).toHaveBeenCalledWith('new@test.com', 'abc123'))
     expect(
-      await screen.findByText('Conta criada. Se o login nao entrar, confirme o email antes de acessar.')
+      await screen.findByText('Conta criada. Se o login não entrar, confirme o e-mail antes de acessar.')
     ).toBeInTheDocument()
   })
 
@@ -94,10 +94,10 @@ describe('Login page integration', () => {
       </MemoryRouter>
     )
 
-    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'user@test.com' } })
+    fireEvent.change(screen.getByLabelText('E-mail'), { target: { value: 'user@test.com' } })
     fireEvent.change(screen.getByLabelText('Senha'), { target: { value: '123456' } })
     fireEvent.click(screen.getByRole('button', { name: 'Entrar' }))
 
-    expect(await screen.findByText('Email ou senha invalidos.')).toBeInTheDocument()
+    expect(await screen.findByText('E-mail ou senha inválidos.')).toBeInTheDocument()
   })
 })
