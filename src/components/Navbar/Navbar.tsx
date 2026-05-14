@@ -9,6 +9,9 @@ const getLinkClassName = ({ isActive }: { isActive: boolean }): string =>
 const getMobileLinkClassName = ({ isActive }: { isActive: boolean }): string =>
   isActive ? `${styles.mobileLink} ${styles.active}` : styles.mobileLink
 
+const getIconButtonClassName = ({ isActive }: { isActive: boolean }): string =>
+  isActive ? `${styles.iconButton} ${styles.active}` : styles.iconButton
+
 export const Navbar = (): JSX.Element => {
   const { user, signOut } = useAuth()
 
@@ -19,7 +22,9 @@ export const Navbar = (): JSX.Element => {
     <>
       <aside className={styles.sidebar}>
         <header className={styles.brand}>
-          <span className={styles.brandIcon}>CF</span>
+          <NavLink to="/chat" className={styles.brandIcon} aria-label="Abrir chat">
+            CF
+          </NavLink>
           <div>
             <strong className={styles.brandTitle}>ChatFinacial Mobile</strong>
             <p className={styles.brandUser}>{`Olá, ${greetingLabel}`}</p>
@@ -27,10 +32,6 @@ export const Navbar = (): JSX.Element => {
         </header>
 
         <nav className={styles.links}>
-          <NavLink to="/chat" className={getLinkClassName}>
-            <FiMessageCircle aria-hidden />
-            <span>Chat</span>
-          </NavLink>
           <NavLink to="/dashboard" className={getLinkClassName}>
             <FiClipboard aria-hidden />
             <span>Dashboard</span>
@@ -68,6 +69,9 @@ export const Navbar = (): JSX.Element => {
       <header className={styles.mobileTopBar}>
         <strong>ChatFinacial</strong>
         <div className={styles.mobileTopActions}>
+          <NavLink to="/chat" className={getIconButtonClassName} aria-label="Abrir chat">
+            <FiMessageCircle aria-hidden />
+          </NavLink>
           <NavLink to="/settings" className={styles.iconButton} aria-label="Abrir configurações">
             <FiSettings aria-hidden />
           </NavLink>
@@ -78,10 +82,6 @@ export const Navbar = (): JSX.Element => {
       </header>
 
       <nav className={styles.mobileBottomNav}>
-        <NavLink to="/chat" className={getMobileLinkClassName}>
-          <FiMessageCircle aria-hidden />
-          <span>Chat</span>
-        </NavLink>
         <NavLink to="/dashboard" className={getMobileLinkClassName}>
           <FiClipboard aria-hidden />
           <span>Dashboard</span>

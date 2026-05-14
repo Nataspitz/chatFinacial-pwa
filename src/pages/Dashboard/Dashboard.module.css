@@ -54,6 +54,16 @@
   transition: transform var(--dash-transition), box-shadow var(--dash-transition), filter var(--dash-transition);
 }
 
+.valueVisibilityButton > span {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.valueVisibilityButton svg {
+  flex: 0 0 auto;
+}
+
 .valueVisibilityButton:hover {
   transform: translateY(-1px);
 }

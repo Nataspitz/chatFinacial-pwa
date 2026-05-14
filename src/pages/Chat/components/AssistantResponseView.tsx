@@ -1,3 +1,4 @@
+import { useMemo, useState } from 'react'
 import type { AssistantResponse } from '../../../features/chat/assistant'
 import styles from '../Chat.module.css'
 
@@ -8,36 +9,24 @@ interface AssistantResponseViewProps {
 }
 
 const currency = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
+const PAGE_SIZE = 8
 
 const formatDate = (value: string): string => {
   const [year, month, day] = value.split('-')
   return year && month && day ? `${day}/${month}/${year}` : value
 }
 
-const getValueClassName = (value: number): string => (value >= 0 ? styles.positiveValue : styles.negativeValue)
+const getValueClassName = (value: number): string =>
+  value >= 0 ? styles.positiveValue : styles.negativeValue
 
-export const AssistantResponseView = ({ response, disabled = false, onSendMessage }: AssistantResponseViewProps) => {
+export const AssistantResponseView = ({
+  response,
+  disabled = false,
+  onSendMessage
+}: AssistantResponseViewProps) => {
   if (response.type === 'transactions_list') {
     return (
-      <div className={styles.responseBlock}>
-        <p className={styles.body}>{response.message}</p>
-        <div className={styles.compactList}>
-          {response.data.slice(0, 8).map((transaction) => (
-            <div key={transaction.id} className={styles.transactionItem}>
-              <div>
-                <strong>{transaction.description}</strong>
-                <span>
-                  {formatDate(transaction.date)} · {transaction.category}
-                </span>
-              </div>
-              <strong className={transaction.type === 'entrada' ? styles.positiveValue : styles.negativeValue}>
-                {currency.format(transaction.amount)}
-              </strong>
-            </div>
-          ))}
-        </div>
-        {response.data.length > 8 ? <span className={styles.hintText}>Mostrando 8 de {response.data.length} transações.</span> : null}
-      </div>
+      <TransactionsListResponse response={response} disabled={disabled} />
     )
   }
 
@@ -121,7 +110,105 @@ export const AssistantResponseView = ({ response, disabled = false, onSendMessag
     )
   }
 
-  return <p className={styles.body}>{response.message}</p>
+  return (
+    <div className={styles.responseBlock}>
+      <p className={styles.body}>{response.message}</p>
+      {response.quickActions?.length ? (
+        <div className={styles.messageActions}>
+          {response.quickActions.slice(0, 4).map((action) => (
+            <button
+              key={`${action.label}-${action.value}`}
+              type="button"
+              className={styles.actionButtonSecondary}
+              disabled={disabled}
+              onClick={() => onSendMessage(action.value, action.label)}
+            >
+              {action.label}
+            </button>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
+interface TransactionsListResponseProps {
+  response: Extract<AssistantResponse, { type: 'transactions_list' }>
+  disabled: boolean
+}
+
+const TransactionsListResponse = ({ response, disabled }: TransactionsListResponseProps) => {
+  const [page, setPage] = useState(1)
+  const total = response.data.length
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
+  const safePage = Math.min(Math.max(1, page), totalPages)
+  const start = (safePage - 1) * PAGE_SIZE
+  const currentItems = response.data.slice(start, start + PAGE_SIZE)
+
+  const grouped = useMemo(
+    () => ({
+      entries: currentItems.filter((item) => item.type === 'entrada'),
+      outcomes: currentItems.filter((item) => item.type === 'saida')
+    }),
+    [currentItems]
+  )
+
+  const renderGroup = (
+    title: string,
+    items: typeof currentItems,
+    amountClassName: string
+  ) => {
+    if (items.length === 0) return null
+    return (
+      <div className={styles.compactList}>
+        <span className={styles.hintText}>{title}</span>
+        {items.map((transaction) => (
+          <div key={transaction.id} className={styles.transactionItem}>
+            <div>
+              <strong>{transaction.description}</strong>
+              <span>
+                {formatDate(transaction.date)} · {transaction.category}
+              </span>
+            </div>
+            <strong className={amountClassName}>{currency.format(transaction.amount)}</strong>
+          </div>
+        ))}
+      </div>
+    )
+  }
+
+  return (
+    <div className={styles.responseBlock}>
+      <p className={styles.body}>{response.message}</p>
+
+      {renderGroup('Entradas', grouped.entries, styles.positiveValue)}
+      {renderGroup('Saídas', grouped.outcomes, styles.negativeValue)}
+
+      {totalPages > 1 ? (
+        <div className={styles.messageActions}>
+          <button
+            type="button"
+            className={styles.actionButtonSecondary}
+            disabled={disabled || safePage <= 1}
+            onClick={() => setPage((current) => Math.max(1, current - 1))}
+          >
+            Página anterior
+          </button>
+          <span className={styles.hintText}>
+            Página {safePage} de {totalPages}
+          </span>
+          <button
+            type="button"
+            className={styles.actionButtonSecondary}
+            disabled={disabled || safePage >= totalPages}
+            onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
+          >
+            Próxima página
+          </button>
+        </div>
+      ) : null}
+    </div>
+  )
 }
 
 interface MetricProps {

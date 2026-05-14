@@ -7,11 +7,17 @@ vi.mock('../../../src/contexts/AuthContext', () => ({
 }))
 
 vi.mock('../../../src/features/chat/assistant', async () => {
-  const actual = await vi.importActual<typeof import('../../../src/features/chat/assistant')>('../../../src/features/chat/assistant')
+  const actual = await vi.importActual<typeof import('../../../src/features/chat/assistant')>(
+    '../../../src/features/chat/assistant'
+  )
   return {
     ...actual,
     handleChatMessage: vi.fn(async () => ({
-      response: { type: 'question', message: 'De qual período você quer listar as transações?', missingSlot: 'period' },
+      response: {
+        type: 'question',
+        message: 'De qual período você quer listar as transações?',
+        missingSlot: 'period'
+      },
       session: {
         userId: 'user-1',
         pendingIntent: 'list_transactions',
@@ -28,10 +34,10 @@ describe('Chat integration', () => {
   it('renderiza resposta inicial e envia mensagem ao assistente', async () => {
     render(<Chat />)
 
-    expect(screen.getByText(/Posso listar transações/)).toBeInTheDocument()
+    expect(screen.getByText(/Posso te ajudar a criar uma transação/)).toBeInTheDocument()
 
     fireEvent.change(screen.getByPlaceholderText('Digite aqui...'), {
-      target: { value: 'quero listar transações' }
+      target: { value: 'quero listar transacoes' }
     })
     fireEvent.click(screen.getByRole('button', { name: 'Enviar' }))
 

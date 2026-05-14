@@ -15,7 +15,11 @@ interface ChatMessage {
   createdAt: string
 }
 
-const buildMessage = (role: ChatMessage['role'], content: string, response?: AssistantResponse): ChatMessage => ({
+const buildMessage = (
+  role: ChatMessage['role'],
+  content: string,
+  response?: AssistantResponse
+): ChatMessage => ({
   id: crypto.randomUUID(),
   role,
   content,
@@ -31,7 +35,7 @@ export const Chat = () => {
   const [messages, setMessages] = useState<ChatMessage[]>(() => [
     buildMessage(
       'assistant',
-      'Posso listar transações, mostrar saldo, gerar resumo ou preparar uma nova transação para confirmação.'
+      'Olá. Posso te ajudar a criar uma transação, listar transações, analisar gastos ou ver um resumo financeiro.'
     )
   ])
   const [session, setSession] = useState<AssistantChatSessionState | null>(null)
@@ -96,7 +100,11 @@ export const Chat = () => {
         {messages.map((message) => (
           <article
             key={message.id}
-            className={message.role === 'user' ? `${styles.bubble} ${styles.user}` : `${styles.bubble} ${styles.assistant}`}
+            className={
+              message.role === 'user'
+                ? `${styles.bubble} ${styles.user}`
+                : `${styles.bubble} ${styles.assistant}`
+            }
           >
             <div className={styles.metaRow}>
               <span className={styles.role}>{message.role === 'user' ? 'Você' : 'Assistente'}</span>

@@ -7,10 +7,10 @@ vi.mock('../../../src/contexts/AuthContext', () => ({
 }))
 
 describe('Chat composer visibility', () => {
-  it('mantém textarea disponível para o assistente determinístico', () => {
+  it('mantem textarea disponivel para o assistente', () => {
     render(<Chat />)
 
     expect(screen.getByPlaceholderText('Digite aqui...')).toBeInTheDocument()
-    expect(screen.getByText(/Posso listar transações/)).toBeInTheDocument()
+    expect(screen.getByText(/Posso te ajudar a criar uma transação/)).toBeInTheDocument()
   })
 })
