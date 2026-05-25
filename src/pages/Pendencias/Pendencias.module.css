@@ -1,0 +1,317 @@
+.page {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.summaryGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.summaryGrid div {
+  display: grid;
+  gap: 4px;
+  padding: var(--space-4);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  background: var(--card-bg);
+}
+
+.summaryGrid span {
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  font-weight: var(--font-weight-semibold);
+}
+
+.summaryGrid strong {
+  color: var(--text-primary);
+  font-size: var(--text-2xl);
+}
+
+.summaryToday {
+  border-left: 4px solid var(--brand-500) !important;
+}
+
+.summaryTomorrow {
+  border-left: 4px solid var(--success-500) !important;
+}
+
+.summaryOverdue {
+  border-left: 4px solid var(--danger-500) !important;
+}
+
+.summaryWeek {
+  border-left: 4px solid var(--warning-500) !important;
+}
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.filters button,
+.linkButton {
+  min-height: 36px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 0 var(--space-3);
+  color: var(--text-primary);
+  background: color-mix(in srgb, var(--bg-secondary) 84%, transparent);
+  font: inherit;
+  font-size: var(--text-sm);
+  font-weight: var(--font-weight-semibold);
+}
+
+.filters button:hover,
+.linkButton:hover {
+  border-color: color-mix(in srgb, var(--brand-500) 54%, var(--border-color));
+}
+
+.filters .filterActive {
+  border-color: color-mix(in srgb, var(--brand-500) 72%, var(--border-color));
+  color: var(--brand-700);
+  background: color-mix(in srgb, var(--brand-100) 42%, var(--bg-secondary));
+}
+
+[data-theme='dark'] .filters .filterActive {
+  color: var(--brand-200);
+}
+
+.error,
+.feedback,
+.state {
+  margin: 0;
+}
+
+.error {
+  color: var(--danger-500);
+  font-weight: var(--font-weight-semibold);
+}
+
+.feedback {
+  color: var(--brand-700);
+  font-weight: var(--font-weight-semibold);
+}
+
+[data-theme='dark'] .feedback {
+  color: var(--brand-200);
+}
+
+.state {
+  color: var(--text-secondary);
+}
+
+.groupList,
+.group,
+.notificationList {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.group {
+  padding: var(--space-3);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  background: var(--card-bg);
+}
+
+.groupHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.groupHeader h2 {
+  margin: 0;
+  font-size: var(--text-lg);
+}
+
+.groupHeader span {
+  min-width: 28px;
+  min-height: 28px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  color: var(--text-secondary);
+  background: color-mix(in srgb, var(--bg-secondary) 84%, transparent);
+  font-size: var(--text-sm);
+}
+
+.notificationCard {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: var(--space-3);
+  align-items: start;
+  padding: var(--space-4);
+  border: 1px solid var(--border-color);
+  border-left-width: 4px;
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--bg-secondary) 82%, transparent);
+}
+
+.toneIncome {
+  border-left-color: var(--success-500);
+}
+
+.tonePayment {
+  border-left-color: var(--warning-500);
+}
+
+.toneOverdue {
+  border-color: color-mix(in srgb, var(--danger-500) 42%, var(--border-color));
+  border-left-color: var(--danger-500);
+}
+
+.toneAudit {
+  border-left-color: var(--brand-500);
+}
+
+.toneWarning {
+  border-left-color: var(--warning-500);
+}
+
+.notificationIcon {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  background: color-mix(in srgb, var(--bg-primary) 66%, transparent);
+}
+
+.notificationContent {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.notificationTop,
+.notificationActions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.notificationCard h3 {
+  margin: 0;
+  font-size: var(--text-lg);
+}
+
+.notificationCard p {
+  margin: 0;
+  color: var(--text-secondary);
+}
+
+.typeBadge,
+.dateBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: fit-content;
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  padding: 2px var(--space-2);
+  color: var(--text-secondary);
+  background: color-mix(in srgb, var(--bg-primary) 56%, transparent);
+  font-size: var(--text-xs);
+  font-weight: var(--font-weight-semibold);
+}
+
+.amount {
+  color: var(--text-primary);
+  font-size: var(--text-lg);
+}
+
+.detailList {
+  display: grid;
+  gap: 6px;
+  margin: var(--space-1) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.detailList li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+}
+
+.detailList strong {
+  color: var(--text-primary);
+}
+
+.notificationActions {
+  justify-content: flex-end;
+  max-width: 260px;
+}
+
+.linkButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  text-decoration: none;
+}
+
+@media (max-width: 920px) {
+  .summaryGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .notificationCard {
+    grid-template-columns: 1fr;
+  }
+
+  .notificationIcon {
+    display: none;
+  }
+
+  .notificationActions {
+    justify-content: flex-start;
+    max-width: none;
+  }
+}
+
+@media (max-width: 560px) {
+  .summaryGrid {
+    display: flex;
+    gap: var(--space-2);
+    overflow-x: auto;
+    padding-bottom: 2px;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+  }
+
+  .summaryGrid::-webkit-scrollbar {
+    display: none;
+  }
+
+  .summaryGrid div {
+    flex: 0 0 128px;
+    min-height: 72px;
+    padding: var(--space-3);
+    scroll-snap-align: start;
+  }
+
+  .summaryGrid span {
+    font-size: var(--text-xs);
+  }
+
+  .summaryGrid strong {
+    font-size: var(--text-xl);
+  }
+
+  .notificationActions > * {
+    width: 100%;
+    justify-content: center;
+  }
+}

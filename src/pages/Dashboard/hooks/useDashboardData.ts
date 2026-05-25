@@ -254,7 +254,7 @@ export const useDashboardData = () => {
       return value
     }
 
-    return 'â€¢â€¢â€¢â€¢â€¢â€¢'
+    return '••••••'
   }
 
   const hasDashboardData = summarySource === 'database' || transactions.length > 0

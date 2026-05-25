@@ -131,7 +131,7 @@ export const useReportTransactionActions = ({
       setConfirmCandidate(null)
       notifyFinancialDataUpdated()
       setError('')
-      setToastMessage('TransaÃ§Ã£o validada!')
+      setToastMessage('Transação validada!')
     } catch (confirmError) {
       showActionFeedback(getErrorMessage(confirmError, 'Não foi possível validar a transação.'))
     } finally {

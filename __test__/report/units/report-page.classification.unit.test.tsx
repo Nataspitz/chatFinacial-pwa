@@ -231,8 +231,8 @@ describe('ReportPage - unit - classificacao de futuro', () => {
 
     const entradas = tablePropsStore.byTitle.get('Entradas')
     const entradasFuturas = tablePropsStore.byTitle.get('Entradas futuras')
-    const saidas = tablePropsStore.byTitle.get('SaÃ­das')
-    const saidasFuturas = tablePropsStore.byTitle.get('SaÃ­das futuras')
+    const saidas = tablePropsStore.byTitle.get('Saídas')
+    const saidasFuturas = tablePropsStore.byTitle.get('Saídas futuras')
 
     expect(entradas?.transactions.map((item) => item.id)).toEqual(['entrada-futura-confirmada'])
     expect(entradasFuturas?.transactions).toEqual([])

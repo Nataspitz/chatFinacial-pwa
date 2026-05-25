@@ -8,6 +8,7 @@ import { Dashboard } from '../pages/Dashboard/Dashboard'
 import { Auditoria } from '../pages/Auditoria/Auditoria'
 import { Goals } from '../pages/Goals/Goals'
 import { Login } from '../pages/Login/Login'
+import { Pendencias } from '../pages/Pendencias/Pendencias'
 import { Report } from '../pages/Report/Report'
 import { Settings } from '../pages/Settings/Settings'
 import { ProtectedRoute } from './ProtectedRoute'
@@ -52,6 +53,14 @@ const routes: RouteObject[] = [
           {
             path: '/goals',
             element: <Goals />
+          },
+          {
+            path: '/notificacoes',
+            element: <Pendencias />
+          },
+          {
+            path: '/pendencias',
+            element: <Navigate to="/notificacoes" replace />
           },
           {
             path: '/auditoria',

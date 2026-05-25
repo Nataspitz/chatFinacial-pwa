@@ -638,6 +638,40 @@ export const financeService = {
     await updateTransactionWithFallback(payload, transaction.id, userId)
   },
 
+  confirmTransaction: async (transactionId: string): Promise<void> => {
+    const userId = await getUserId()
+    let payload: Record<string, unknown> = {
+      is_confirmed: true,
+      confirmed_at: new Date().toISOString()
+    }
+    const MAX_ATTEMPTS = 4
+
+    for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt += 1) {
+      const { data, error } = await supabase
+        .from('transactions')
+        .update(payload)
+        .eq('id', transactionId)
+        .eq('user_id', userId)
+        .select('id')
+
+      if (!error) {
+        if ((data ?? []).length === 0) {
+          throw new Error('Transação não encontrada ou sem permissão para confirmar.')
+        }
+        return
+      }
+
+      const missingColumn = extractMissingColumnName(error)
+      if (!missingColumn || !(missingColumn in payload)) {
+        throw error
+      }
+
+      payload = removeColumnFromPayload(payload, missingColumn)
+    }
+
+    throw new Error('Não foi possível confirmar a transação por incompatibilidade de schema.')
+  },
+
   updateMonthlyCostFromDate: async (originalTransaction: Transaction, nextTransaction: Transaction): Promise<void> => {
     const originalDate = normalizeDate(originalTransaction.date)
     const nextDate = normalizeDate(nextTransaction.date)
