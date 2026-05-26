@@ -3,12 +3,14 @@ import { businessService, type BusinessSettings } from '../../../services/busine
 import { financialSummaryService } from '../../../services/financial-summary.service'
 import { financeService } from '../../../services/finance.service'
 import type { FinancialMonthlySummary } from '../../../types/financial-summary.types'
+import { shouldAffectFinancialReports } from '../../../utils/transaction-reports'
 import { parseTransactionDate } from '../dashboard-calculations'
 import { toMonthRef } from './dashboard-summary.utils'
 import type { NormalizedTransaction, PeriodTotals } from '../types'
 
 const normalizeDashboardTransactions = (transactions: Awaited<ReturnType<typeof financeService.getTransactions>>): NormalizedTransaction[] =>
   transactions
+    .filter(shouldAffectFinancialReports)
     .map((item) => {
       const parsedDate = parseTransactionDate(item.date)
       return parsedDate

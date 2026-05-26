@@ -1,4 +1,5 @@
 import type { Transaction } from '../../../types/transaction.types'
+import { shouldAffectFinancialReports } from '../../../utils/transaction-reports'
 import { getDefaultConfirmedByDate } from './report-page.utils'
 import { normalizeTransactionDate } from './report-page.date-utils'
 
@@ -9,6 +10,7 @@ export const buildMonthlyCostForPeriod = (
   selectedDay: string
 ): Transaction | null => {
   if (transaction.type !== 'saida' || !transaction.isMonthlyCost) return null
+  if (!shouldAffectFinancialReports(transaction)) return null
   if (selectedYear === 'all' || selectedMonth === 'all') return null
 
   const normalizedDate = normalizeTransactionDate(transaction.date)

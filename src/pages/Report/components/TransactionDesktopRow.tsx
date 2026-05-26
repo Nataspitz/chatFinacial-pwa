@@ -2,6 +2,7 @@ import type { MouseEvent } from 'react'
 import { FiMoreVertical } from 'react-icons/fi'
 import { Button, ButtonLoading } from '../../../components/ui'
 import type { Transaction } from '../../../types/transaction.types'
+import { getTransactionStatusLabel, isRefundedOrCanceled } from '../../../utils/transaction-reports'
 import {
   formatPaymentMethod,
   getCategorySelectOptions,
@@ -36,6 +37,8 @@ export const TransactionDesktopRow = ({
 }: TransactionDesktopRowProps): JSX.Element => {
   const isEditing = editingId === transaction.id && editingDraft !== null
   const canShowActions = !isEditing && !actionContext.isActionLocked(transaction)
+  const statusLabel = getTransactionStatusLabel(transaction)
+  const hasZeroImpact = isRefundedOrCanceled(transaction)
 
   const handleOpenMenu = (event: MouseEvent<HTMLButtonElement>): void => {
     event.preventDefault()
@@ -52,7 +55,7 @@ export const TransactionDesktopRow = ({
   }
 
   return (
-    <tr data-transaction-id={transaction.id}>
+    <tr data-transaction-id={transaction.id} className={hasZeroImpact ? styles.transactionVoided : undefined}>
       <td>
         {isEditing ? (
           <input
@@ -91,7 +94,10 @@ export const TransactionDesktopRow = ({
             onChange={(event) => onEditChange('description', event.target.value)}
           />
         ) : (
-          transaction.description
+          <>
+            {transaction.description}
+            {statusLabel ? <span className={styles.statusBadge}>{statusLabel}</span> : null}
+          </>
         )}
       </td>
       <td>
@@ -105,7 +111,7 @@ export const TransactionDesktopRow = ({
             onChange={(event) => onEditChange('amount', event.target.value)}
           />
         ) : (
-          formatCurrency(transaction.amount)
+          <span className={hasZeroImpact ? styles.zeroImpactAmount : undefined}>{formatCurrency(transaction.amount)}</span>
         )}
       </td>
       <td>

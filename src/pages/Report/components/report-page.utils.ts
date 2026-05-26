@@ -1,5 +1,6 @@
 import type { ExportReportPdfTransaction } from '../../../types/report-export.types'
 import type { Transaction } from '../../../types/transaction.types'
+import { shouldAffectFinancialReports } from '../../../utils/transaction-reports'
 import { formatPaymentMethod } from './transactionTable.utils'
 import type { ExportFormState } from './report-page.types'
 import {
@@ -16,7 +17,11 @@ export const formatCurrency = (value: number): string =>
   new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value)
 
 export const getErrorMessage = (error: unknown, fallback: string): string =>
-  error instanceof Error && error.message ? error.message : fallback
+  error instanceof Error && error.message
+    ? error.message
+    : error && typeof error === 'object' && 'message' in error && typeof error.message === 'string'
+      ? error.message
+      : fallback
 
 export const normalizeCategoryValue = (value: string): string => value.trim().replace(/\s+/g, ' ')
 
@@ -57,6 +62,7 @@ const getTransactionBalanceSignal = (transaction: Transaction): number => transa
 
 const getEarliestConfirmedTransactionDate = (transactions: Transaction[]): string | null => {
   const dates = transactions
+    .filter(shouldAffectFinancialReports)
     .filter((transaction) => transaction.isConfirmed)
     .map((transaction) => normalizeTransactionDate(transaction.date))
     .filter((date): date is string => Boolean(date))
@@ -106,6 +112,7 @@ export const calculateAccountBalanceAt = (
 
   const todayDate = getTodayDate()
   return transactions.reduce((acc, transaction) => {
+    if (!shouldAffectFinancialReports(transaction)) return acc
     const normalizedDate = normalizeTransactionDate(transaction.date)
     return normalizedDate ? acc + getConfirmedTransactionAmountAt(transaction, baseDate, targetDate, todayDate) : acc
   }, baseAmount)

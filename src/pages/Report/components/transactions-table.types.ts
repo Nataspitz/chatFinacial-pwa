@@ -21,6 +21,7 @@ export interface TransactionsTableProps {
   onDelete: (transaction: Transaction) => Promise<void>
   onDuplicate: (transaction: Transaction) => void
   onEditStart: (transaction: Transaction) => void
+  onRefundStart: (transaction: Transaction) => void
   onEditCancel: () => void
   onEditChange: (field: EditField, value: string | boolean) => void
   onEditSave: () => Promise<void>
@@ -42,6 +43,7 @@ export interface TransactionActionContext {
   onConfirmStart: (transaction: Transaction) => void
   onDelete: (transaction: Transaction) => Promise<void>
   onDuplicate: (transaction: Transaction) => void
+  onRefundStart: (transaction: Transaction) => void
   onEditCancel: () => void
   onEditSave: () => Promise<void>
   onEditStart: (transaction: Transaction) => void

@@ -1,6 +1,8 @@
 ﻿import { supabase } from '../lib/supabase'
+import { isFinancialPeriodLocked } from './financial-audit-lock'
 import type { ExportReportPdfPayload, ExportReportPdfResult } from '../types/report-export.types'
-import type { PaymentMethod, Transaction, TransactionType } from '../types/transaction.types'
+import type { PaymentMethod, RefundScope, Transaction, TransactionType } from '../types/transaction.types'
+import { getRefundTransactionTargets } from '../utils/transaction-refunds'
 
 interface TransactionRow {
   id: string
@@ -21,6 +23,16 @@ interface TransactionRow {
   is_installment: boolean
   monthly_end_date?: string | null
   deleted_at?: string | null
+  status?: string | null
+  ignored_in_reports?: boolean | null
+  refunded_at?: string | null
+  refund_reason?: string | null
+  refund_scope?: RefundScope | null
+  canceled_at?: string | null
+  cancel_reason?: string | null
+  reimbursed_at?: string | null
+  reimbursement_responsible?: string | null
+  reimbursement_notes?: string | null
 }
 
 interface TransactionCategoryRow {
@@ -41,9 +53,25 @@ export interface CategoryItem {
   name: string
 }
 
+export interface RefundTransactionOptions {
+  mode: 'refunded' | 'canceled'
+  reason?: string
+  scope?: RefundScope
+}
+
 const TRANSACTION_FIELDS =
   'id, type, category, amount, description, date, created_at, is_confirmed, confirmed_at, is_monthly_cost, payment_method, installment_group_id, installment_number, installment_count, total_amount, is_installment, deleted_at'
+const TRANSACTION_REFUND_FIELDS = TRANSACTION_FIELDS.replace(
+  ', deleted_at',
+  ', status, ignored_in_reports, refunded_at, refund_reason, refund_scope, canceled_at, cancel_reason, reimbursed_at, reimbursement_responsible, reimbursement_notes, deleted_at'
+)
+const TRANSACTION_REIMBURSEMENT_FIELDS = TRANSACTION_FIELDS.replace(
+  ', deleted_at',
+  ', status, ignored_in_reports, reimbursed_at, reimbursement_responsible, reimbursement_notes, deleted_at'
+)
 const TRANSACTION_FIELDS_WITH_MONTHLY_END_DATE = TRANSACTION_FIELDS.replace(', deleted_at', ', monthly_end_date, deleted_at')
+const TRANSACTION_REFUND_FIELDS_WITH_MONTHLY_END_DATE = TRANSACTION_REFUND_FIELDS.replace(', deleted_at', ', monthly_end_date, deleted_at')
+const TRANSACTION_REIMBURSEMENT_FIELDS_WITH_MONTHLY_END_DATE = TRANSACTION_REIMBURSEMENT_FIELDS.replace(', deleted_at', ', monthly_end_date, deleted_at')
 const TRANSACTION_FIELDS_WITHOUT_DELETED_AT = TRANSACTION_FIELDS.replace(', deleted_at', '')
 const TRANSACTION_FIELDS_WITH_MONTHLY_END_DATE_WITHOUT_DELETED_AT = TRANSACTION_FIELDS_WITH_MONTHLY_END_DATE.replace(', deleted_at', '')
 const LEGACY_TRANSACTION_FIELDS =
@@ -57,6 +85,23 @@ const normalizePaymentMethod = (value: string | null | undefined): PaymentMethod
   }
 
   return 'pix'
+}
+
+const normalizeTransactionStatus = (value: string | null | undefined, isConfirmed?: boolean, dateValue?: string): string => {
+  const normalized = String(value ?? '').trim().toLowerCase()
+  if (normalized === 'reimbursed') return 'refunded'
+  if (
+    normalized === 'active'
+    || normalized === 'confirmed'
+    || normalized === 'scheduled'
+    || normalized === 'refunded'
+    || normalized === 'canceled'
+  ) {
+    return normalized
+  }
+  if (isConfirmed === true) return 'confirmed'
+  if (dateValue && normalizeDate(dateValue) > getTodayDate()) return 'scheduled'
+  return 'active'
 }
 
 const getTodayDate = (): string => {
@@ -304,7 +349,18 @@ const mapRow = (row: TransactionRow): Transaction => ({
   installmentCount: Number.isFinite(Number(row.installment_count)) ? Number(row.installment_count) : 1,
   totalAmount: Number.isFinite(Number(row.total_amount)) ? Number(row.total_amount) : Number(row.amount),
   isInstallment: Boolean(row.is_installment),
-  monthlyEndDate: row.monthly_end_date ? normalizeDate(row.monthly_end_date) : null
+  monthlyEndDate: row.monthly_end_date ? normalizeDate(row.monthly_end_date) : null,
+  status: normalizeTransactionStatus(row.status, Boolean(row.is_confirmed), row.date),
+  ignoredInReports: Boolean(row.ignored_in_reports),
+  refundedAt: row.refunded_at ? normalizeDate(row.refunded_at) : row.reimbursed_at ? normalizeDate(row.reimbursed_at) : null,
+  refundReason: row.refund_reason ?? row.reimbursement_notes ?? null,
+  refundScope: row.refund_scope ?? null,
+  canceledAt: row.canceled_at ? normalizeDate(row.canceled_at) : null,
+  cancelReason: row.cancel_reason ?? null,
+  reimbursedAt: row.reimbursed_at ? normalizeDate(row.reimbursed_at) : null,
+  reimbursementResponsible: row.reimbursement_responsible ?? null,
+  reimbursementNotes: row.reimbursement_notes ?? null,
+  deletedAt: row.deleted_at ?? null
 })
 
 const toInsertPayload = (transaction: Transaction, userId: string): Record<string, unknown> => ({
@@ -324,7 +380,17 @@ const toInsertPayload = (transaction: Transaction, userId: string): Record<strin
   installment_count: transaction.installmentCount,
   total_amount: transaction.totalAmount,
   is_installment: transaction.isInstallment,
-  monthly_end_date: transaction.monthlyEndDate ? normalizeDate(transaction.monthlyEndDate) : null
+  monthly_end_date: transaction.monthlyEndDate ? normalizeDate(transaction.monthlyEndDate) : null,
+  status: normalizeTransactionStatus(transaction.status, transaction.isConfirmed, transaction.date),
+  ignored_in_reports: Boolean(transaction.ignoredInReports),
+  refunded_at: transaction.refundedAt ? normalizeDate(transaction.refundedAt) : null,
+  refund_reason: transaction.refundReason ?? null,
+  refund_scope: transaction.refundScope ?? null,
+  canceled_at: transaction.canceledAt ? normalizeDate(transaction.canceledAt) : null,
+  cancel_reason: transaction.cancelReason ?? null,
+  reimbursed_at: transaction.reimbursedAt ? normalizeDate(transaction.reimbursedAt) : null,
+  reimbursement_responsible: transaction.reimbursementResponsible ?? null,
+  reimbursement_notes: transaction.reimbursementNotes ?? null
 })
 
 const getUserId = async (): Promise<string> => {
@@ -403,6 +469,52 @@ const removeColumnFromPayload = (payload: Record<string, unknown>, column: strin
   return nextPayload
 }
 
+const isTransactionStatusConstraintError = (error: unknown): boolean => {
+  if (!error || typeof error !== 'object') {
+    return false
+  }
+
+  const message = 'message' in error && typeof error.message === 'string' ? error.message : ''
+  const details = 'details' in error && typeof error.details === 'string' ? error.details : ''
+  const code = 'code' in error && typeof error.code === 'string' ? error.code : ''
+  const combined = `${message} ${details}`.toLowerCase()
+
+  return (code === '23514' || combined.includes('check constraint')) && combined.includes('transactions_status_check')
+}
+
+const toLegacyTransactionStatusPayload = (payload: Record<string, unknown>): Record<string, unknown> | null => {
+  if (payload.status === 'refunded') {
+    return { ...payload, status: 'REIMBURSED' }
+  }
+
+  if (payload.status === 'canceled') {
+    return { ...payload, status: 'CANCELED' }
+  }
+
+  if (payload.status === 'active') {
+    return { ...payload, status: 'ACTIVE' }
+  }
+
+  return null
+}
+
+const withoutTransactionStatusPayload = (payload: Record<string, unknown>): Record<string, unknown> => {
+  const { status: _status, ...nextPayload } = payload
+  return nextPayload
+}
+
+const updateTransactionBestEffort = async (
+  payload: Record<string, unknown>,
+  transactionId: string,
+  userId: string
+): Promise<void> => {
+  try {
+    await updateTransactionWithFallback(payload, transactionId, userId)
+  } catch {
+    // Best-effort metadata/status write. The primary financial-impact update must not fail because of optional columns.
+  }
+}
+
 const insertTransactionsWithFallback = async (payload: Array<Record<string, unknown>>): Promise<void> => {
   if (payload.length === 0) {
     return
@@ -416,6 +528,19 @@ const insertTransactionsWithFallback = async (payload: Array<Record<string, unkn
 
     if (!error) {
       return
+    }
+
+    if (isTransactionStatusConstraintError(error)) {
+      const legacyPayload = toLegacyTransactionStatusPayload(workingPayload)
+      if (legacyPayload) {
+        workingPayload = legacyPayload
+        continue
+      }
+
+      if ('status' in workingPayload) {
+        workingPayload = withoutTransactionStatusPayload(workingPayload)
+        continue
+      }
     }
 
     const missingColumn = extractMissingColumnName(error)
@@ -476,7 +601,7 @@ export const financeService = {
 
     const responseWithMonthlyEndDate = await supabase
       .from('transactions')
-      .select(TRANSACTION_FIELDS_WITH_MONTHLY_END_DATE)
+      .select(TRANSACTION_REFUND_FIELDS_WITH_MONTHLY_END_DATE)
       .eq('user_id', userId)
       .is('deleted_at', null)
       .order('date', { ascending: false })
@@ -484,7 +609,7 @@ export const financeService = {
     const response = responseWithMonthlyEndDate.error
       ? await supabase
           .from('transactions')
-          .select(TRANSACTION_FIELDS)
+          .select(TRANSACTION_REIMBURSEMENT_FIELDS_WITH_MONTHLY_END_DATE)
           .eq('user_id', userId)
           .is('deleted_at', null)
           .order('date', { ascending: false })
@@ -492,6 +617,44 @@ export const financeService = {
       : responseWithMonthlyEndDate
 
     if (response.error) {
+      const baseWithMonthlyEndDate = await supabase
+        .from('transactions')
+        .select(TRANSACTION_FIELDS_WITH_MONTHLY_END_DATE)
+        .eq('user_id', userId)
+        .is('deleted_at', null)
+        .order('date', { ascending: false })
+        .order('created_at', { ascending: false })
+
+      if (!baseWithMonthlyEndDate.error) {
+        return ((baseWithMonthlyEndDate.data ?? []) as TransactionRow[]).map(mapRow)
+      }
+
+      if (extractMissingColumnName(response.error) === 'monthly_end_date') {
+        const withoutMonthlyEndDate = await supabase
+          .from('transactions')
+          .select(TRANSACTION_REIMBURSEMENT_FIELDS)
+          .eq('user_id', userId)
+          .is('deleted_at', null)
+          .order('date', { ascending: false })
+          .order('created_at', { ascending: false })
+
+        if (!withoutMonthlyEndDate.error) {
+          return ((withoutMonthlyEndDate.data ?? []) as TransactionRow[]).map(mapRow)
+        }
+
+        const baseWithoutMonthlyEndDate = await supabase
+          .from('transactions')
+          .select(TRANSACTION_FIELDS)
+          .eq('user_id', userId)
+          .is('deleted_at', null)
+          .order('date', { ascending: false })
+          .order('created_at', { ascending: false })
+
+        if (!baseWithoutMonthlyEndDate.error) {
+          return ((baseWithoutMonthlyEndDate.data ?? []) as TransactionRow[]).map(mapRow)
+        }
+      }
+
       if (isMissingDeletedAtColumnError(response.error)) {
         const noDeletedAt = await supabase
           .from('transactions')
@@ -564,7 +727,7 @@ export const financeService = {
 
     const response = await supabase
       .from('transactions')
-      .select(TRANSACTION_FIELDS)
+      .select(TRANSACTION_REFUND_FIELDS)
       .eq('user_id', userId)
       .not('deleted_at', 'is', null)
       .order('deleted_at', { ascending: false })
@@ -572,6 +735,32 @@ export const financeService = {
       .order('created_at', { ascending: false })
 
     if (response.error) {
+      const reimbursementResponse = await supabase
+        .from('transactions')
+        .select(TRANSACTION_REIMBURSEMENT_FIELDS)
+        .eq('user_id', userId)
+        .not('deleted_at', 'is', null)
+        .order('deleted_at', { ascending: false })
+        .order('date', { ascending: false })
+        .order('created_at', { ascending: false })
+
+      if (!reimbursementResponse.error) {
+        return ((reimbursementResponse.data ?? []) as TransactionRow[]).map(mapRow)
+      }
+
+      const baseResponse = await supabase
+        .from('transactions')
+        .select(TRANSACTION_FIELDS)
+        .eq('user_id', userId)
+        .not('deleted_at', 'is', null)
+        .order('deleted_at', { ascending: false })
+        .order('date', { ascending: false })
+        .order('created_at', { ascending: false })
+
+      if (!baseResponse.error) {
+        return ((baseResponse.data ?? []) as TransactionRow[]).map(mapRow)
+      }
+
       if (isMissingDeletedAtColumnError(response.error)) {
         return []
       }
@@ -632,7 +821,17 @@ export const financeService = {
       installment_count: transaction.installmentCount,
       total_amount: transaction.totalAmount,
       is_installment: transaction.isInstallment,
-      monthly_end_date: transaction.monthlyEndDate ? normalizeDate(transaction.monthlyEndDate) : null
+      monthly_end_date: transaction.monthlyEndDate ? normalizeDate(transaction.monthlyEndDate) : null,
+      status: normalizeTransactionStatus(transaction.status, transaction.isConfirmed, transaction.date),
+      ignored_in_reports: Boolean(transaction.ignoredInReports),
+      refunded_at: transaction.refundedAt ? normalizeDate(transaction.refundedAt) : null,
+      refund_reason: transaction.refundReason ?? null,
+      refund_scope: transaction.refundScope ?? null,
+      canceled_at: transaction.canceledAt ? normalizeDate(transaction.canceledAt) : null,
+      cancel_reason: transaction.cancelReason ?? null,
+      reimbursed_at: transaction.reimbursedAt ? normalizeDate(transaction.reimbursedAt) : null,
+      reimbursement_responsible: transaction.reimbursementResponsible ?? null,
+      reimbursement_notes: transaction.reimbursementNotes ?? null
     }
 
     await updateTransactionWithFallback(payload, transaction.id, userId)
@@ -670,6 +869,59 @@ export const financeService = {
     }
 
     throw new Error('Não foi possível confirmar a transação por incompatibilidade de schema.')
+  },
+
+  refundTransaction: async (transactionId: string, options: RefundTransactionOptions): Promise<void> => {
+    const userId = await getUserId()
+    const scope = options.scope ?? 'single'
+    const transactions = await financeService.getTransactions()
+    const selected = transactions.find((item) => item.id === transactionId)
+
+    if (!selected) {
+      throw new Error('Transação não encontrada ou sem permissão para anular.')
+    }
+
+    const targets = getRefundTransactionTargets(transactions, selected, scope)
+
+    if (targets.some((item) => isFinancialPeriodLocked(item.date))) {
+      throw new Error('Esta transação pertence a um período financeiro já auditado e não pode ser alterada diretamente.')
+    }
+
+    const nowIso = new Date().toISOString()
+    const reason = options.reason?.trim() || null
+    const financialImpactPayload: Record<string, unknown> = {
+      ignored_in_reports: true
+    }
+    const metadataPayload = options.mode === 'refunded'
+      ? {
+          refunded_at: nowIso,
+          refund_reason: reason,
+          refund_scope: scope,
+          canceled_at: null,
+          cancel_reason: null,
+          reimbursed_at: nowIso,
+          reimbursement_notes: reason
+        }
+      : {
+          refunded_at: null,
+          refund_reason: null,
+          refund_scope: scope,
+          canceled_at: nowIso,
+          cancel_reason: reason,
+          reimbursed_at: null,
+          reimbursement_notes: reason
+        }
+    const statusPayload: Record<string, unknown> = {
+      status: options.mode
+    }
+
+    await Promise.all(
+      targets.map(async (target) => {
+        await updateTransactionWithFallback(financialImpactPayload, target.id, userId)
+        await updateTransactionBestEffort(metadataPayload, target.id, userId)
+        await updateTransactionBestEffort(statusPayload, target.id, userId)
+      })
+    )
   },
 
   updateMonthlyCostFromDate: async (originalTransaction: Transaction, nextTransaction: Transaction): Promise<void> => {

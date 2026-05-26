@@ -1,6 +1,7 @@
 import type { FinancialAudit } from '../types/financial-audit.types'
 import type { FinancialNotification } from '../types/financial-notification.types'
 import type { Transaction } from '../types/transaction.types'
+import { shouldAffectFinancialReports } from '../utils/transaction-reports'
 import { financialAuditService } from './financial-audit.service'
 import { financeService } from './finance.service'
 
@@ -188,7 +189,9 @@ export const financialNotificationsService = {
       financialAuditService.getHistory()
     ])
 
-    const transactions = transactionsResult.status === 'fulfilled' ? transactionsResult.value : []
+    const transactions = transactionsResult.status === 'fulfilled'
+      ? transactionsResult.value.filter(shouldAffectFinancialReports)
+      : []
     const audits = auditsResult.status === 'fulfilled' ? auditsResult.value : []
 
     return sortNotifications([

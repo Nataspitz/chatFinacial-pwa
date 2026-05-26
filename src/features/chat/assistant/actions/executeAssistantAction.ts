@@ -1,5 +1,6 @@
 import { financeService } from '../../../../services/finance.service'
 import type { Transaction, TransactionType } from '../../../../types/transaction.types'
+import { shouldAffectFinancialReports } from '../../../../utils/transaction-reports'
 import { localDateToDateOnly } from '../date-utils'
 import { normalizeText } from '../core/normalizeText'
 import type {
@@ -88,7 +89,7 @@ const sortTransactions = (transactions: Transaction[]): Transaction[] =>
   [...transactions].sort((a, b) => b.date.localeCompare(a.date) || b.description.localeCompare(a.description))
 
 const getTransactionsForEntities = async (entities: AssistantEntities): Promise<Transaction[]> => {
-  const transactions = await financeService.getTransactions()
+  const transactions = (await financeService.getTransactions()).filter(shouldAffectFinancialReports)
   return sortTransactions(
     filterByAmountRange(
       filterByDescription(

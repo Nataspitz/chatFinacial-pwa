@@ -6,6 +6,7 @@ import { goalsService } from '../../../services/goals.service'
 import type { FinancialMonthlySummary } from '../../../types/financial-summary.types'
 import type { Goal, GoalStatus } from '../../../types/goal.types'
 import type { Transaction } from '../../../types/transaction.types'
+import { shouldAffectFinancialReports } from '../../../utils/transaction-reports'
 
 interface MonthlyAverages {
   entries: number
@@ -215,7 +216,7 @@ export const useGoalsData = () => {
       throw new Error('Não foi possível carregar as metas.')
     }
 
-    const loadedTransactions = transactionsResult.value
+    const loadedTransactions = transactionsResult.value.filter(shouldAffectFinancialReports)
 
     if (summariesResult.status === 'fulfilled' && isValidYearSummary(summariesResult.value, currentYear)) {
       const summaryBalance = getCurrentMonthSummaryBalance(summariesResult.value)

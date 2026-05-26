@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react'
 import { financeService } from '../../../services/finance.service'
 import type { Transaction } from '../../../types/transaction.types'
+import { shouldAffectFinancialReports } from '../../../utils/transaction-reports'
 import type { CalendarCell, DayTotals, DayTransactions } from '../types'
 
 const toDateKey = (date: Date): string => {
@@ -190,7 +191,7 @@ export const useCalendarData = (): UseCalendarDataResult => {
 
     try {
       const data = await financeService.getTransactions()
-      setTransactions(data)
+      setTransactions(data.filter(shouldAffectFinancialReports))
     } catch {
       if (!silent) {
         setError('Não foi possível carregar os dados do calendário.')

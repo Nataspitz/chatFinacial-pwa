@@ -1,77 +1,81 @@
-import type { Dispatch, SetStateAction } from 'react'
+import { useEffect, useState } from 'react'
 import { Button, ButtonLoading, ModalBase } from '../../../components/ui'
-import type { Transaction } from '../../../types/transaction.types'
+import type { RefundScope, Transaction } from '../../../types/transaction.types'
 import styles from '../Report.module.css'
-
-interface ReimbursementFormState {
-  reimbursedAt: string
-  reimbursementResponsible: string
-  reimbursementNotes: string
-}
 
 interface ReimburseTransactionModalProps {
   transaction: Transaction | null
-  form: ReimbursementFormState
   isSubmitting: boolean
   feedback: string
-  setForm: Dispatch<SetStateAction<ReimbursementFormState>>
   onClose: () => void
-  onConfirm: () => void
+  onConfirm: (options: {
+    mode: 'refunded' | 'canceled'
+    reason?: string
+    scope?: RefundScope
+  }) => void
 }
 
 export const ReimburseTransactionModal = ({
   transaction,
-  form,
   isSubmitting,
   feedback,
-  setForm,
   onClose,
   onConfirm
 }: ReimburseTransactionModalProps): JSX.Element => {
+  const [mode, setMode] = useState<'refunded' | 'canceled'>('refunded')
+  const [scope, setScope] = useState<RefundScope>('single')
+  const [reason, setReason] = useState('')
   const isInstallmentGroup = Boolean(transaction?.installmentGroupId && transaction.installmentCount > 1)
 
+  useEffect(() => {
+    if (!transaction) return
+    setMode('refunded')
+    setScope('single')
+    setReason('')
+  }, [transaction])
+
   return (
-    <ModalBase open={transaction !== null} title="Anular saída por reembolso" onClose={onClose}>
+    <ModalBase open={transaction !== null} title="Anular ou reembolsar transação" onClose={onClose}>
       <form
         className={styles.createForm}
         onSubmit={(event) => {
           event.preventDefault()
-          onConfirm()
+          onConfirm({
+            mode,
+            reason,
+            scope: isInstallmentGroup ? scope : 'single'
+          })
         }}
       >
         <div className={styles.confirmDeleteContent}>
-          <p>Essa ação não cria uma entrada. Ela apenas remove esta saída dos cálculos financeiros principais. A transação continuará salva no histórico interno.</p>
-          {isInstallmentGroup ? (
-            <p>Esta saída faz parte de uma compra parcelada. Todas as parcelas vinculadas serão marcadas como reembolsadas.</p>
-          ) : null}
+          <p>Essa ação não cria uma entrada. Ela anula o impacto financeiro da transação original nos relatórios principais.</p>
         </div>
 
         <label className={styles.createField}>
-          <span>Data do reembolso</span>
-          <input
-            type="date"
-            value={form.reimbursedAt}
-            onChange={(event) => setForm((prev) => ({ ...prev, reimbursedAt: event.target.value }))}
-            required
-          />
+          <span>Tipo</span>
+          <select value={mode} onChange={(event) => setMode(event.target.value as 'refunded' | 'canceled')}>
+            <option value="refunded">Valor reembolsado/estornado</option>
+            <option value="canceled">Compra cancelada/anulada</option>
+          </select>
         </label>
 
-        <label className={styles.createField}>
-          <span>Responsável</span>
-          <input
-            type="text"
-            value={form.reimbursementResponsible}
-            onChange={(event) => setForm((prev) => ({ ...prev, reimbursementResponsible: event.target.value }))}
-            required
-          />
-        </label>
+        {isInstallmentGroup ? (
+          <label className={styles.createField}>
+            <span>Escopo</span>
+            <select value={scope} onChange={(event) => setScope(event.target.value as RefundScope)}>
+              <option value="single">Apenas esta parcela</option>
+              <option value="future">Esta e próximas parcelas</option>
+              <option value="group">Todas as parcelas do grupo</option>
+            </select>
+          </label>
+        ) : null}
 
         <label className={styles.createField}>
-          <span>Observação/motivo</span>
+          <span>Motivo</span>
           <textarea
-            value={form.reimbursementNotes}
-            onChange={(event) => setForm((prev) => ({ ...prev, reimbursementNotes: event.target.value }))}
-            required
+            value={reason}
+            onChange={(event) => setReason(event.target.value)}
+            placeholder="Opcional"
           />
         </label>
 
@@ -89,5 +93,3 @@ export const ReimburseTransactionModal = ({
     </ModalBase>
   )
 }
-
-export type { ReimbursementFormState }

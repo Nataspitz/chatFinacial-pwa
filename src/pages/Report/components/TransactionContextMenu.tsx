@@ -1,6 +1,6 @@
 ﻿import { useEffect, useMemo } from 'react'
 import { createPortal } from 'react-dom'
-import { FiCheckCircle, FiCopy, FiEdit2, FiTrash2 } from 'react-icons/fi'
+import { FiCheckCircle, FiCopy, FiEdit2, FiRefreshCw, FiTrash2 } from 'react-icons/fi'
 import type { TransactionContextMenuCoordinates } from './transactions-table.types'
 import styles from '../Report.module.css'
 
@@ -16,6 +16,7 @@ interface TransactionContextMenuProps {
   onDelete: () => void
   onDuplicate: () => void
   onEdit: () => void
+  onRefund: () => void
 }
 
 const MENU_WIDTH = 196
@@ -43,7 +44,8 @@ export const TransactionContextMenu = ({
   onConfirm,
   onDelete,
   onDuplicate,
-  onEdit
+  onEdit,
+  onRefund
 }: TransactionContextMenuProps): JSX.Element | null => {
   const safeCoordinates = useMemo(() => {
     if (!isOpen || !coordinates) {
@@ -110,6 +112,18 @@ export const TransactionContextMenu = ({
             <span>{isConfirming ? 'Validando...' : 'Confirmar'}</span>
           </button>
         ) : null}
+
+        <button
+          type="button"
+          role="menuitem"
+          className={styles.contextMenuItem}
+          disabled={isLocked}
+          title={isLocked ? 'Período auditado bloqueado' : undefined}
+          onClick={onRefund}
+        >
+          <FiRefreshCw aria-hidden />
+          <span>Anular/Reembolsar</span>
+        </button>
 
         <button
           type="button"

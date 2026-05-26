@@ -1,6 +1,7 @@
 import { financeService } from './finance.service'
 import type { CfoAlert, CfoCategoryTotal, CfoFinancialSnapshot, CfoForecast, CfoGrowth, CfoTotals } from '../types/cfo.types'
 import type { Transaction } from '../types/transaction.types'
+import { shouldAffectFinancialReports } from '../utils/transaction-reports'
 
 const MONTH_LABELS = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
 const DEFAULT_FORECAST_DAYS = 30
@@ -269,7 +270,7 @@ export const cfoContextService = {
     const previousPeriod = shiftPeriod(currentPeriod, -1)
     const olderPeriod = shiftPeriod(currentPeriod, -2)
 
-    const transactions = await financeService.getTransactions()
+    const transactions = (await financeService.getTransactions()).filter(shouldAffectFinancialReports)
     const transactionsByDate = transactions
       .map((transaction) => {
         const dateKey = normalizeTransactionDate(transaction.date)

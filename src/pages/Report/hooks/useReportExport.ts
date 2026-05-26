@@ -3,6 +3,7 @@ import { businessService } from '../../../services/business.service'
 import { financeService } from '../../../services/finance.service'
 import type { ExportReportPdfPayload } from '../../../types/report-export.types'
 import type { Transaction } from '../../../types/transaction.types'
+import { shouldAffectFinancialReports } from '../../../utils/transaction-reports'
 import {
   getPreviousDate,
   getLastDayOfMonth,
@@ -64,7 +65,7 @@ export const useReportExport = (transactions: Transaction[], userMetadata: Recor
     () => {
       const exportRange = getExportDateRange(exportForm)
 
-      return transactions.flatMap((item) => {
+      return transactions.filter(shouldAffectFinancialReports).flatMap((item) => {
         const normalizedDate = normalizeTransactionDate(item.date)
         if (!normalizedDate) return []
 

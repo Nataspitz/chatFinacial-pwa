@@ -2,6 +2,7 @@
 import { FiChevronDown, FiChevronUp, FiMoreVertical } from 'react-icons/fi'
 import { Button, ButtonLoading } from '../../../components/ui'
 import type { Transaction } from '../../../types/transaction.types'
+import { getTransactionStatusLabel, isRefundedOrCanceled } from '../../../utils/transaction-reports'
 import {
   formatPaymentMethod,
   getCategorySelectOptions,
@@ -37,6 +38,8 @@ export const TransactionMobileItem = ({
   const [isExpanded, setIsExpanded] = useState(false)
   const isEditing = editingId === transaction.id && editingDraft !== null
   const canShowActions = !actionContext.isActionLocked(transaction)
+  const statusLabel = getTransactionStatusLabel(transaction)
+  const hasZeroImpact = isRefundedOrCanceled(transaction)
 
   const handleOpenMenu = (event: MouseEvent<HTMLButtonElement>): void => {
     event.preventDefault()
@@ -52,7 +55,7 @@ export const TransactionMobileItem = ({
   }
 
   return (
-    <article className={styles.mobileItem} data-transaction-id={transaction.id}>
+    <article className={`${styles.mobileItem} ${hasZeroImpact ? styles.transactionVoided : ''}`.trim()} data-transaction-id={transaction.id}>
       {isEditing ? (
         <>
           <div className={styles.mobileRow}>
@@ -187,9 +190,20 @@ export const TransactionMobileItem = ({
             </div>
             <div className={styles.mobileSummaryItem}>
               <span className={styles.mobileLabel}>Valor</span>
-              <div className={styles.mobileValue}>{formatCurrency(transaction.amount)}</div>
+              <div className={styles.mobileValue}>
+                <span className={hasZeroImpact ? styles.zeroImpactAmount : undefined}>{formatCurrency(transaction.amount)}</span>
+              </div>
             </div>
           </div>
+          {statusLabel ? (
+            <div className={styles.mobileRow}>
+              <span className={styles.mobileLabel}>Status</span>
+              <div className={styles.mobileValue}>
+                <span className={styles.statusBadge}>{statusLabel}</span>
+                <span>Impacto financeiro: R$ 0,00</span>
+              </div>
+            </div>
+          ) : null}
 
           <button
             type="button"

@@ -1,5 +1,7 @@
 export type TransactionType = 'entrada' | 'saida'
 export type PaymentMethod = 'credito' | 'debito' | 'pix' | 'dinheiro'
+export type TransactionStatus = 'active' | 'confirmed' | 'scheduled' | 'refunded' | 'canceled' | string
+export type RefundScope = 'single' | 'future' | 'group'
 
 export interface Transaction {
   id: string
@@ -20,4 +22,15 @@ export interface Transaction {
   isInstallment: boolean
   monthlyEndDate?: string | null
   monthlyCostStartDate?: string
+  status?: TransactionStatus
+  refundedAt?: string | null
+  refundReason?: string | null
+  refundScope?: RefundScope | null
+  canceledAt?: string | null
+  cancelReason?: string | null
+  ignoredInReports?: boolean
+  reimbursedAt?: string | null
+  reimbursementResponsible?: string | null
+  reimbursementNotes?: string | null
+  deletedAt?: string | null
 }

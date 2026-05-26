@@ -247,6 +247,75 @@ describe('ReportPage - unit - classificacao de futuro', () => {
     expect(saidaAbertaTable?.[0].toLowerCase()).toContain('futuras')
   })
 
+  it('mantem reembolsadas em saidas por padrao sem somar nos totais', async () => {
+    const now = new Date()
+
+    setFinanceServiceMockData({
+      categories: createReportCategoryMap(),
+      transactions: [
+        createReportTransaction({
+          id: 'saida-reembolsada',
+          type: 'saida',
+          amount: 300,
+          date: toIsoDate(now),
+          status: 'refunded',
+          ignoredInReports: true
+        }),
+        createReportTransaction({
+          id: 'saida-valida',
+          type: 'saida',
+          amount: 80,
+          date: toIsoDate(now)
+        })
+      ]
+    })
+
+    render(<ReportPage />)
+
+    await waitFor(() => {
+      const saidas = tablePropsStore.byTitle.get('Saídas')
+      expect(saidas?.transactions.map((item) => item.id)).toEqual(['saida-reembolsada', 'saida-valida'])
+      expect(saidas?.totalLabel).toBe('R$ 80,00')
+    })
+  })
+
+  it('move saida futura reembolsada para saidas sem somar em saidas futuras', async () => {
+    const now = new Date()
+
+    setFinanceServiceMockData({
+      categories: createReportCategoryMap(),
+      transactions: [
+        createReportTransaction({
+          id: 'saida-futura-reembolsada',
+          type: 'saida',
+          amount: 300,
+          date: addDays(now, 5),
+          isConfirmed: false,
+          status: 'refunded',
+          ignoredInReports: true
+        }),
+        createReportTransaction({
+          id: 'saida-futura-valida',
+          type: 'saida',
+          amount: 80,
+          date: addDays(now, 5),
+          isConfirmed: false
+        })
+      ]
+    })
+
+    render(<ReportPage />)
+
+    await waitFor(() => {
+      const saidas = tablePropsStore.byTitle.get('Saídas')
+      const saidasFuturas = tablePropsStore.byTitle.get('Saídas futuras')
+      expect(saidas?.transactions.map((item) => item.id)).toEqual(['saida-futura-reembolsada'])
+      expect(saidas?.totalLabel).toBe('R$ 0,00')
+      expect(saidasFuturas?.transactions.map((item) => item.id)).toEqual(['saida-futura-valida'])
+      expect(saidasFuturas?.totalLabel).toBe('R$ 80,00')
+    })
+  })
+
   it('regressao: custo mensal respeita filtro de dia sem quebrar classificacao', async () => {
     const now = new Date()
 

@@ -17,6 +17,7 @@ import {
   type TransactionSettings
 } from '../types/transaction-settings.types'
 import type { PaymentMethod, Transaction, TransactionType } from '../types/transaction.types'
+import { shouldAffectFinancialReports } from '../utils/transaction-reports'
 
 const MAX_OPTIONS = 10
 const CFO_ANALYSIS_PAGE_SIZE = 4
@@ -319,7 +320,7 @@ const executeList = async (session: ChatSessionState): Promise<ChatReply> => {
   const month = session.draft?.periodMonth
   const day = session.draft?.periodDay
 
-  let items = await financeService.getTransactions()
+  let items = (await financeService.getTransactions()).filter(shouldAffectFinancialReports)
   if (listType !== 'all') items = items.filter((x) => x.type === listType)
   if (scope === 'year' && year) items = items.filter((x) => x.date.slice(0, 4) === year)
   if (scope === 'month' && year && month) items = items.filter((x) => x.date.slice(0, 7) === `${year}-${month}`)

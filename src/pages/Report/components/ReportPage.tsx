@@ -4,6 +4,7 @@ import { PageTemplate } from '../../../components/templates/PageTemplate/PageTem
 import { useAuth } from '../../../contexts/AuthContext'
 import { getFinancialAuditLockCutoffDate } from '../../../services/financial-audit-lock'
 import { getDefaultPaymentMethodByType } from '../../../types/transaction-settings.types'
+import { getFinancialReportAmount } from '../../../utils/transaction-reports'
 import { PageHeader } from './PageHeader'
 import { MobileActionsDrawer } from './MobileActionsDrawer'
 import { ReportTransactionsGrid } from './ReportTransactionsGrid'
@@ -14,6 +15,7 @@ import { ConfirmTransactionModal } from './ConfirmTransactionModal'
 import { ExportReportModal } from './ExportReportModal'
 import { CreateTransactionModal } from './CreateTransactionModal'
 import { CategoryManagerModal } from './CategoryManagerModal'
+import { ReimburseTransactionModal } from './ReimburseTransactionModal'
 import { formatDate } from './report-page.date-utils'
 import { formatCurrency } from './report-page.utils'
 import { useReportData } from '../hooks/useReportData'
@@ -75,10 +77,10 @@ export const ReportPage = (): JSX.Element => {
   const outcomes = useMemo(() => filters.mainTransactions.filter((item) => item.type === 'saida'), [filters.mainTransactions])
   const futureEntries = useMemo(() => filters.futureTransactions.filter((item) => item.type === 'entrada'), [filters.futureTransactions])
   const futureOutcomes = useMemo(() => filters.futureTransactions.filter((item) => item.type === 'saida'), [filters.futureTransactions])
-  const totalEntries = useMemo(() => entries.reduce((acc, item) => acc + item.amount, 0), [entries])
-  const totalOutcomes = useMemo(() => outcomes.reduce((acc, item) => acc + item.amount, 0), [outcomes])
-  const totalFutureEntries = useMemo(() => futureEntries.reduce((acc, item) => acc + item.amount, 0), [futureEntries])
-  const totalFutureOutcomes = useMemo(() => futureOutcomes.reduce((acc, item) => acc + item.amount, 0), [futureOutcomes])
+  const totalEntries = useMemo(() => entries.reduce((acc, item) => acc + getFinancialReportAmount(item), 0), [entries])
+  const totalOutcomes = useMemo(() => outcomes.reduce((acc, item) => acc + getFinancialReportAmount(item), 0), [outcomes])
+  const totalFutureEntries = useMemo(() => futureEntries.reduce((acc, item) => acc + getFinancialReportAmount(item), 0), [futureEntries])
+  const totalFutureOutcomes = useMemo(() => futureOutcomes.reduce((acc, item) => acc + getFinancialReportAmount(item), 0), [futureOutcomes])
   const resultBalance = useMemo(() => totalEntries - totalOutcomes, [totalEntries, totalOutcomes])
 
   const handleOpenCreateTransaction = (): void => {
@@ -184,6 +186,7 @@ export const ReportPage = (): JSX.Element => {
           onDelete={transactionActions.handleDelete}
           onConfirmStart={transactionActions.handleConfirmStart}
           onDuplicate={transactionActions.handleDuplicateTransaction}
+          onRefundStart={transactionActions.handleRefundStart}
           onEditStart={transactionActions.handleEditStart}
           onEditCancel={transactionActions.handleEditCancel}
           onEditChange={transactionActions.handleEditChange}
@@ -223,6 +226,18 @@ export const ReportPage = (): JSX.Element => {
           transactionActions.setConfirmCandidate(null)
         }}
         onConfirm={() => void transactionActions.handleConfirmTransaction()}
+      />
+
+      <ReimburseTransactionModal
+        transaction={transactionActions.refundCandidate}
+        isSubmitting={transactionActions.refundingId !== null}
+        feedback={transactionActions.refundFeedback}
+        onClose={() => {
+          if (transactionActions.refundingId !== null) return
+          transactionActions.setRefundCandidate(null)
+          transactionActions.setRefundFeedback('')
+        }}
+        onConfirm={(options) => void transactionActions.handleConfirmRefundTransaction(options)}
       />
 
       <ExportReportModal

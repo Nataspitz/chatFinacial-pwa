@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import type { Transaction } from '../../../types/transaction.types'
+import { isRefundedOrCanceled } from '../../../utils/transaction-reports'
 import { buildMonthlyCostForPeriod } from '../components/report-page.monthly-cost'
 import { getCurrentMonth, getCurrentYear, getTodayDate, normalizeTransactionDate } from '../components/report-page.date-utils'
 import { formatCurrency, isTransactionInFuture, sortTransactionsByDateAsc } from '../components/report-page.utils'
@@ -90,11 +91,11 @@ export const useReportFilters = (transactions: Transaction[]) => {
 
   const todayDate = getTodayDate()
   const mainTransactions = useMemo(
-    () => displayedTransactions.filter((item) => !isTransactionInFuture(item, todayDate)),
+    () => displayedTransactions.filter((item) => isRefundedOrCanceled(item) || !isTransactionInFuture(item, todayDate)),
     [displayedTransactions, todayDate]
   )
   const futureTransactions = useMemo(
-    () => displayedTransactions.filter((item) => isTransactionInFuture(item, todayDate)),
+    () => displayedTransactions.filter((item) => !isRefundedOrCanceled(item) && isTransactionInFuture(item, todayDate)),
     [displayedTransactions, todayDate]
   )
 

@@ -6,7 +6,7 @@ import {
   validateTransactionBySettings,
   type TransactionSettings
 } from '../../../types/transaction-settings.types'
-import type { PaymentMethod, Transaction } from '../../../types/transaction.types'
+import type { PaymentMethod, RefundScope, Transaction } from '../../../types/transaction.types'
 import type { EditField } from '../components/transactions-table.types'
 import { getTodayDate } from '../components/report-page.date-utils'
 import { getErrorMessage, normalizeCategoryValue } from '../components/report-page.utils'
@@ -49,6 +49,9 @@ export const useReportTransactionActions = ({
   const [deleteCandidate, setDeleteCandidate] = useState<Transaction | null>(null)
   const [confirmCandidate, setConfirmCandidate] = useState<Transaction | null>(null)
   const [confirmingId, setConfirmingId] = useState<string | null>(null)
+  const [refundCandidate, setRefundCandidate] = useState<Transaction | null>(null)
+  const [refundingId, setRefundingId] = useState<string | null>(null)
+  const [refundFeedback, setRefundFeedback] = useState('')
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editingDraft, setEditingDraft] = useState<Transaction | null>(null)
   const [isSavingEdit, setIsSavingEdit] = useState(false)
@@ -176,6 +179,35 @@ export const useReportTransactionActions = ({
     setIsMobileActionsDrawerOpen(false)
   }
 
+  const handleRefundStart = (transaction: Transaction): void => {
+    setRefundCandidate(transaction)
+    setRefundFeedback('')
+    setError('')
+  }
+
+  const handleConfirmRefundTransaction = async (options: {
+    mode: 'refunded' | 'canceled'
+    reason?: string
+    scope?: RefundScope
+  }): Promise<void> => {
+    if (!refundCandidate) return
+
+    setRefundingId(refundCandidate.id)
+    setRefundFeedback('')
+    try {
+      await financeService.refundTransaction(refundCandidate.id, options)
+      await loadTransactions()
+      setRefundCandidate(null)
+      notifyFinancialDataUpdated()
+      setError('')
+      setToastMessage(options.mode === 'refunded' ? 'Transação reembolsada.' : 'Transação anulada.')
+    } catch (refundError) {
+      setRefundFeedback(getErrorMessage(refundError, 'Não foi possível anular ou reembolsar a transação.'))
+    } finally {
+      setRefundingId(null)
+    }
+  }
+
   const handleEditChange = (field: EditField, value: string | boolean): void => {
     if (!editingDraft) return
     if (field === 'amount') {
@@ -283,6 +315,11 @@ export const useReportTransactionActions = ({
     confirmingId,
     confirmCandidate,
     setConfirmCandidate,
+    refundCandidate,
+    setRefundCandidate,
+    refundingId,
+    refundFeedback,
+    setRefundFeedback,
     editingId,
     editingDraft,
     isSavingEdit,
@@ -290,6 +327,8 @@ export const useReportTransactionActions = ({
     handleConfirmDelete,
     handleConfirmStart,
     handleConfirmTransaction,
+    handleRefundStart,
+    handleConfirmRefundTransaction,
     handleEditStart,
     handleDuplicateTransaction,
     handleEditCancel: () => {

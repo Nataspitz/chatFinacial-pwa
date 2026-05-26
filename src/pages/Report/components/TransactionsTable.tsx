@@ -21,6 +21,7 @@ export const TransactionsTable = ({
   onConfirmStart,
   onDelete,
   onDuplicate,
+  onRefundStart,
   onEditStart,
   onEditCancel,
   onEditChange,
@@ -53,11 +54,12 @@ export const TransactionsTable = ({
     onConfirmStart,
     onDelete,
     onDuplicate,
+    onRefundStart,
     onEditCancel,
     onEditSave,
     onEditStart,
     isActionLocked
-  }), [confirmingId, deletingId, isSavingEdit, onConfirmStart, onDelete, onDuplicate, onEditCancel, onEditSave, onEditStart, isActionLocked])
+  }), [confirmingId, deletingId, isSavingEdit, onConfirmStart, onDelete, onDuplicate, onRefundStart, onEditCancel, onEditSave, onEditStart, isActionLocked])
 
   const openContextMenu = (
     transaction: Transaction,
@@ -97,6 +99,15 @@ export const TransactionsTable = ({
     }
 
     actionContext.onConfirmStart(contextMenuState.transaction)
+    closeContextMenu()
+  }
+
+  const handleContextRefund = (): void => {
+    if (!contextMenuState) {
+      return
+    }
+
+    actionContext.onRefundStart(contextMenuState.transaction)
     closeContextMenu()
   }
 
@@ -173,6 +184,7 @@ export const TransactionsTable = ({
             onDelete={handleContextDelete}
             onDuplicate={handleContextDuplicate}
             onEdit={handleContextEdit}
+            onRefund={handleContextRefund}
           />
         </>
       )}
