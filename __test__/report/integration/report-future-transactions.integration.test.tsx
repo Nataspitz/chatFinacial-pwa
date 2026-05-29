@@ -20,6 +20,7 @@ vi.mock('../../../src/services/finance.service', () => ({
     getCategoryItems: (type: 'entrada' | 'saida') => getCategoryItemsMock(type),
     deleteTransaction: vi.fn(async () => undefined),
     updateTransaction: vi.fn(async () => undefined),
+    confirmTransaction: vi.fn(async () => undefined),
     updateMonthlyCostFromDate: vi.fn(async () => undefined),
     endMonthlyCostFromDate: vi.fn(async () => undefined),
     saveTransactions: vi.fn(async () => undefined),

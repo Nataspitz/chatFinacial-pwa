@@ -19,6 +19,7 @@ export const financeServiceMock = {
   getCategoryItems: vi.fn(async (type: keyof ReportCategoryMap) => financeState.categories[type] ?? []),
   saveTransactions: vi.fn(async () => undefined),
   updateTransaction: vi.fn(async () => undefined),
+  confirmTransaction: vi.fn(async () => undefined),
   updateMonthlyCostFromDate: vi.fn(async () => undefined),
   endMonthlyCostFromDate: vi.fn(async () => undefined),
   deleteTransaction: vi.fn(async () => undefined),

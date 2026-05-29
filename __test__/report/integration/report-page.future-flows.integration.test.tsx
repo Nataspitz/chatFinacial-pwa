@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { getReportSectionByTitle } from '../mocks/report-dom.helpers'
 import { createReportCategoryMap, createReportTransaction } from '../mocks/report-transactions.mock'
 import {
+  financeServiceMock,
   resetFinanceServiceMock,
   resetTransactionSettingsServiceMock,
   setFinanceServiceMockData
@@ -157,6 +158,39 @@ describe('ReportPage - integration - fluxos de futuro', () => {
     expect(within(saidas).getAllByText('Despesa de hoje').length).toBeGreaterThan(0)
     expect(within(entradasFuturas).getByText(/sem entradas futuras/i)).toBeInTheDocument()
     expect(within(saidasFuturas).getByText(/sem sa[ií]das futuras/i)).toBeInTheDocument()
+  })
+
+  it('confirma saida futura usando atualizacao dedicada sem reenviar a transacao inteira', async () => {
+    const now = new Date()
+
+    setFinanceServiceMockData({
+      categories: createReportCategoryMap(),
+      transactions: [
+        createReportTransaction({
+          id: 'saida-futura',
+          type: 'saida',
+          category: 'Fornecedor',
+          amount: 199.99,
+          date: addDays(now, 5),
+          description: 'Despesa futura',
+          isConfirmed: false,
+          status: 'scheduled'
+        })
+      ]
+    })
+
+    render(<ReportPage />)
+    await screen.findAllByText('Despesa futura')
+
+    const rowMenuButtons = screen.getAllByRole('button', { name: /abrir menu da transa/i })
+    fireEvent.click(rowMenuButtons[rowMenuButtons.length - 1])
+    fireEvent.click(await screen.findByRole('menuitem', { name: /confirmar/i }))
+    fireEvent.click(await screen.findByRole('button', { name: /confirmar valida/i }))
+
+    await waitFor(() => {
+      expect(financeServiceMock.confirmTransaction).toHaveBeenCalledWith('saida-futura')
+    })
+    expect(financeServiceMock.updateTransaction).not.toHaveBeenCalled()
   })
 
   it('regressao: custo mensal entra no mes filtrado e sai quando o filtro de dia nao bate', async () => {

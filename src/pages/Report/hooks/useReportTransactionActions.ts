@@ -127,7 +127,7 @@ export const useReportTransactionActions = ({
         await financeService.updateMonthlyCostFromDate(originalTransaction, confirmedTransaction)
         await loadTransactions()
       } else {
-        await financeService.updateTransaction(confirmedTransaction)
+        await financeService.confirmTransaction(confirmedTransaction.id)
         setTransactions((prev) => prev.map((item) => (item.id === confirmedTransaction.id ? confirmedTransaction : item)))
       }
 
