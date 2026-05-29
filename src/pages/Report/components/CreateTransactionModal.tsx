@@ -2,14 +2,13 @@ import type { Dispatch, SetStateAction } from 'react'
 import { Button, ButtonLoading, ModalBase } from '../../../components/ui'
 import { getDefaultPaymentMethodByType, type TransactionSettings } from '../../../types/transaction-settings.types'
 import type { PaymentMethod, Transaction } from '../../../types/transaction.types'
-import type { CategoryItem } from '../../../services/finance.service'
+import { getDefaultTransactionCategory } from '../../../utils/transaction-categories'
 import type { CreateFormState } from './report-page.types'
 import styles from '../Report.module.css'
 
 interface CreateTransactionModalProps {
   open: boolean
   form: CreateFormState
-  categoryOptions: Record<Transaction['type'], CategoryItem[]>
   transactionSettings: TransactionSettings
   feedback: string
   isCreating: boolean
@@ -22,7 +21,6 @@ interface CreateTransactionModalProps {
 export const CreateTransactionModal = ({
   open,
   form,
-  categoryOptions,
   transactionSettings,
   feedback,
   isCreating,
@@ -47,7 +45,7 @@ export const CreateTransactionModal = ({
             setForm((prev) => ({
               ...prev,
               type: event.target.value as Transaction['type'],
-              category: '',
+              category: getDefaultTransactionCategory(),
               isMonthlyCost: event.target.value === 'saida' ? transactionSettings.defaultMonthlyCostSaida : false,
               paymentMethod: getDefaultPaymentMethodByType(transactionSettings, event.target.value as Transaction['type']),
               installmentCount: 1
@@ -94,14 +92,7 @@ export const CreateTransactionModal = ({
 
       <label className={styles.createField}>
         <span>Categoria</span>
-        <select value={form.category} onChange={(event) => setForm((prev) => ({ ...prev, category: event.target.value }))}>
-          <option value="">Selecione...</option>
-          {categoryOptions[form.type].map((option) => (
-            <option key={option.id} value={option.name}>
-              {option.name}
-            </option>
-          ))}
-        </select>
+        <input type="text" value={form.category || getDefaultTransactionCategory()} readOnly />
       </label>
 
       <label className={styles.createField}>

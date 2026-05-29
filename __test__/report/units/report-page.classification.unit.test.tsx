@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Transaction } from '../../../src/types/transaction.types'
 import { createReportCategoryMap, createReportTransaction } from '../mocks/report-transactions.mock'
 import {
+  financeServiceMock,
   resetFinanceServiceMock,
   resetTransactionSettingsServiceMock,
   setFinanceServiceMockData
@@ -361,5 +362,35 @@ describe('ReportPage - unit - classificacao de futuro', () => {
       const saidas = tablePropsStore.byTitle.get('Saídas')
       expect(saidas?.transactions).toEqual([])
     })
+  })
+
+  it('cria novas transacoes sempre com categoria Geral', async () => {
+    setFinanceServiceMockData({
+      categories: createReportCategoryMap({
+        entrada: [{ id: 'cat-entrada-1', type: 'entrada', name: 'Receita' }],
+        saida: [{ id: 'cat-saida-1', type: 'saida', name: 'Fornecedor' }]
+      }),
+      transactions: []
+    })
+
+    render(<ReportPage />)
+
+    fireEvent.click(await screen.findByRole('button', { name: /nova transa/i }))
+    const modal = await screen.findByRole('dialog', { name: /nova transa/i })
+
+    expect(within(modal).getByLabelText('Categoria')).toHaveValue('Geral')
+
+    fireEvent.change(within(modal).getByLabelText('Valor'), { target: { value: '150' } })
+    fireEvent.change(within(modal).getByLabelText(/descr/i), { target: { value: 'Compra para revisar depois' } })
+    fireEvent.click(within(modal).getByRole('button', { name: /salvar transa/i }))
+
+    await waitFor(() => {
+      expect(financeServiceMock.saveTransactions).toHaveBeenCalledTimes(1)
+    })
+
+    const savedTransactions = financeServiceMock.saveTransactions.mock.calls[0]?.[0] as unknown as Transaction[]
+    expect(savedTransactions).toHaveLength(1)
+    expect(savedTransactions[0].category).toBe('Geral')
+    expect(financeServiceMock.saveCategory).toHaveBeenCalledWith('Geral', 'saida')
   })
 })

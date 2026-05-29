@@ -2,6 +2,13 @@
 import { isFinancialPeriodLocked } from './financial-audit-lock'
 import type { ExportReportPdfPayload, ExportReportPdfResult } from '../types/report-export.types'
 import type { PaymentMethod, RefundScope, Transaction, TransactionType } from '../types/transaction.types'
+import {
+  GENERAL_TRANSACTION_CATEGORY,
+  ensureGeneralCategoryOption,
+  isGeneralTransactionCategory,
+  normalizeTransactionCategory,
+  resolveTransactionCategory
+} from '../utils/transaction-categories'
 import { getRefundTransactionTargets } from '../utils/transaction-refunds'
 
 interface TransactionRow {
@@ -335,7 +342,7 @@ const exportReportPdfOnWeb = async (payload: ExportReportPdfPayload): Promise<Ex
 const mapRow = (row: TransactionRow): Transaction => ({
   id: row.id,
   type: row.type,
-  category: row.category,
+  category: resolveTransactionCategory(row.category),
   amount: Number(row.amount),
   description: row.description,
   date: normalizeDate(row.date),
@@ -367,7 +374,7 @@ const toInsertPayload = (transaction: Transaction, userId: string): Record<strin
   id: transaction.id,
   user_id: userId,
   type: transaction.type,
-  category: transaction.category,
+  category: resolveTransactionCategory(transaction.category),
   amount: transaction.amount,
   description: transaction.description,
   date: normalizeDate(transaction.date),
@@ -404,6 +411,21 @@ const getUserId = async (): Promise<string> => {
   }
 
   return data.user.id
+}
+
+const ensureCategoryRow = async (name: string, type: TransactionType, userId: string): Promise<void> => {
+  const cleaned = normalizeTransactionCategory(name)
+  if (!cleaned) {
+    return
+  }
+
+  const { error } = await supabase
+    .from('transaction_categories')
+    .upsert({ user_id: userId, type, name: cleaned }, { onConflict: 'user_id,type,name_normalized', ignoreDuplicates: true })
+
+  if (error) {
+    throw error
+  }
 }
 
 const isMissingConfirmedColumnError = (error: unknown): boolean => {
@@ -808,7 +830,7 @@ export const financeService = {
 
     const payload = {
       type: transaction.type,
-      category: transaction.category,
+      category: resolveTransactionCategory(transaction.category),
       amount: transaction.amount,
       description: transaction.description,
       date: normalizeDate(transaction.date),
@@ -1122,6 +1144,7 @@ export const financeService = {
 
   getCategoryItems: async (type: TransactionType): Promise<CategoryItem[]> => {
     const userId = await getUserId()
+    await ensureCategoryRow(GENERAL_TRANSACTION_CATEGORY, type, userId)
 
     const { data, error } = await supabase
       .from('transaction_categories')
@@ -1134,32 +1157,39 @@ export const financeService = {
       throw error
     }
 
-    return ((data ?? []) as TransactionCategoryRow[]).map((item) => ({
+    return ensureGeneralCategoryOption(((data ?? []) as TransactionCategoryRow[]).map((item) => ({
       id: item.id,
       type: item.type,
       name: item.name
-    }))
+    })), type)
   },
 
   saveCategory: async (name: string, type: TransactionType): Promise<void> => {
     const userId = await getUserId()
-    const cleaned = name.trim().replace(/\s+/g, ' ')
-    if (!cleaned) {
-      return
-    }
-
-    const { error } = await supabase
-      .from('transaction_categories')
-      .upsert({ user_id: userId, type, name: cleaned }, { onConflict: 'user_id,type,name_normalized', ignoreDuplicates: true })
-
-    if (error) {
-      throw error
-    }
+    await ensureCategoryRow(name, type, userId)
   },
 
   updateCategory: async (categoryId: string, name: string, type: TransactionType): Promise<void> => {
     const userId = await getUserId()
-    const cleaned = name.trim().replace(/\s+/g, ' ')
+    const cleaned = normalizeTransactionCategory(name)
+    if (!cleaned) {
+      return
+    }
+
+    const current = await supabase
+      .from('transaction_categories')
+      .select('name')
+      .eq('id', categoryId)
+      .eq('user_id', userId)
+      .maybeSingle()
+
+    if (current.error) {
+      throw current.error
+    }
+
+    if (isGeneralTransactionCategory((current.data as { name?: string } | null)?.name)) {
+      throw new Error('A categoria Geral não pode ser editada.')
+    }
 
     const { error } = await supabase
       .from('transaction_categories')
@@ -1174,6 +1204,20 @@ export const financeService = {
 
   deleteCategory: async (categoryId: string): Promise<void> => {
     const userId = await getUserId()
+    const current = await supabase
+      .from('transaction_categories')
+      .select('name')
+      .eq('id', categoryId)
+      .eq('user_id', userId)
+      .maybeSingle()
+
+    if (current.error) {
+      throw current.error
+    }
+
+    if (isGeneralTransactionCategory((current.data as { name?: string } | null)?.name)) {
+      throw new Error('A categoria Geral não pode ser apagada.')
+    }
 
     const { error } = await supabase.from('transaction_categories').delete().eq('id', categoryId).eq('user_id', userId)
 

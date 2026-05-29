@@ -8,6 +8,7 @@ import {
   type TransactionSettings
 } from '../../../types/transaction-settings.types'
 import type { Transaction, TransactionType } from '../../../types/transaction.types'
+import { ensureGeneralCategoryOption } from '../../../utils/transaction-categories'
 
 export const useReportData = () => {
   const [transactions, setTransactions] = useState<Transaction[]>([])
@@ -40,8 +41,8 @@ export const useReportData = () => {
       ])
 
       setCategoryOptions({
-        entrada: entradaCategories,
-        saida: saidaCategories
+        entrada: ensureGeneralCategoryOption(entradaCategories, 'entrada'),
+        saida: ensureGeneralCategoryOption(saidaCategories, 'saida')
       })
     } catch {
       setError('Não foi possível carregar as categorias.')

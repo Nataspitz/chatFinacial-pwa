@@ -1,5 +1,5 @@
 import type { CSSProperties, RefObject } from 'react'
-import type { Goal, GoalStatus } from '../../../types/goal.types'
+import type { Goal, GoalAllocationType, GoalPlanningType, GoalStatus } from '../../../types/goal.types'
 import type { FinancialSnapshot } from '../hooks/useGoalsData'
 import styles from '../Goals.module.css'
 import { GoalMenu } from './GoalMenu'
@@ -17,23 +17,46 @@ interface GoalCardProps {
 const formatCurrency = (value: number): string =>
   new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value)
 
-const formatSignedCurrency = (value: number): string => {
-  const formatted = formatCurrency(Math.abs(value))
-  if (value === 0) {
-    return formatted
-  }
+const clamp = (value: number, min: number, max: number): number => Math.min(Math.max(value, min), max)
 
-  return `${value > 0 ? '+' : '-'}${formatted}`
+const getPlanningTypeLabel = (type: GoalPlanningType | undefined): string => {
+  if (type === 'reserve') return 'Reserva'
+  if (type === 'bill_provision') return 'Contas'
+  return 'Meta'
 }
 
-const clamp = (value: number, min: number, max: number): number => Math.min(Math.max(value, min), max)
+const getMonthlyAllocation = (
+  allocationType: GoalAllocationType | undefined,
+  allocationValue: number | undefined,
+  monthlyRevenue: number
+): number => {
+  const safeValue = Math.max(0, allocationValue ?? 0)
+  return allocationType === 'percentage' ? (Math.max(0, monthlyRevenue) * safeValue) / 100 : safeValue
+}
+
+const formatAllocationRule = (
+  allocationType: GoalAllocationType | undefined,
+  allocationValue: number | undefined,
+  estimatedMonthlyAllocation: number
+): string => {
+  const safeValue = Math.max(0, allocationValue ?? 0)
+  if (safeValue === 0) {
+    return 'Sem regra mensal'
+  }
+
+  if (allocationType === 'percentage') {
+    return `${safeValue}% do faturamento (${formatCurrency(estimatedMonthlyAllocation)}/mes)`
+  }
+
+  return `${formatCurrency(safeValue)}/mes`
+}
 
 const formatForecastRange = (estimatedMonths: number): string => {
   const safeMinimum = Math.max(1, Math.floor(estimatedMonths * 0.85))
   const safeMaximum = Math.max(safeMinimum, Math.ceil(estimatedMonths * 1.25))
 
   if (safeMinimum === safeMaximum) {
-    return `${safeMinimum} ${safeMinimum === 1 ? 'mês' : 'meses'}`
+    return `${safeMinimum} ${safeMinimum === 1 ? 'mes' : 'meses'}`
   }
 
   return `entre ${safeMinimum} e ${safeMaximum} meses`
@@ -48,19 +71,23 @@ export const GoalCard = ({
   onEdit,
   onUpdateStatus
 }: GoalCardProps): JSX.Element => {
-  const { accountBalance, averageMonthlyResult } = snapshot
-  const rangeMax = goal.targetAmount > 0 ? goal.targetAmount : 1
-  const rangeValue = clamp(accountBalance, 0, rangeMax)
-  const progressPercent = goal.targetAmount > 0 ? clamp((accountBalance / goal.targetAmount) * 100, 0, 100) : 100
-  const isReached = goal.targetAmount <= 0 || accountBalance >= goal.targetAmount
-  const remainingAmount = Math.max(0, goal.targetAmount - accountBalance)
-  const estimatedMonthsToGoal =
-    !isReached && averageMonthlyResult > 0 ? Math.ceil(remainingAmount / averageMonthlyResult) : 0
+  const reservedAmount = Math.max(0, goal.reservedAmount ?? 0)
+  const targetAmount = Math.max(0, goal.targetAmount)
+  const rangeMax = targetAmount > 0 ? targetAmount : 1
+  const rangeValue = clamp(reservedAmount, 0, rangeMax)
+  const progressPercent = targetAmount > 0 ? clamp((reservedAmount / targetAmount) * 100, 0, 100) : 100
+  const isReached = targetAmount <= 0 || reservedAmount >= targetAmount
+  const remainingAmount = Math.max(0, targetAmount - reservedAmount)
+  const estimatedMonthlyAllocation = getMonthlyAllocation(
+    goal.allocationType,
+    goal.allocationValue,
+    snapshot.averageMonthlyEntries
+  )
   const forecastLabel = isReached
-    ? 'Atingida'
-    : averageMonthlyResult <= 0
-      ? 'Sem previsão'
-      : formatForecastRange(estimatedMonthsToGoal)
+    ? 'Completo'
+    : estimatedMonthlyAllocation <= 0
+      ? 'Sem previsao'
+      : formatForecastRange(Math.ceil(remainingAmount / estimatedMonthlyAllocation))
   const reachedFillColor = 'color-mix(in srgb, #2f9d72 90%, #43b883)'
   const markerPosition = clamp(progressPercent, 2, 98)
   const rangeStyle = {
@@ -77,7 +104,10 @@ export const GoalCard = ({
       <div className={styles.goalTop}>
         <div className={styles.goalHeaderMain}>
           <strong>{goal.title}</strong>
-          {goal.isSystem ? <span className={styles.goalBadge}>Meta do sistema</span> : null}
+          <div className={styles.goalBadgeRow}>
+            <span className={styles.goalBadge}>{getPlanningTypeLabel(goal.planningType)}</span>
+            {goal.isSystem ? <span className={styles.goalBadge}>Sistema</span> : null}
+          </div>
         </div>
 
         <GoalMenu
@@ -92,9 +122,9 @@ export const GoalCard = ({
 
       <div className={styles.goalValueSection}>
         <div className={styles.goalValueMain}>
-          {formatCurrency(accountBalance)} <span>/ {formatCurrency(goal.targetAmount)}</span>
+          {formatCurrency(reservedAmount)} <span>/ {formatCurrency(targetAmount)}</span>
         </div>
-        <p className={styles.goalValueCaption}>Em conta / meta</p>
+        <p className={styles.goalValueCaption}>Reservado atual / alvo</p>
       </div>
 
       <div className={styles.goalRangeWrapper} style={rangeStyle}>
@@ -103,9 +133,19 @@ export const GoalCard = ({
       </div>
 
       <div className={styles.goalSecondaryInfo}>
-        <span>Sobra média: {formatSignedCurrency(averageMonthlyResult)}</span>
-        <span>Previsão: {forecastLabel}</span>
+        <span>Falta: {formatCurrency(remainingAmount)}</span>
+        <span>{formatAllocationRule(goal.allocationType, goal.allocationValue, estimatedMonthlyAllocation)}</span>
+        <span>Previsao: {forecastLabel}</span>
+        <span>{goal.countsAsReserved ?? true ? 'Conta como reserva' : 'Nao conta como reserva'}</span>
       </div>
+
+      {goal.linkedCategories?.length ? (
+        <div className={styles.categoryChips} aria-label="Categorias vinculadas">
+          {goal.linkedCategories.map((category) => (
+            <span key={category}>{category}</span>
+          ))}
+        </div>
+      ) : null}
     </article>
   )
 }

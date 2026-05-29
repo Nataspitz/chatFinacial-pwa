@@ -1,5 +1,6 @@
 import type { ExportReportPdfTransaction } from '../../../types/report-export.types'
 import type { Transaction } from '../../../types/transaction.types'
+import { normalizeTransactionCategory } from '../../../utils/transaction-categories'
 import { shouldAffectFinancialReports } from '../../../utils/transaction-reports'
 import { formatPaymentMethod } from './transactionTable.utils'
 import type { ExportFormState } from './report-page.types'
@@ -23,7 +24,7 @@ export const getErrorMessage = (error: unknown, fallback: string): string =>
       ? error.message
       : fallback
 
-export const normalizeCategoryValue = (value: string): string => value.trim().replace(/\s+/g, ' ')
+export const normalizeCategoryValue = normalizeTransactionCategory
 
 export const splitAmountIntoInstallments = (totalAmount: number, count: number): number[] => {
   const totalInCents = Math.round(totalAmount * 100)

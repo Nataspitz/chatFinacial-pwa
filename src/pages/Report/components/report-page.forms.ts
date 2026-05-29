@@ -1,4 +1,5 @@
 import type { Transaction } from '../../../types/transaction.types'
+import { getDefaultTransactionCategory } from '../../../utils/transaction-categories'
 import type { CombinedFilterDraftState, CreateFormState, ExportFormState, ListFilterState } from './report-page.types'
 import { getCurrentMonth, getCurrentYear, getTodayDate } from './report-page.date-utils'
 
@@ -6,7 +7,7 @@ export const initialCreateFormState: CreateFormState = {
   type: 'saida',
   amount: '',
   date: getTodayDate(),
-  category: '',
+  category: getDefaultTransactionCategory(),
   description: '',
   isMonthlyCost: false,
   paymentMethod: 'pix',

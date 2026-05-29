@@ -1,13 +1,14 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { FINANCIAL_AUDIT_LOCK_MESSAGE, hasLockedFinancialPeriod, isFinancialPeriodLocked } from '../../../services/financial-audit-lock'
-import { financeService, type CategoryItem } from '../../../services/finance.service'
+import { financeService } from '../../../services/finance.service'
 import {
   getDefaultConfirmedByType,
   normalizeTransactionBySettings,
   validateTransactionBySettings,
   type TransactionSettings
 } from '../../../types/transaction-settings.types'
-import type { Transaction, TransactionType } from '../../../types/transaction.types'
+import type { Transaction } from '../../../types/transaction.types'
+import { getDefaultTransactionCategory } from '../../../utils/transaction-categories'
 import { addMonthsKeepingDay, parseLocalDate } from '../components/report-page.date-utils'
 import { initialCreateFormState } from '../components/report-page.forms'
 import { normalizeCategoryValue, splitAmountIntoInstallments } from '../components/report-page.utils'
@@ -18,14 +19,12 @@ const notifyFinancialDataUpdated = (): void => {
 }
 
 interface UseReportCreateTransactionParams {
-  categoryOptions: Record<TransactionType, CategoryItem[]>
   transactionSettings: TransactionSettings
   loadTransactions: () => Promise<void>
   loadCategories: () => Promise<void>
 }
 
 export const useReportCreateTransaction = ({
-  categoryOptions,
   transactionSettings,
   loadTransactions,
   loadCategories
@@ -34,15 +33,6 @@ export const useReportCreateTransaction = ({
   const [createForm, setCreateForm] = useState<CreateFormState>(initialCreateFormState)
   const [isCreating, setIsCreating] = useState(false)
   const [createFeedback, setCreateFeedback] = useState('')
-
-  useEffect(() => {
-    if (!isCreateModalOpen) return
-    const options = categoryOptions[createForm.type]
-    if (options.length === 0) return
-    if (!createForm.category || !options.some((option) => option.name === createForm.category)) {
-      setCreateForm((prev) => ({ ...prev, category: options[0].name }))
-    }
-  }, [categoryOptions, createForm.category, createForm.type, isCreateModalOpen])
 
   const handleCreateSubmit = async (): Promise<void> => {
     const parsedAmount = Number(createForm.amount.replace(',', '.'))
@@ -59,12 +49,8 @@ export const useReportCreateTransaction = ({
       return
     }
 
-    const category = normalizeCategoryValue(createForm.category)
+    const category = normalizeCategoryValue(getDefaultTransactionCategory())
     const description = createForm.description.trim()
-    if (!category) {
-      setCreateFeedback('Selecione uma categoria.')
-      return
-    }
     if (!description) {
       setCreateFeedback('Informe a descrição da transação.')
       return

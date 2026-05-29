@@ -7,6 +7,7 @@ import {
   type TransactionSettings
 } from '../../../types/transaction-settings.types'
 import type { PaymentMethod, RefundScope, Transaction } from '../../../types/transaction.types'
+import { getDefaultTransactionCategory } from '../../../utils/transaction-categories'
 import type { EditField } from '../components/transactions-table.types'
 import { getTodayDate } from '../components/report-page.date-utils'
 import { getErrorMessage, normalizeCategoryValue } from '../components/report-page.utils'
@@ -169,7 +170,7 @@ export const useReportTransactionActions = ({
       type: transaction.type,
       amount: String(amountToDuplicate),
       date: getTodayDate(),
-      category: transaction.category,
+      category: getDefaultTransactionCategory(),
       description: transaction.description,
       isMonthlyCost: transaction.type === 'saida' ? transaction.isMonthlyCost : false,
       paymentMethod: transaction.paymentMethod,

@@ -143,6 +143,9 @@ describe('assistant flow', () => {
     })
 
     expect(vi.mocked(financeService.saveTransactions)).toHaveBeenCalledTimes(1)
+    const savedTransactions = vi.mocked(financeService.saveTransactions).mock.calls[0]?.[0] as Transaction[]
+    expect(savedTransactions[0].category).toBe('Geral')
+    expect(vi.mocked(financeService.saveCategory)).toHaveBeenCalledWith('Geral', 'saida')
     expect(confirmed.response.type).toBe('text')
   })
 

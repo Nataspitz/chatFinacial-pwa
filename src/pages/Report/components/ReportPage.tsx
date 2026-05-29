@@ -4,6 +4,7 @@ import { PageTemplate } from '../../../components/templates/PageTemplate/PageTem
 import { useAuth } from '../../../contexts/AuthContext'
 import { getFinancialAuditLockCutoffDate } from '../../../services/financial-audit-lock'
 import { getDefaultPaymentMethodByType } from '../../../types/transaction-settings.types'
+import { getDefaultTransactionCategory } from '../../../utils/transaction-categories'
 import { getFinancialReportAmount } from '../../../utils/transaction-reports'
 import { PageHeader } from './PageHeader'
 import { MobileActionsDrawer } from './MobileActionsDrawer'
@@ -45,7 +46,6 @@ export const ReportPage = (): JSX.Element => {
   } = useReportData()
 
   const create = useReportCreateTransaction({
-    categoryOptions,
     transactionSettings,
     loadTransactions,
     loadCategories
@@ -91,7 +91,7 @@ export const ReportPage = (): JSX.Element => {
       paymentMethod: getDefaultPaymentMethodByType(transactionSettings, prev.type),
       isMonthlyCost: prev.type === 'saida' ? transactionSettings.defaultMonthlyCostSaida : false,
       installmentCount: 1,
-      category: categoryOptions[prev.type][0]?.name ?? ''
+      category: getDefaultTransactionCategory()
     }))
     create.setIsCreateModalOpen(true)
     setIsMobileActionsDrawerOpen(false)
@@ -263,7 +263,6 @@ export const ReportPage = (): JSX.Element => {
       <CreateTransactionModal
         open={create.isCreateModalOpen}
         form={create.createForm}
-        categoryOptions={categoryOptions}
         transactionSettings={transactionSettings}
         feedback={create.createFeedback}
         isCreating={create.isCreating}

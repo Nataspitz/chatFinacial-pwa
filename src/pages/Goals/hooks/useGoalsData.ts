@@ -4,7 +4,7 @@ import { financialSummaryService } from '../../../services/financial-summary.ser
 import { financeService } from '../../../services/finance.service'
 import { goalsService } from '../../../services/goals.service'
 import type { FinancialMonthlySummary } from '../../../types/financial-summary.types'
-import type { Goal, GoalStatus } from '../../../types/goal.types'
+import type { Goal, GoalAllocationType, GoalPlanningType, GoalStatus } from '../../../types/goal.types'
 import type { Transaction } from '../../../types/transaction.types'
 import { shouldAffectFinancialReports } from '../../../utils/transaction-reports'
 
@@ -17,6 +17,12 @@ interface MonthlyAverages {
 interface GoalFormPayload {
   title: string
   targetAmount: number
+  planningType: GoalPlanningType
+  reservedAmount: number
+  countsAsReserved: boolean
+  allocationType: GoalAllocationType
+  allocationValue: number
+  linkedCategories: string[]
 }
 
 export interface FinancialSnapshot {
@@ -266,7 +272,13 @@ export const useGoalsData = () => {
     await goalsService.syncSystemGoal({
       systemKey: SYSTEM_GOAL_CREDIT_KEY,
       title: 'Cartão de crédito (fatura em aberto)',
-      targetAmount: calcOpenCreditInvoiceGoal(transactions)
+      targetAmount: calcOpenCreditInvoiceGoal(transactions),
+      planningType: 'bill_provision',
+      reservedAmount: 0,
+      countsAsReserved: false,
+      allocationType: 'fixed',
+      allocationValue: 0,
+      linkedCategories: []
     })
   }, [])
 
@@ -275,11 +287,15 @@ export const useGoalsData = () => {
     setError('')
 
     try {
-      const loadedTransactions = await loadFinancialSnapshot()
-      await syncSystemGoalFromTransactions(loadedTransactions)
+      const loadedTransactions = await loadFinancialSnapshot().catch(() => {
+        setSnapshot(emptySnapshot)
+        return [] as Transaction[]
+      })
+      await syncSystemGoalFromTransactions(loadedTransactions).catch(() => undefined)
       await loadGoals()
-    } catch {
-      setError('Não foi possível sincronizar as metas com o banco.')
+    } catch (loadError) {
+      console.error('Não foi possível carregar o planejamento de caixa.', loadError)
+      setError('Não foi possível carregar o planejamento de caixa.')
     } finally {
       setIsLoading(false)
     }
@@ -293,9 +309,10 @@ export const useGoalsData = () => {
     isRefreshingRef.current = true
     try {
       const loadedTransactions = await loadFinancialSnapshot()
-      await syncSystemGoalFromTransactions(loadedTransactions)
+      await syncSystemGoalFromTransactions(loadedTransactions).catch(() => undefined)
       await loadGoals()
-    } catch {
+    } catch (refreshError) {
+      console.warn('Não foi possível atualizar o planejamento de caixa em background.', refreshError)
       // Evita exibir erro de atualização automática em background.
     } finally {
       isRefreshingRef.current = false

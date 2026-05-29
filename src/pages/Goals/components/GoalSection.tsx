@@ -1,14 +1,15 @@
 import type { RefObject } from 'react'
 import type { Goal, GoalStatus } from '../../../types/goal.types'
-import type { FinancialSnapshot } from '../hooks/useGoalsData'
 import styles from '../Goals.module.css'
-import { GoalCard } from './GoalCard'
+import type { CashPlanningCardData } from '../services/cashPlanningPageData'
+import { PlanningCard } from './PlanningCard'
 
 interface GoalSectionProps {
   title: string
+  emptyTitle?: string
   emptyMessage: string
-  goals: Goal[]
-  snapshot: FinancialSnapshot
+  emptyAction?: JSX.Element
+  plannings: CashPlanningCardData[]
   openMenuGoalId: string | null
   menuRef: RefObject<HTMLDivElement>
   onToggleMenu: (goalId: string) => void
@@ -18,9 +19,10 @@ interface GoalSectionProps {
 
 export const GoalSection = ({
   title,
+  emptyTitle = 'Nenhum planejamento ativo',
   emptyMessage,
-  goals,
-  snapshot,
+  emptyAction,
+  plannings,
   openMenuGoalId,
   menuRef,
   onToggleMenu,
@@ -31,21 +33,24 @@ export const GoalSection = ({
     <section className={styles.section}>
       <header className={styles.sectionHeader}>
         <h2>{title}</h2>
-        <span>{goals.length}</span>
+        <span>{plannings.length}</span>
       </header>
 
-      {goals.length === 0 ? (
-        <p className={styles.stateMessage}>{emptyMessage}</p>
+      {plannings.length === 0 ? (
+        <div className={styles.emptyPlanningState}>
+          <strong>{emptyTitle}</strong>
+          <p>{emptyMessage}</p>
+          {emptyAction}
+        </div>
       ) : (
         <div className={styles.goalGrid}>
-          {goals.map((goal) => (
-            <GoalCard
-              key={goal.id}
-              goal={goal}
-              snapshot={snapshot}
-              isMenuOpen={openMenuGoalId === goal.id}
+          {plannings.map((planning) => (
+            <PlanningCard
+              key={planning.id}
+              planning={planning}
+              isMenuOpen={openMenuGoalId === planning.id}
               menuRef={menuRef}
-              onToggleMenu={() => onToggleMenu(goal.id)}
+              onToggleMenu={() => onToggleMenu(planning.id)}
               onEdit={onEdit}
               onUpdateStatus={onUpdateStatus}
             />

@@ -25,7 +25,7 @@ export const GoalMenu = ({
       <button
         type="button"
         className={styles.goalMenuTrigger}
-        aria-label="Abrir menu da meta"
+        aria-label="Abrir menu do planejamento"
         onClick={onToggle}
       >
         <FiMoreVertical />
@@ -33,6 +33,13 @@ export const GoalMenu = ({
 
       {isOpen ? (
         <div className={styles.goalMenu}>
+          <button type="button" onClick={() => onEdit(goal.id)} disabled={goal.isSystem}>
+            Editar
+          </button>
+          {/* Status pausado ainda não existe no banco; opção mantida como contrato visual para a próxima etapa. */}
+          <button type="button" disabled>
+            Pausar
+          </button>
           <button
             type="button"
             onClick={() => onUpdateStatus(goal, 'completed')}
@@ -40,15 +47,12 @@ export const GoalMenu = ({
           >
             Concluir
           </button>
-          <button type="button" onClick={() => onEdit(goal.id)} disabled={goal.isSystem}>
-            Editar
-          </button>
           <button
             type="button"
             className={styles.goalMenuDanger}
             onClick={() => onUpdateStatus(goal, 'deleted')}
           >
-            Apagar
+            Excluir
           </button>
         </div>
       ) : null}

@@ -1,6 +1,7 @@
 import { Button, ButtonLoading, ModalBase } from '../../../components/ui'
 import type { CategoryItem } from '../../../services/finance.service'
 import type { TransactionType } from '../../../types/transaction.types'
+import { isGeneralTransactionCategory } from '../../../utils/transaction-categories'
 import styles from '../Report.module.css'
 
 interface CategoryManagerModalProps {
@@ -87,55 +88,61 @@ export const CategoryManagerModal = ({
         {categoryOptions[categoryType].length === 0 ? (
           <p className={styles.empty}>Nenhuma categoria cadastrada para este tipo.</p>
         ) : (
-          categoryOptions[categoryType].map((item) => (
-            <article key={item.id} className={styles.categoryItem}>
-              <div className={styles.categoryItemInfo}>
-                {editingCategoryId === item.id ? (
-                  <input
-                    type="text"
-                    className={styles.cellInput}
-                    value={editingCategoryName}
-                    onChange={(event) => onEditingNameChange(event.target.value)}
-                  />
-                ) : (
-                  <strong className={styles.categoryName}>{item.name}</strong>
-                )}
-              </div>
+          categoryOptions[categoryType].map((item) => {
+            const isGeneral = isGeneralTransactionCategory(item.name)
 
-              <div className={styles.categoryActions}>
-                {editingCategoryId === item.id ? (
-                  <>
-                    <ButtonLoading
-                      type="button"
-                      loading={updatingId === item.id}
-                      disabled={!editingCategoryName.trim() || deletingId === item.id}
-                      onClick={() => onUpdateCategory(item.id)}
-                    >
-                      Salvar
-                    </ButtonLoading>
-                    <Button type="button" variant="ghost" disabled={updatingId === item.id} onClick={onCancelEdit}>
-                      Cancelar
-                    </Button>
-                  </>
-                ) : (
-                  <>
-                    <Button type="button" variant="ghost" disabled={deletingId === item.id} onClick={() => onStartEdit(item)}>
-                      Editar
-                    </Button>
-                    <ButtonLoading
-                      type="button"
-                      variant="danger"
-                      loading={deletingId === item.id}
-                      disabled={updatingId === item.id}
-                      onClick={() => onDeleteCategory(item.id)}
-                    >
-                      Apagar
-                    </ButtonLoading>
-                  </>
-                )}
-              </div>
-            </article>
-          ))
+            return (
+              <article key={item.id} className={styles.categoryItem}>
+                <div className={styles.categoryItemInfo}>
+                  {editingCategoryId === item.id ? (
+                    <input
+                      type="text"
+                      className={styles.cellInput}
+                      value={editingCategoryName}
+                      onChange={(event) => onEditingNameChange(event.target.value)}
+                    />
+                  ) : (
+                    <strong className={styles.categoryName}>{item.name}</strong>
+                  )}
+                </div>
+
+                <div className={styles.categoryActions}>
+                  {isGeneral ? (
+                    <span className={styles.categoryBadge}>PadrÃ£o</span>
+                  ) : editingCategoryId === item.id ? (
+                    <>
+                      <ButtonLoading
+                        type="button"
+                        loading={updatingId === item.id}
+                        disabled={!editingCategoryName.trim() || deletingId === item.id}
+                        onClick={() => onUpdateCategory(item.id)}
+                      >
+                        Salvar
+                      </ButtonLoading>
+                      <Button type="button" variant="ghost" disabled={updatingId === item.id} onClick={onCancelEdit}>
+                        Cancelar
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <Button type="button" variant="ghost" disabled={deletingId === item.id} onClick={() => onStartEdit(item)}>
+                        Editar
+                      </Button>
+                      <ButtonLoading
+                        type="button"
+                        variant="danger"
+                        loading={deletingId === item.id}
+                        disabled={updatingId === item.id}
+                        onClick={() => onDeleteCategory(item.id)}
+                      >
+                        Apagar
+                      </ButtonLoading>
+                    </>
+                  )}
+                </div>
+              </article>
+            )
+          })
         )}
       </div>
 

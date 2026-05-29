@@ -3,6 +3,13 @@
   gap: var(--space-4);
 }
 
+.headerActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
 .section {
   display: grid;
   gap: var(--space-3);
@@ -36,10 +43,371 @@
   font-size: var(--text-sm);
 }
 
+.summaryGrid {
+  display: grid;
+  gap: var(--space-3);
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+}
+
+.summaryCard {
+  display: grid;
+  gap: 6px;
+  padding: var(--space-4);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: var(--card-bg);
+}
+
+.summaryLabel {
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  font-weight: var(--font-weight-semibold);
+}
+
+.summaryValue {
+  color: var(--text-primary);
+  font-size: clamp(1.25rem, 2vw, 1.55rem);
+  line-height: 1.1;
+}
+
+.summaryCaption {
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+.repartitionSection,
+.alertSection {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.sectionTitleBlock {
+  display: grid;
+  gap: 4px;
+}
+
+.sectionTitleBlock h2 {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: var(--text-xl);
+}
+
+.sectionTitleBlock p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+}
+
+.chartGrid {
+  display: grid;
+  gap: var(--space-3);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.chartCard {
+  min-width: 0;
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: var(--card-bg);
+}
+
+.chartCardWide {
+  grid-column: 1 / -1;
+}
+
+.chartHeader {
+  display: grid;
+  gap: 4px;
+}
+
+.chartHeader h2 {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: var(--text-lg);
+}
+
+.chartHeader p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+}
+
+.chartCanvas {
+  min-width: 0;
+  width: 100%;
+}
+
+.chartCanvas :global(.recharts-sector) {
+  transition: filter 180ms ease;
+}
+
+.chartCanvas :global(.recharts-sector:hover) {
+  filter: brightness(1.05);
+}
+
+.chartLegend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+}
+
+.chartLegend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.chartLegend i {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  flex: 0 0 auto;
+}
+
+.chartEmpty {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+}
+
+.planningBarList {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.planningBarRow {
+  display: grid;
+  grid-template-columns: minmax(160px, 0.36fr) minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.planningBarInfo {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.planningBarInfo strong {
+  color: var(--text-primary);
+  font-size: var(--text-sm);
+  overflow-wrap: anywhere;
+}
+
+.planningBarInfo span {
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+}
+
+.planningBarTrack {
+  height: 14px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--bg-primary) 72%, var(--border-color));
+}
+
+.planningBarTrack span {
+  display: block;
+  width: min(var(--planning-bar-progress), 100%);
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #2563eb, #16a34a);
+}
+
+.alertGrid {
+  display: grid;
+  gap: var(--space-2);
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+}
+
+.alertCard {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  background: var(--card-bg);
+  font-size: var(--text-sm);
+}
+
+.alertCard svg {
+  flex: 0 0 auto;
+  margin-top: 2px;
+}
+
+.alertinfo {
+  border-color: color-mix(in srgb, #2563eb 30%, var(--border-color));
+  background: color-mix(in srgb, #2563eb 8%, var(--card-bg));
+}
+
+.alertwarning {
+  border-color: color-mix(in srgb, #f59e0b 34%, var(--border-color));
+  background: color-mix(in srgb, #f59e0b 10%, var(--card-bg));
+}
+
+.alertdanger {
+  border-color: color-mix(in srgb, var(--danger-500) 36%, var(--border-color));
+  background: color-mix(in srgb, var(--danger-500) 9%, var(--card-bg));
+}
+
 .goalGrid {
   display: grid;
   gap: var(--space-3);
   grid-template-columns: 1fr;
+}
+
+.planningCard {
+  position: relative;
+  display: grid;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--bg-secondary) 84%, transparent);
+}
+
+.planningCardTop {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.planningIdentity {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.planningIdentity h3 {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: var(--text-xl);
+  line-height: 1.2;
+  word-break: break-word;
+}
+
+.statusBadge {
+  width: fit-content;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, #16a34a 34%, var(--border-color));
+  font-size: var(--text-xs);
+  color: #15803d;
+  background: color-mix(in srgb, #16a34a 10%, var(--bg-secondary));
+}
+
+[data-theme='dark'] .statusBadge {
+  color: #86efac;
+}
+
+.planningMoney {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.planningMoney strong {
+  color: var(--text-primary);
+  font-size: clamp(1.3rem, 2vw, 1.75rem);
+  line-height: 1.1;
+}
+
+.planningMoney strong span {
+  color: var(--text-secondary);
+  font-size: 0.74em;
+}
+
+.planningMoney small {
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+}
+
+.progressBlock {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.progressBlock strong {
+  color: var(--text-primary);
+  font-size: var(--text-sm);
+}
+
+.progressTrack {
+  height: 10px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--bg-primary) 74%, var(--border-color));
+}
+
+.progressTrack span {
+  display: block;
+  width: var(--planning-progress);
+  height: 100%;
+  min-width: 2px;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #2563eb, #16a34a);
+}
+
+.planningDetailsGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+
+.planningDetailsGrid span {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+  padding: var(--space-2);
+  border: 1px solid color-mix(in srgb, var(--border-color) 76%, transparent);
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  background: color-mix(in srgb, var(--bg-primary) 66%, transparent);
+  font-size: var(--text-sm);
+}
+
+.planningDetailsGrid b {
+  color: var(--text-primary);
+  font-size: var(--text-xs);
+}
+
+.planningActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.emptyPlanningState {
+  display: grid;
+  justify-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  border: 1px dashed var(--border-color);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--bg-secondary) 78%, transparent);
+}
+
+.emptyPlanningState strong {
+  color: var(--text-primary);
+  font-size: var(--text-lg);
+}
+
+.emptyPlanningState p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
 }
 
 .goalCard {
@@ -73,12 +441,20 @@
 .goalHeaderMain {
   display: grid;
   gap: 6px;
+  min-width: 0;
 }
 
 .goalHeaderMain strong {
   color: var(--text-primary);
   font-size: var(--text-lg);
   font-weight: var(--font-weight-semibold);
+  word-break: break-word;
+}
+
+.goalBadgeRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 
 .goalBadge {
@@ -215,7 +591,7 @@
 
 .goalSecondaryInfo {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
   align-items: center;
   gap: var(--space-2) var(--space-3);
   color: var(--text-secondary);
@@ -224,6 +600,22 @@
 
 .goalSecondaryInfo span {
   min-width: 0;
+}
+
+.categoryChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.categoryChips span {
+  border: 1px solid color-mix(in srgb, var(--border-color) 78%, transparent);
+  border-radius: 999px;
+  padding: 3px 8px;
+  color: var(--text-secondary);
+  background: color-mix(in srgb, var(--bg-primary) 70%, transparent);
+  font-size: var(--text-xs);
+  line-height: 1.2;
 }
 
 .goalMenuArea {
@@ -307,6 +699,44 @@
   gap: var(--space-3);
 }
 
+.formGrid {
+  display: grid;
+  gap: var(--space-3);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.formSelect {
+  width: 100%;
+  min-height: 46px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 0 var(--space-3);
+  font: inherit;
+  color: var(--text-primary);
+  background: var(--bg-secondary);
+  box-shadow: var(--shadow-sm);
+}
+
+.formSelect:focus {
+  outline: none;
+  border-color: var(--brand-500);
+  box-shadow: 0 0 0 var(--space-1) color-mix(in srgb, var(--brand-500) 20%, transparent);
+}
+
+.checkField {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--text-primary);
+  font-weight: var(--font-weight-semibold);
+}
+
+.checkField input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--brand-500);
+}
+
 .field {
   display: grid;
   gap: var(--space-1);
@@ -331,6 +761,19 @@
 }
 
 @media (max-width: 860px) {
+  .headerActions {
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .headerActions button {
+    flex: 1 1 190px;
+  }
+
+  .chartGrid {
+    grid-template-columns: 1fr;
+  }
+
   .goalGrid {
     grid-template-columns: 1fr;
   }
@@ -343,5 +786,46 @@
   .goalSecondaryInfo {
     grid-template-columns: 1fr;
     align-items: flex-start;
+  }
+
+  .planningCardTop,
+  .planningMoney {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .planningDetailsGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .planningActions button {
+    flex: 1 1 180px;
+  }
+
+  .planningBarRow {
+    grid-template-columns: 1fr;
+    gap: var(--space-2);
+  }
+
+  .formGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 560px) {
+  .summaryGrid,
+  .alertGrid,
+  .planningDetailsGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .chartCard,
+  .planningCard,
+  .section {
+    padding: var(--space-3);
+  }
+
+  .planningActions {
+    display: grid;
   }
 }

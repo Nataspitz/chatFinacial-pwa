@@ -1132,6 +1132,16 @@
   flex-shrink: 0;
 }
 
+.categoryBadge {
+  border: 1px solid color-mix(in srgb, var(--brand-500) 35%, var(--border-color));
+  border-radius: 999px;
+  padding: 0.25rem 0.55rem;
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+  font-weight: var(--font-weight-semibold);
+  line-height: 1;
+}
+
 .createCheck {
   display: flex;
   align-items: center;

@@ -1,5 +1,6 @@
 import { financeService } from '../../../../services/finance.service'
 import type { Transaction, TransactionType } from '../../../../types/transaction.types'
+import { getDefaultTransactionCategory } from '../../../../utils/transaction-categories'
 import { shouldAffectFinancialReports } from '../../../../utils/transaction-reports'
 import { localDateToDateOnly } from '../date-utils'
 import { normalizeText } from '../core/normalizeText'
@@ -169,7 +170,7 @@ export const createTransactionFromDraft = async (
   if (validationError) return { type: 'text', message: validationError }
 
   const domainType = toDomainType(draft.type)
-  const category = draft.categoryHint?.trim() || (draft.type === 'income' ? 'Entrada' : 'Despesa')
+  const category = getDefaultTransactionCategory()
   const today = localDateToDateOnly(new Date())
   const isConfirmed = draft.date <= today
 
