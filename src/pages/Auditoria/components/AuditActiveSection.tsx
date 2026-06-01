@@ -22,38 +22,45 @@ export const AuditActiveSection = ({
   upcomingMandatorySlices,
   uploadingCertificateKey,
   onUploadCertificate
-}: AuditActiveSectionProps): JSX.Element => (
-  <section className={styles.section}>
-    <header className={styles.sectionHeader}>
-      <h2>Auditorias ativas</h2>
-      <span>{isActiveMonthMandatory ? formatMonthLabel(activeMonth) : formatMonthLabel(mandatoryMonth)}</span>
-    </header>
+}: AuditActiveSectionProps): JSX.Element => {
+  const activeMonthsCount = new Set(activeSlices.map((item) => item.monthRef)).size
+  const headerLabel = isActiveMonthMandatory
+    ? activeMonthsCount > 1 ? 'Pendentes' : formatMonthLabel(activeMonth)
+    : formatMonthLabel(mandatoryMonth)
 
-    {isActiveMonthMandatory ? (
-      activeSlices.length > 0 ? (
-        <div className={styles.cardGrid}>
-          {activeSlices.map((item) => (
-            <AuditCard
-              key={item.key}
-              item={item}
-              isUploading={uploadingCertificateKey === item.key}
-              onUploadCertificate={onUploadCertificate}
-            />
-          ))}
-        </div>
+  return (
+    <section className={styles.section}>
+      <header className={styles.sectionHeader}>
+        <h2>Auditorias ativas</h2>
+        <span>{headerLabel}</span>
+      </header>
+
+      {isActiveMonthMandatory ? (
+        activeSlices.length > 0 ? (
+          <div className={styles.cardGrid}>
+            {activeSlices.map((item) => (
+              <AuditCard
+                key={item.key}
+                item={item}
+                isUploading={uploadingCertificateKey === item.key}
+                onUploadCertificate={onUploadCertificate}
+              />
+            ))}
+          </div>
+        ) : (
+          <p className={styles.stateMessage}>Todas as auditorias pendentes ja foram concluidas.</p>
+        )
       ) : (
-        <p className={styles.stateMessage}>Todas as auditorias liberadas deste mês já foram concluídas.</p>
-      )
-    ) : (
-      <div className={styles.preMandatoryWrap}>
-        <SkippedAuditCard />
+        <div className={styles.preMandatoryWrap}>
+          <SkippedAuditCard />
 
-        <div className={styles.cardGrid}>
-          {upcomingMandatorySlices.map((item) => (
-            <AuditCard key={item.key} item={item} />
-          ))}
+          <div className={styles.cardGrid}>
+            {upcomingMandatorySlices.map((item) => (
+              <AuditCard key={item.key} item={item} />
+            ))}
+          </div>
         </div>
-      </div>
-    )}
-  </section>
-)
+      )}
+    </section>
+  )
+}

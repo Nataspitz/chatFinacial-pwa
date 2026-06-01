@@ -4,6 +4,7 @@ import type { FinancialAudit } from '../../../types/financial-audit.types'
 import type { AuditSliceCardItem } from '../auditoria.utils'
 import {
   buildAuditHistory,
+  getPendingAuditActionRows,
   mapAuditSlices,
   mapUpcomingMandatorySlices
 } from '../auditoria.utils'
@@ -70,8 +71,12 @@ export const useAuditoriaData = () => {
   }
 
   const activeSlices = useMemo(
-    () => (isActiveMonthMandatory ? mapAuditSlices(activeAudits.filter((audit) => audit.status === 'pending')) : []),
-    [activeAudits, isActiveMonthMandatory]
+    () => (
+      isActiveMonthMandatory
+        ? mapAuditSlices(getPendingAuditActionRows([...historyAudits, ...activeAudits]))
+        : []
+    ),
+    [activeAudits, historyAudits, isActiveMonthMandatory]
   )
 
   const upcomingMandatorySlices = useMemo(

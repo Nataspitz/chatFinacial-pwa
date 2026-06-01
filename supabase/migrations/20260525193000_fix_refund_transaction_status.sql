@@ -7,6 +7,21 @@ alter table public.transactions
   add column if not exists canceled_at timestamptz null,
   add column if not exists cancel_reason text null;
 
+alter table public.transactions
+  drop constraint if exists transactions_status_check;
+
+do $$
+begin
+  if exists (
+    select 1
+    from pg_trigger
+    where tgrelid = 'public.transactions'::regclass
+      and tgname = 'trg_prevent_closed_financial_period_transaction_changes'
+  ) then
+    alter table public.transactions disable trigger trg_prevent_closed_financial_period_transaction_changes;
+  end if;
+end $$;
+
 update public.transactions
 set status = case lower(coalesce(status, 'active'))
   when 'active' then 'active'
@@ -31,6 +46,18 @@ where status is null
 update public.transactions
 set ignored_in_reports = true
 where lower(coalesce(status, 'active')) in ('refunded', 'canceled', 'reimbursed');
+
+do $$
+begin
+  if exists (
+    select 1
+    from pg_trigger
+    where tgrelid = 'public.transactions'::regclass
+      and tgname = 'trg_prevent_closed_financial_period_transaction_changes'
+  ) then
+    alter table public.transactions enable trigger trg_prevent_closed_financial_period_transaction_changes;
+  end if;
+end $$;
 
 alter table public.transactions
   alter column status set default 'active';

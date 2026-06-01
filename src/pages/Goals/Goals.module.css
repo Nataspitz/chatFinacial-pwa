@@ -737,6 +737,65 @@
   accent-color: var(--brand-500);
 }
 
+.reservePicker {
+  display: grid;
+  gap: var(--space-2);
+  min-height: 46px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: var(--space-2);
+  background: var(--bg-secondary);
+  box-shadow: var(--shadow-sm);
+}
+
+.reservePickerHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.reservePickerHeader strong {
+  color: var(--text-primary);
+  font-size: var(--text-base);
+}
+
+.reservePickerHeader span {
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+  text-align: right;
+}
+
+.reservePicker input[type='range'] {
+  width: 100%;
+  accent-color: var(--brand-500);
+}
+
+.reservePickerActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.reservePickerActions button {
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 6px 8px;
+  color: var(--text-primary);
+  background: color-mix(in srgb, var(--bg-primary) 72%, transparent);
+  font: inherit;
+  font-size: var(--text-xs);
+}
+
+.reservePickerActions button:hover:not(:disabled) {
+  border-color: var(--brand-500);
+}
+
+.reservePickerActions button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
 .field {
   display: grid;
   gap: var(--space-1);

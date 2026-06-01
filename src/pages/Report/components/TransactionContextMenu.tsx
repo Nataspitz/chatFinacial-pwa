@@ -1,6 +1,6 @@
 ﻿import { useEffect, useMemo } from 'react'
 import { createPortal } from 'react-dom'
-import { FiCheckCircle, FiCopy, FiEdit2, FiRefreshCw, FiTrash2 } from 'react-icons/fi'
+import { FiCheckCircle, FiCopy, FiEdit2, FiLayers, FiRefreshCw, FiTrash2 } from 'react-icons/fi'
 import type { TransactionContextMenuCoordinates } from './transactions-table.types'
 import styles from '../Report.module.css'
 
@@ -12,6 +12,7 @@ interface TransactionContextMenuProps {
   isDeleting: boolean
   isOpen: boolean
   onClose: () => void
+  onAllocation: () => void
   onConfirm: () => void
   onDelete: () => void
   onDuplicate: () => void
@@ -20,7 +21,7 @@ interface TransactionContextMenuProps {
 }
 
 const MENU_WIDTH = 196
-const MENU_HEIGHT = 204
+const MENU_HEIGHT = 244
 const VIEWPORT_PADDING = 12
 
 const getSafeCoordinates = (coordinates: TransactionContextMenuCoordinates): TransactionContextMenuCoordinates => {
@@ -41,6 +42,7 @@ export const TransactionContextMenu = ({
   isDeleting,
   isOpen,
   onClose,
+  onAllocation,
   onConfirm,
   onDelete,
   onDuplicate,
@@ -97,6 +99,18 @@ export const TransactionContextMenu = ({
         <button type="button" role="menuitem" className={styles.contextMenuItem} onClick={onDuplicate}>
           <FiCopy aria-hidden />
           <span>Duplicar</span>
+        </button>
+
+        <button
+          type="button"
+          role="menuitem"
+          className={styles.contextMenuItem}
+          disabled={isLocked}
+          title={isLocked ? 'Período auditado bloqueado' : undefined}
+          onClick={onAllocation}
+        >
+          <FiLayers aria-hidden />
+          <span>Repartição</span>
         </button>
 
         {canConfirm ? (

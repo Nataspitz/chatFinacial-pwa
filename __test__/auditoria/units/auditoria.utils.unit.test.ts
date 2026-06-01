@@ -1,6 +1,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { buildAuditHistory, buildSlicesForMonth, mapAuditSlices } from '../../../src/pages/Auditoria/auditoria.utils'
+import {
+  buildAuditHistory,
+  buildSlicesForMonth,
+  getPendingAuditActionRows,
+  mapAuditSlices
+} from '../../../src/pages/Auditoria/auditoria.utils'
 import type { FinancialAudit } from '../../../src/types/financial-audit.types'
 
 const buildAudit = (overrides: Partial<FinancialAudit>): FinancialAudit => ({
@@ -94,6 +99,40 @@ describe('auditoria utils', () => {
         statusLabel: 'Pendente',
         certificateLabel: 'Sem certificado'
       }
+    ])
+  })
+
+  it('mantem auditorias pendentes de meses anteriores como acoes ativas', () => {
+    const rows = getPendingAuditActionRows([
+      buildAudit({
+        id: 'may-confirmed',
+        monthRef: '2026-05-01',
+        auditSlice: 2,
+        status: 'confirmed'
+      }),
+      buildAudit({
+        id: 'june-pending',
+        monthRef: '2026-06-01',
+        auditSlice: 1,
+        periodStart: '2026-06-01',
+        periodEnd: '2026-06-10',
+        unlockAt: '2026-06-11',
+        status: 'pending'
+      }),
+      buildAudit({
+        id: 'may-pending',
+        monthRef: '2026-05-01',
+        auditSlice: 3,
+        periodStart: '2026-05-21',
+        periodEnd: '2026-05-31',
+        unlockAt: '2026-06-01',
+        status: 'pending'
+      })
+    ])
+
+    expect(rows.map((row) => `${row.monthRef}-${row.auditSlice}`)).toEqual([
+      '2026-05-01-3',
+      '2026-06-01-1'
     ])
   })
 })

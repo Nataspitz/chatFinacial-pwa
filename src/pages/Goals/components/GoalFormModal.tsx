@@ -19,6 +19,7 @@ interface GoalFormModalProps {
   isEditing: boolean
   isSaving: boolean
   form: GoalFormState
+  maxReservableAmount: number
   onChange: (form: GoalFormState) => void
   onClose: () => void
   onSubmit: () => void
@@ -35,15 +36,28 @@ export const initialGoalFormState: GoalFormState = {
   linkedCategories: ''
 }
 
+const formatCurrency = (value: number): string =>
+  new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value)
+
+const toFiniteNumber = (value: string): number => {
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? parsed : 0
+}
+
 export const GoalFormModal = ({
   open,
   isEditing,
   isSaving,
   form,
+  maxReservableAmount,
   onChange,
   onClose,
   onSubmit
 }: GoalFormModalProps): JSX.Element => {
+  const safeMaxReservableAmount = Math.max(0, maxReservableAmount)
+  const reservedAmount = Math.min(Math.max(0, toFiniteNumber(form.reservedAmount)), safeMaxReservableAmount)
+  const reserveStep = safeMaxReservableAmount > 10000 ? 50 : 10
+
   return (
     <ModalBase open={open} title={isEditing ? 'Editar planejamento' : 'Novo planejamento'} onClose={onClose}>
       <form
@@ -92,15 +106,37 @@ export const GoalFormModal = ({
           </FormField>
 
           <FormField label="Valor reservado atual">
-            <Input
-              type="number"
-              min="0"
-              step="0.01"
-              value={form.reservedAmount}
-              onChange={(event) => onChange({ ...form, reservedAmount: event.target.value })}
-              placeholder="0.00"
-              disabled={isSaving}
-            />
+            <div className={styles.reservePicker}>
+              <div className={styles.reservePickerHeader}>
+                <strong>{formatCurrency(reservedAmount)}</strong>
+                <span>Máximo: {formatCurrency(safeMaxReservableAmount)}</span>
+              </div>
+              <input
+                type="range"
+                min="0"
+                max={safeMaxReservableAmount}
+                step={reserveStep}
+                value={reservedAmount}
+                onChange={(event) => onChange({ ...form, reservedAmount: event.target.value })}
+                disabled={isSaving || safeMaxReservableAmount <= 0}
+              />
+              <div className={styles.reservePickerActions}>
+                <button
+                  type="button"
+                  onClick={() => onChange({ ...form, reservedAmount: '0' })}
+                  disabled={isSaving}
+                >
+                  Zerar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onChange({ ...form, reservedAmount: String(safeMaxReservableAmount) })}
+                  disabled={isSaving || safeMaxReservableAmount <= 0}
+                >
+                  Usar máximo
+                </button>
+              </div>
+            </div>
           </FormField>
         </div>
 

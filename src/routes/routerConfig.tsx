@@ -55,6 +55,10 @@ const routes: RouteObject[] = [
             element: <Goals />
           },
           {
+            path: '/planejamento-caixa',
+            element: <Goals />
+          },
+          {
             path: '/notificacoes',
             element: <Pendencias />
           },

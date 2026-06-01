@@ -17,6 +17,7 @@ import { ExportReportModal } from './ExportReportModal'
 import { CreateTransactionModal } from './CreateTransactionModal'
 import { CategoryManagerModal } from './CategoryManagerModal'
 import { ReimburseTransactionModal } from './ReimburseTransactionModal'
+import { TransactionAllocationModal } from './TransactionAllocationModal'
 import { formatDate } from './report-page.date-utils'
 import { formatCurrency } from './report-page.utils'
 import { useReportData } from '../hooks/useReportData'
@@ -38,17 +39,20 @@ export const ReportPage = (): JSX.Element => {
     error,
     setError,
     categoryOptions,
+    cashPlanningOptions,
     transactionSettings,
     toastMessage,
     setToastMessage,
     loadTransactions,
-    loadCategories
+    loadCategories,
+    loadCashPlanningOptions
   } = useReportData()
 
   const create = useReportCreateTransaction({
     transactionSettings,
     loadTransactions,
-    loadCategories
+    loadCategories,
+    loadCashPlanningOptions
   })
 
   const categories = useReportCategories({
@@ -62,6 +66,7 @@ export const ReportPage = (): JSX.Element => {
     transactionSettings,
     loadTransactions,
     loadCategories,
+    loadCashPlanningOptions,
     setError,
     setToastMessage,
     setCreateForm: create.setCreateForm,
@@ -91,7 +96,8 @@ export const ReportPage = (): JSX.Element => {
       paymentMethod: getDefaultPaymentMethodByType(transactionSettings, prev.type),
       isMonthlyCost: prev.type === 'saida' ? transactionSettings.defaultMonthlyCostSaida : false,
       installmentCount: 1,
-      category: getDefaultTransactionCategory()
+      category: getDefaultTransactionCategory(),
+      cashPlanningGoalId: ''
     }))
     create.setIsCreateModalOpen(true)
     setIsMobileActionsDrawerOpen(false)
@@ -186,6 +192,9 @@ export const ReportPage = (): JSX.Element => {
           onDelete={transactionActions.handleDelete}
           onConfirmStart={transactionActions.handleConfirmStart}
           onDuplicate={transactionActions.handleDuplicateTransaction}
+          onAllocationStart={(transaction) => {
+            void transactionActions.handleAllocationStart(transaction)
+          }}
           onRefundStart={transactionActions.handleRefundStart}
           onEditStart={transactionActions.handleEditStart}
           onEditCancel={transactionActions.handleEditCancel}
@@ -224,7 +233,11 @@ export const ReportPage = (): JSX.Element => {
         onClose={() => {
           if (transactionActions.confirmingId !== null) return
           transactionActions.setConfirmCandidate(null)
+          transactionActions.setConfirmCashPlanningGoalId('')
         }}
+        cashPlanningOptions={cashPlanningOptions}
+        selectedCashPlanningGoalId={transactionActions.confirmCashPlanningGoalId}
+        onSelectedCashPlanningGoalIdChange={transactionActions.setConfirmCashPlanningGoalId}
         onConfirm={() => void transactionActions.handleConfirmTransaction()}
       />
 
@@ -238,6 +251,22 @@ export const ReportPage = (): JSX.Element => {
           transactionActions.setRefundFeedback('')
         }}
         onConfirm={(options) => void transactionActions.handleConfirmRefundTransaction(options)}
+      />
+
+      <TransactionAllocationModal
+        transaction={transactionActions.allocationCandidate}
+        cashPlanningOptions={cashPlanningOptions}
+        selectedCashPlanningGoalId={transactionActions.allocationCashPlanningGoalId}
+        feedback={transactionActions.allocationFeedback}
+        isLoading={transactionActions.isLoadingAllocation}
+        isSaving={transactionActions.isSavingAllocation}
+        onSelectedCashPlanningGoalIdChange={transactionActions.setAllocationCashPlanningGoalId}
+        onClose={() => {
+          if (transactionActions.isSavingAllocation) return
+          transactionActions.setAllocationCandidate(null)
+          transactionActions.setAllocationFeedback('')
+        }}
+        onSubmit={() => void transactionActions.handleSaveAllocation()}
       />
 
       <ExportReportModal
@@ -264,6 +293,8 @@ export const ReportPage = (): JSX.Element => {
         open={create.isCreateModalOpen}
         form={create.createForm}
         transactionSettings={transactionSettings}
+        categoryOptions={categoryOptions}
+        cashPlanningOptions={cashPlanningOptions}
         feedback={create.createFeedback}
         isCreating={create.isCreating}
         auditLockCutoffDate={auditLockCutoffDate}

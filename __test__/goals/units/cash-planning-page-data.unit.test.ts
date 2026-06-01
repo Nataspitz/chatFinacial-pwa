@@ -75,6 +75,26 @@ describe('getCashPlanningPageData', () => {
       reserves: 900,
       provisions: 0
     })
+    expect(data.charts.cashByPlanning).toEqual([
+      {
+        id: 'quartinho',
+        name: 'Construção do quartinho',
+        amount: 500,
+        percentageOfAccount: 10
+      },
+      {
+        id: 'manutencao',
+        name: 'Funcionamento Chalé Vermelho',
+        amount: 900,
+        percentageOfAccount: 18
+      },
+      {
+        id: 'free-cash',
+        name: 'Caixa livre',
+        amount: 3600,
+        percentageOfAccount: 72
+      }
+    ])
     expect(data.plannings[0]).toEqual(
       expect.objectContaining({
         name: 'Construção do quartinho',

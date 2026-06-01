@@ -14,6 +14,8 @@ interface GoalSectionProps {
   menuRef: RefObject<HTMLDivElement>
   onToggleMenu: (goalId: string) => void
   onEdit: (goalId: string) => void
+  onReserve: (goalId: string) => void
+  onConfigureRule: (goalId: string) => void
   onUpdateStatus: (goal: Goal, status: GoalStatus) => void
 }
 
@@ -27,6 +29,8 @@ export const GoalSection = ({
   menuRef,
   onToggleMenu,
   onEdit,
+  onReserve,
+  onConfigureRule,
   onUpdateStatus
 }: GoalSectionProps): JSX.Element => {
   return (
@@ -52,6 +56,8 @@ export const GoalSection = ({
               menuRef={menuRef}
               onToggleMenu={() => onToggleMenu(planning.id)}
               onEdit={onEdit}
+              onReserve={onReserve}
+              onConfigureRule={onConfigureRule}
               onUpdateStatus={onUpdateStatus}
             />
           ))}

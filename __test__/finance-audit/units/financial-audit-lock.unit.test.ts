@@ -15,22 +15,26 @@ describe('financial audit lock helpers', () => {
     setFinancialAuditLockedPeriods([])
   })
 
-  it('usa o primeiro dia do mes atual como limite de edicao', () => {
+  it('usa o primeiro dia do mes atual como limite inicial de criacao', () => {
     expect(getFinancialAuditLockCutoffDate(aprilReferenceDate)).toBe('2026-04-01')
   })
 
-  it('bloqueia transacoes anteriores ao mes atual', () => {
-    expect(isFinancialPeriodLocked('2026-03-31', aprilReferenceDate)).toBe(true)
+  it('nao bloqueia transacoes antigas sem auditoria confirmada', () => {
+    expect(isFinancialPeriodLocked('2026-03-31', aprilReferenceDate)).toBe(false)
     expect(isFinancialPeriodLocked('2026-04-01', aprilReferenceDate)).toBe(false)
     expect(isFinancialPeriodLocked('2026-05-10', aprilReferenceDate)).toBe(false)
   })
 
   it('detecta lotes com alguma data fechada', () => {
+    setFinancialAuditLockedPeriods([{ startDate: '2026-03-11', endDate: '2026-03-20' }])
+
     expect(hasLockedFinancialPeriod(['2026-04-10', '2026-03-20'], aprilReferenceDate)).toBe(true)
     expect(hasLockedFinancialPeriod(['2026-04-10', '2026-04-20'], aprilReferenceDate)).toBe(false)
   })
 
   it('lanca mensagem padrao para datas fechadas', () => {
+    setFinancialAuditLockedPeriods([{ startDate: '2026-03-21', endDate: '2026-03-31' }])
+
     expect(() => assertFinancialPeriodUnlocked(['2026-03-31'], aprilReferenceDate)).toThrow(
       FINANCIAL_AUDIT_LOCK_MESSAGE
     )

@@ -4,6 +4,7 @@ import { PageIntro } from '../../components/molecules/PageIntro/PageIntro'
 import { PageTemplate } from '../../components/templates/PageTemplate/PageTemplate'
 import { Button } from '../../components/ui'
 import type { Goal, GoalStatus } from '../../types/goal.types'
+import { CashByPlanningChart } from './components/CashByPlanningChart'
 import { CashCompositionChart } from './components/CashCompositionChart'
 import { CashPlanningAlerts } from './components/CashPlanningAlerts'
 import { CashPlanningSummaryCards } from './components/CashPlanningSummaryCards'
@@ -22,6 +23,11 @@ const parseLinkedCategories = (value: string): string[] =>
     .map((item) => item.trim().replace(/\s+/g, ' '))
     .filter(Boolean)
 
+const toFiniteNumber = (value: unknown, fallback = 0): number => {
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? parsed : fallback
+}
+
 export const Goals = (): JSX.Element => {
   const { goals, isLoading, error, snapshot, saveGoal, updateGoalStatus } = useGoalsData()
   const { menuContainerRef, openMenuGoalId, setOpenMenuGoalId } = useGoalMenu()
@@ -32,6 +38,11 @@ export const Goals = (): JSX.Element => {
   const [goalForm, setGoalForm] = useState<GoalFormState>(initialGoalFormState)
 
   const cashPlanningData = useMemo(() => getCashPlanningPageData(goals, snapshot), [goals, snapshot])
+  const maxReservableAmount = useMemo(() => {
+    const editingGoal = editingGoalId ? goals.find((item) => item.id === editingGoalId) : null
+    const currentReserved = editingGoal?.countsAsReserved === false ? 0 : toFiniteNumber(editingGoal?.reservedAmount, 0)
+    return Math.max(0, cashPlanningData.summary.realFreeCash + currentReserved)
+  }, [cashPlanningData.summary.realFreeCash, editingGoalId, goals])
 
   useEffect(() => {
     if (!feedback) {
@@ -79,6 +90,14 @@ export const Goals = (): JSX.Element => {
     setIsGoalModalOpen(true)
   }
 
+  const handleOpenReserveGoal = (goalId: string): void => {
+    handleOpenEditGoal(goalId)
+  }
+
+  const handleOpenConfigureRule = (goalId: string): void => {
+    handleOpenEditGoal(goalId)
+  }
+
   const handleSaveGoal = async (): Promise<void> => {
     const normalizedTitle = goalForm.title.trim()
     const parsedTarget = Number(goalForm.targetAmount)
@@ -91,6 +110,7 @@ export const Goals = (): JSX.Element => {
       parsedTarget < 0 ||
       !Number.isFinite(parsedReserved) ||
       parsedReserved < 0 ||
+      parsedReserved > maxReservableAmount ||
       !Number.isFinite(parsedAllocation) ||
       parsedAllocation < 0 ||
       (goalForm.allocationType === 'percentage' && parsedAllocation > 100)
@@ -182,6 +202,7 @@ export const Goals = (): JSX.Element => {
                 reserves={cashPlanningData.charts.reservedByType.reserves}
                 provisions={cashPlanningData.charts.reservedByType.provisions}
               />
+              <CashByPlanningChart data={cashPlanningData.charts.cashByPlanning} />
               <ReservedByPlanningChart data={cashPlanningData.charts.reservedByPlanning} />
             </div>
           </section>
@@ -203,6 +224,8 @@ export const Goals = (): JSX.Element => {
             menuRef={menuContainerRef}
             onToggleMenu={handleToggleMenu}
             onEdit={handleOpenEditGoal}
+            onReserve={handleOpenReserveGoal}
+            onConfigureRule={handleOpenConfigureRule}
             onUpdateStatus={(goal, status) => {
               void handleUpdateGoalStatus(goal, status)
             }}
@@ -217,6 +240,8 @@ export const Goals = (): JSX.Element => {
             menuRef={menuContainerRef}
             onToggleMenu={handleToggleMenu}
             onEdit={handleOpenEditGoal}
+            onReserve={handleOpenReserveGoal}
+            onConfigureRule={handleOpenConfigureRule}
             onUpdateStatus={(goal, status) => {
               void handleUpdateGoalStatus(goal, status)
             }}
@@ -229,6 +254,7 @@ export const Goals = (): JSX.Element => {
         isEditing={Boolean(editingGoalId)}
         isSaving={isSavingGoal}
         form={goalForm}
+        maxReservableAmount={maxReservableAmount}
         onChange={setGoalForm}
         onClose={closeGoalModal}
         onSubmit={() => {

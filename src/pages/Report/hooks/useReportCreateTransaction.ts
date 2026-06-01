@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { FINANCIAL_AUDIT_LOCK_MESSAGE, hasLockedFinancialPeriod, isFinancialPeriodLocked } from '../../../services/financial-audit-lock'
+import { cashPlanningMovementsService } from '../../../services/cash-planning-movements.service'
 import { financeService } from '../../../services/finance.service'
 import {
   getDefaultConfirmedByType,
@@ -8,7 +9,6 @@ import {
   type TransactionSettings
 } from '../../../types/transaction-settings.types'
 import type { Transaction } from '../../../types/transaction.types'
-import { getDefaultTransactionCategory } from '../../../utils/transaction-categories'
 import { addMonthsKeepingDay, parseLocalDate } from '../components/report-page.date-utils'
 import { initialCreateFormState } from '../components/report-page.forms'
 import { normalizeCategoryValue, splitAmountIntoInstallments } from '../components/report-page.utils'
@@ -22,12 +22,14 @@ interface UseReportCreateTransactionParams {
   transactionSettings: TransactionSettings
   loadTransactions: () => Promise<void>
   loadCategories: () => Promise<void>
+  loadCashPlanningOptions: () => Promise<void>
 }
 
 export const useReportCreateTransaction = ({
   transactionSettings,
   loadTransactions,
-  loadCategories
+  loadCategories,
+  loadCashPlanningOptions
 }: UseReportCreateTransactionParams) => {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [createForm, setCreateForm] = useState<CreateFormState>(initialCreateFormState)
@@ -49,7 +51,11 @@ export const useReportCreateTransaction = ({
       return
     }
 
-    const category = normalizeCategoryValue(getDefaultTransactionCategory())
+    const category = normalizeCategoryValue(createForm.category)
+    if (!category) {
+      setCreateFeedback('Selecione uma categoria.')
+      return
+    }
     const description = createForm.description.trim()
     if (!description) {
       setCreateFeedback('Informe a descrição da transação.')
@@ -115,8 +121,20 @@ export const useReportCreateTransaction = ({
     setCreateFeedback('')
     try {
       await financeService.saveTransactions(normalizedTransactions)
+      if (createForm.cashPlanningGoalId) {
+        await Promise.all(
+          normalizedTransactions
+            .filter((transaction) => transaction.isConfirmed)
+            .map((transaction) =>
+              cashPlanningMovementsService.applyTransactionAllocation({
+                transaction,
+                goalId: createForm.cashPlanningGoalId
+              })
+            )
+        )
+      }
       await financeService.saveCategory(category, createForm.type)
-      await Promise.all([loadTransactions(), loadCategories()])
+      await Promise.all([loadTransactions(), loadCategories(), loadCashPlanningOptions()])
       notifyFinancialDataUpdated()
       setCreateForm(initialCreateFormState)
       setIsCreateModalOpen(false)

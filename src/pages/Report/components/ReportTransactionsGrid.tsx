@@ -27,6 +27,7 @@ interface ReportTransactionsGridProps {
   onDelete: (transaction: Transaction) => Promise<void>
   onConfirmStart: (transaction: Transaction) => void
   onDuplicate: (transaction: Transaction) => void
+  onAllocationStart: (transaction: Transaction) => void
   onRefundStart: (transaction: Transaction) => void
   onEditStart: (transaction: Transaction) => void
   onEditCancel: () => void
@@ -56,6 +57,7 @@ export const ReportTransactionsGrid = ({
   onDelete,
   onConfirmStart,
   onDuplicate,
+  onAllocationStart,
   onRefundStart,
   onEditStart,
   onEditCancel,
@@ -67,6 +69,7 @@ export const ReportTransactionsGrid = ({
     onDelete,
     onConfirmStart,
     onDuplicate,
+    onAllocationStart,
     onRefundStart,
     onEditStart,
     onEditCancel,

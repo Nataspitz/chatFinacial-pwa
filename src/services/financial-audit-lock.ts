@@ -55,8 +55,8 @@ export const isFinancialPeriodLocked = (dateValue: string, baseDate = new Date()
     return false
   }
 
-  return normalizedDate < getFinancialAuditLockCutoffDate(baseDate)
-    || confirmedLockedPeriods.some((period) => normalizedDate >= period.startDate && normalizedDate <= period.endDate)
+  void baseDate
+  return confirmedLockedPeriods.some((period) => normalizedDate >= period.startDate && normalizedDate <= period.endDate)
 }
 
 export const hasLockedFinancialPeriod = (dateValues: string[], baseDate = new Date()): boolean =>

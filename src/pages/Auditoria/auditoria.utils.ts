@@ -99,7 +99,10 @@ export const buildSlicesForMonth = (monthRef: string): SlicePlan[] => {
 export const mapAuditSlices = (audits: FinancialAudit[]): AuditSliceCardItem[] =>
   audits
     .slice()
-    .sort((a, b) => a.auditSlice - b.auditSlice)
+    .sort((a, b) => {
+      const monthCompare = normalizeDate(a.monthRef).localeCompare(normalizeDate(b.monthRef))
+      return monthCompare === 0 ? a.auditSlice - b.auditSlice : monthCompare
+    })
     .map((item) => ({
       key: `${item.monthRef}-${item.auditSlice}`,
       monthRef: item.monthRef,
@@ -112,6 +115,23 @@ export const mapAuditSlices = (audits: FinancialAudit[]): AuditSliceCardItem[] =
       status: item.status,
       canUploadCertificate: item.status === 'pending' && normalizeDate(item.unlockAt) <= getTodayDate()
     }))
+
+export const getPendingAuditActionRows = (audits: FinancialAudit[]): FinancialAudit[] => {
+  const rowsByKey = new Map<string, FinancialAudit>()
+
+  audits.forEach((audit) => {
+    if (audit.status !== 'pending') {
+      return
+    }
+
+    rowsByKey.set(`${normalizeDate(audit.monthRef)}-${audit.auditSlice}`, audit)
+  })
+
+  return Array.from(rowsByKey.values()).sort((a, b) => {
+    const monthCompare = normalizeDate(a.monthRef).localeCompare(normalizeDate(b.monthRef))
+    return monthCompare === 0 ? a.auditSlice - b.auditSlice : monthCompare
+  })
+}
 
 export const mapUpcomingMandatorySlices = (mandatoryMonth: string): AuditSliceCardItem[] =>
   buildSlicesForMonth(mandatoryMonth).map((slice) => ({

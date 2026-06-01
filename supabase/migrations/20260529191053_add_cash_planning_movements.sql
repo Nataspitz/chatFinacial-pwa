@@ -11,7 +11,7 @@ create table if not exists public.cash_planning_movements (
   amount numeric(14, 2) not null check (amount >= 0),
   direction text not null check (direction in ('IN', 'OUT')),
   reference_month date null,
-  transaction_id uuid null,
+  transaction_id uuid null references public.transactions(id) on delete set null,
   note text null,
   created_at timestamptz not null default now()
 );
@@ -21,6 +21,10 @@ create index if not exists cash_planning_movements_goal_created_at_idx
 
 create index if not exists cash_planning_movements_goal_reference_month_idx
   on public.cash_planning_movements (goal_id, reference_month);
+
+create unique index if not exists cash_planning_movements_transaction_unique_idx
+  on public.cash_planning_movements (transaction_id)
+  where transaction_id is not null;
 
 alter table public.cash_planning_movements enable row level security;
 

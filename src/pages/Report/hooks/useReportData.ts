@@ -4,6 +4,10 @@ import { financialAuditService } from '../../../services/financial-audit.service
 import { setFinancialAuditLockedPeriods } from '../../../services/financial-audit-lock'
 import { transactionSettingsService } from '../../../services/transaction-settings.service'
 import {
+  cashPlanningMovementsService,
+  type CashPlanningOption
+} from '../../../services/cash-planning-movements.service'
+import {
   DEFAULT_TRANSACTION_SETTINGS,
   type TransactionSettings
 } from '../../../types/transaction-settings.types'
@@ -19,6 +23,7 @@ export const useReportData = () => {
     saida: []
   })
   const [transactionSettings, setTransactionSettings] = useState<TransactionSettings>(DEFAULT_TRANSACTION_SETTINGS)
+  const [cashPlanningOptions, setCashPlanningOptions] = useState<CashPlanningOption[]>([])
   const [toastMessage, setToastMessage] = useState('')
 
   const loadTransactions = async (): Promise<void> => {
@@ -58,6 +63,15 @@ export const useReportData = () => {
     }
   }
 
+  const loadCashPlanningOptions = async (): Promise<void> => {
+    try {
+      const options = await cashPlanningMovementsService.listTransactionAllocationOptions()
+      setCashPlanningOptions(options)
+    } catch {
+      setCashPlanningOptions([])
+    }
+  }
+
   const loadAuditLocks = async (): Promise<void> => {
     try {
       const periods = await financialAuditService.getConfirmedLockedPeriods()
@@ -69,7 +83,13 @@ export const useReportData = () => {
 
   useEffect(() => {
     void (async () => {
-      await Promise.allSettled([loadTransactions(), loadCategories(), loadTransactionSettings(), loadAuditLocks()])
+      await Promise.allSettled([
+        loadTransactions(),
+        loadCategories(),
+        loadTransactionSettings(),
+        loadAuditLocks(),
+        loadCashPlanningOptions()
+      ])
       setIsLoading(false)
     })()
   }, [])
@@ -91,11 +111,13 @@ export const useReportData = () => {
     error,
     setError,
     categoryOptions,
+    cashPlanningOptions,
     transactionSettings,
     toastMessage,
     setToastMessage,
     loadTransactions,
     loadCategories,
+    loadCashPlanningOptions,
     loadAuditLocks
   }
 }

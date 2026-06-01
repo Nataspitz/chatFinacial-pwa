@@ -57,6 +57,12 @@ export interface CashPlanningPageData {
       targetAmount: number
       progressPercentage: number
     }>
+    cashByPlanning: Array<{
+      id: string
+      name: string
+      amount: number
+      percentageOfAccount: number
+    }>
   }
   alerts: CashPlanningAlert[]
   plannings: CashPlanningCardData[]
@@ -198,6 +204,28 @@ export const getCashPlanningPageData = (
     { goals: 0, reserves: 0, provisions: 0 }
   )
   const alerts: CashPlanningAlert[] = []
+  const accountBalance = toFiniteNumber(snapshot.accountBalance, 0)
+  const cashByPlanningReserved = plannings
+    .filter((planning) => planning.countsAsReserved && planning.reservedAmount > 0)
+    .map((planning) => ({
+      id: planning.id,
+      name: planning.name,
+      amount: planning.reservedAmount,
+      percentageOfAccount: accountBalance > 0 ? (planning.reservedAmount / accountBalance) * 100 : 0
+    }))
+  const reservedByPlanningAmount = cashByPlanningReserved.reduce((acc, item) => acc + item.amount, 0)
+  const freeByPlanningAmount = Math.max(0, accountBalance - reservedByPlanningAmount)
+  const cashByPlanning = [
+    ...cashByPlanningReserved,
+    ...(freeByPlanningAmount > 0
+      ? [{
+          id: 'free-cash',
+          name: 'Caixa livre',
+          amount: freeByPlanningAmount,
+          percentageOfAccount: accountBalance > 0 ? (freeByPlanningAmount / accountBalance) * 100 : 0
+        }]
+      : [])
+  ]
   const withoutReserved = plannings.filter((planning) => planning.targetAmount > 0 && planning.reservedAmount <= 0).length
   const withoutRule = plannings.filter((planning) => planning.allocationType === 'NONE').length
   const withoutForecast = plannings.filter((planning) => planning.targetAmount > 0 && planning.forecastLabel === 'Configure uma regra').length
@@ -252,7 +280,8 @@ export const getCashPlanningPageData = (
         reservedAmount: planning.reservedAmount,
         targetAmount: planning.targetAmount,
         progressPercentage: planning.progressPercentage
-      }))
+      })),
+      cashByPlanning
     },
     alerts,
     plannings,

@@ -1,15 +1,20 @@
 import type { Dispatch, SetStateAction } from 'react'
 import { Button, ButtonLoading, ModalBase } from '../../../components/ui'
+import type { CashPlanningOption } from '../../../services/cash-planning-movements.service'
+import type { CategoryItem } from '../../../services/finance.service'
 import { getDefaultPaymentMethodByType, type TransactionSettings } from '../../../types/transaction-settings.types'
-import type { PaymentMethod, Transaction } from '../../../types/transaction.types'
+import type { PaymentMethod, Transaction, TransactionType } from '../../../types/transaction.types'
 import { getDefaultTransactionCategory } from '../../../utils/transaction-categories'
 import type { CreateFormState } from './report-page.types'
+import { getCategorySelectOptions } from './transactionTable.utils'
 import styles from '../Report.module.css'
 
 interface CreateTransactionModalProps {
   open: boolean
   form: CreateFormState
   transactionSettings: TransactionSettings
+  categoryOptions: Record<TransactionType, CategoryItem[]>
+  cashPlanningOptions: CashPlanningOption[]
   feedback: string
   isCreating: boolean
   auditLockCutoffDate: string
@@ -22,13 +27,20 @@ export const CreateTransactionModal = ({
   open,
   form,
   transactionSettings,
+  categoryOptions,
+  cashPlanningOptions,
   feedback,
   isCreating,
   auditLockCutoffDate,
   setForm,
   onClose,
   onSubmit
-}: CreateTransactionModalProps): JSX.Element => (
+}: CreateTransactionModalProps): JSX.Element => {
+  const currentCategoryOptions = categoryOptions[form.type].map((item) => item.name)
+  const getFirstCategoryForType = (type: TransactionType): string =>
+    categoryOptions[type][0]?.name ?? getDefaultTransactionCategory()
+
+  return (
   <ModalBase open={open} title="Nova transação" onClose={onClose}>
     <form
       className={styles.createForm}
@@ -45,10 +57,11 @@ export const CreateTransactionModal = ({
             setForm((prev) => ({
               ...prev,
               type: event.target.value as Transaction['type'],
-              category: getDefaultTransactionCategory(),
+              category: getFirstCategoryForType(event.target.value as TransactionType),
               isMonthlyCost: event.target.value === 'saida' ? transactionSettings.defaultMonthlyCostSaida : false,
               paymentMethod: getDefaultPaymentMethodByType(transactionSettings, event.target.value as Transaction['type']),
-              installmentCount: 1
+              installmentCount: 1,
+              cashPlanningGoalId: ''
             }))
           }
         >
@@ -92,7 +105,16 @@ export const CreateTransactionModal = ({
 
       <label className={styles.createField}>
         <span>Categoria</span>
-        <input type="text" value={form.category || getDefaultTransactionCategory()} readOnly />
+        <select
+          value={form.category || getFirstCategoryForType(form.type)}
+          onChange={(event) => setForm((prev) => ({ ...prev, category: event.target.value }))}
+        >
+          {getCategorySelectOptions(currentCategoryOptions, form.category || getDefaultTransactionCategory()).map((option) => (
+            <option key={option} value={option}>
+              {option}
+            </option>
+          ))}
+        </select>
       </label>
 
       <label className={styles.createField}>
@@ -111,6 +133,21 @@ export const CreateTransactionModal = ({
           <option value="debito">Débito</option>
           <option value="dinheiro">Dinheiro</option>
           <option value="credito">Crédito</option>
+        </select>
+      </label>
+
+      <label className={styles.createField}>
+        <span>{form.type === 'saida' ? 'Pagar usando repartição' : 'Enviar para repartição'}</span>
+        <select
+          value={form.cashPlanningGoalId}
+          onChange={(event) => setForm((prev) => ({ ...prev, cashPlanningGoalId: event.target.value }))}
+        >
+          <option value="">Nenhuma repartição</option>
+          {cashPlanningOptions.map((option) => (
+            <option key={option.id} value={option.id}>
+              {option.title}
+            </option>
+          ))}
         </select>
       </label>
 
@@ -155,4 +192,5 @@ export const CreateTransactionModal = ({
       </div>
     </form>
   </ModalBase>
-)
+  )
+}

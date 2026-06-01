@@ -504,25 +504,50 @@ const isTransactionStatusConstraintError = (error: unknown): boolean => {
   return (code === '23514' || combined.includes('check constraint')) && combined.includes('transactions_status_check')
 }
 
-const toLegacyTransactionStatusPayload = (payload: Record<string, unknown>): Record<string, unknown> | null => {
-  if (payload.status === 'refunded') {
-    return { ...payload, status: 'REIMBURSED' }
+const toLegacyTransactionStatusValue = (status: unknown): string | null => {
+  if (status === 'refunded') {
+    return 'REIMBURSED'
   }
 
-  if (payload.status === 'canceled') {
-    return { ...payload, status: 'CANCELED' }
+  if (status === 'canceled') {
+    return 'CANCELED'
   }
 
-  if (payload.status === 'active') {
-    return { ...payload, status: 'ACTIVE' }
+  if (status === 'active') {
+    return 'ACTIVE'
   }
 
   return null
 }
 
-const withoutTransactionStatusPayload = (payload: Record<string, unknown>): Record<string, unknown> => {
+const toLegacyTransactionStatusPayload = <T extends Record<string, unknown> | Array<Record<string, unknown>>>(
+  payload: T
+): T | null => {
+  if (Array.isArray(payload)) {
+    const legacyRows = payload.map((row) => {
+      const legacyStatus = toLegacyTransactionStatusValue(row.status)
+      return legacyStatus ? { ...row, status: legacyStatus } : null
+    })
+
+    return legacyRows.every(Boolean) ? legacyRows as T : null
+  }
+
+  const legacyStatus = toLegacyTransactionStatusValue(payload.status)
+  return legacyStatus ? { ...payload, status: legacyStatus } as T : null
+}
+
+const withoutTransactionStatusPayload = <T extends Record<string, unknown> | Array<Record<string, unknown>>>(
+  payload: T
+): T => {
+  if (Array.isArray(payload)) {
+    return payload.map((row) => {
+      const { status: _status, ...nextRow } = row
+      return nextRow
+    }) as T
+  }
+
   const { status: _status, ...nextPayload } = payload
-  return nextPayload
+  return nextPayload as T
 }
 
 const updateTransactionBestEffort = async (
@@ -597,6 +622,19 @@ const updateTransactionWithFallback = async (
 
     if (!error) {
       return
+    }
+
+    if (isTransactionStatusConstraintError(error)) {
+      const legacyPayload = toLegacyTransactionStatusPayload(workingPayload)
+      if (legacyPayload) {
+        workingPayload = legacyPayload
+        continue
+      }
+
+      if ('status' in workingPayload) {
+        workingPayload = withoutTransactionStatusPayload(workingPayload)
+        continue
+      }
     }
 
     const missingColumn = extractMissingColumnName(error)
@@ -946,7 +984,7 @@ export const financeService = {
     )
   },
 
-  updateMonthlyCostFromDate: async (originalTransaction: Transaction, nextTransaction: Transaction): Promise<void> => {
+  updateMonthlyCostFromDate: async (originalTransaction: Transaction, nextTransaction: Transaction): Promise<Transaction> => {
     const originalDate = normalizeDate(originalTransaction.date)
     const nextDate = normalizeDate(nextTransaction.date)
 
@@ -956,7 +994,7 @@ export const financeService = {
       || originalDate >= nextDate
     ) {
       await financeService.updateTransaction(nextTransaction)
-      return
+      return nextTransaction
     }
 
     const userId = await getUserId()
@@ -972,19 +1010,20 @@ export const financeService = {
       userId
     )
 
+    const createdTransaction = {
+      ...nextTransaction,
+      id: crypto.randomUUID(),
+      date: nextDate,
+      isMonthlyCost: true,
+      monthlyEndDate: null,
+      monthlyCostStartDate: undefined
+    }
+
     await insertTransactionsWithFallback([
-      toInsertPayload(
-        {
-          ...nextTransaction,
-          id: crypto.randomUUID(),
-          date: nextDate,
-          isMonthlyCost: true,
-          monthlyEndDate: null,
-          monthlyCostStartDate: undefined
-        },
-        userId
-      )
+      toInsertPayload(createdTransaction, userId)
     ])
+
+    return createdTransaction
   },
 
   endMonthlyCostFromDate: async (originalTransaction: Transaction, occurrenceDate: string): Promise<void> => {

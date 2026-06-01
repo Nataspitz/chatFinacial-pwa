@@ -12,6 +12,8 @@ interface PlanningCardProps {
   menuRef: RefObject<HTMLDivElement>
   onToggleMenu: () => void
   onEdit: (goalId: string) => void
+  onReserve: (goalId: string) => void
+  onConfigureRule: (goalId: string) => void
   onUpdateStatus: (goal: Goal, status: GoalStatus) => void
 }
 
@@ -20,7 +22,7 @@ const formatCurrency = (value: number): string =>
 
 const getPlanningTypeLabel = (type: CashPlanningCardData['planningType']): string => {
   if (type === 'RESERVE') return 'Reserva'
-  if (type === 'PROVISION') return 'Provisão'
+  if (type === 'PROVISION') return 'Provisao'
   return 'Meta'
 }
 
@@ -37,7 +39,7 @@ const getAllocationLabel = (planning: CashPlanningCardData): string => {
     return `${planning.allocationValue}% do resultado`
   }
 
-  return `${formatCurrency(planning.allocationValue)} por mês`
+  return `${formatCurrency(planning.allocationValue)} por mes`
 }
 
 export const PlanningCard = ({
@@ -46,6 +48,8 @@ export const PlanningCard = ({
   menuRef,
   onToggleMenu,
   onEdit,
+  onReserve,
+  onConfigureRule,
   onUpdateStatus
 }: PlanningCardProps): JSX.Element => {
   const progressStyle = {
@@ -94,12 +98,12 @@ export const PlanningCard = ({
           {getAllocationLabel(planning)}
         </span>
         <span>
-          <b>Previsão</b>
+          <b>Previsao</b>
           {planning.forecastLabel}
         </span>
         <span>
           <b>Impacto no caixa</b>
-          {planning.countsAsReserved ? 'Impacta caixa livre: Sim' : 'Não impacta caixa livre'}
+          {planning.countsAsReserved ? 'Impacta caixa livre: Sim' : 'Nao impacta caixa livre'}
         </span>
         <span>
           <b>Reserva estimada</b>
@@ -116,12 +120,11 @@ export const PlanningCard = ({
       ) : null}
 
       <div className={styles.planningActions}>
-        {/* Fluxo financeiro preparado; a movimentação real entra quando o histórico de reservas estiver conectado. */}
-        <Button type="button" variant="ghost" disabled title="Reservar valor será conectado ao histórico de reservas.">
+        <Button type="button" variant="ghost" onClick={() => onReserve(planning.id)}>
           <FiTrendingUp aria-hidden />
           Reservar valor
         </Button>
-        <Button type="button" variant="ghost" disabled title="Configuração rápida será conectada ao modal de regra.">
+        <Button type="button" variant="ghost" onClick={() => onConfigureRule(planning.id)}>
           <FiSliders aria-hidden />
           Configurar regra
         </Button>

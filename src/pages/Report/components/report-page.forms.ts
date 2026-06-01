@@ -11,7 +11,8 @@ export const initialCreateFormState: CreateFormState = {
   description: '',
   isMonthlyCost: false,
   paymentMethod: 'pix',
-  installmentCount: 1
+  installmentCount: 1,
+  cashPlanningGoalId: ''
 }
 
 export const initialExportFormState: ExportFormState = {
@@ -45,5 +46,6 @@ export const buildCreateFormFromTransaction = (transaction: Transaction): Create
   description: `${transaction.description} (cópia)`,
   isMonthlyCost: transaction.isMonthlyCost,
   paymentMethod: transaction.paymentMethod,
-  installmentCount: transaction.paymentMethod === 'credito' ? Math.max(1, transaction.installmentCount) : 1
+  installmentCount: transaction.paymentMethod === 'credito' ? Math.max(1, transaction.installmentCount) : 1,
+  cashPlanningGoalId: ''
 })

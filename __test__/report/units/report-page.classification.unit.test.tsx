@@ -364,7 +364,7 @@ describe('ReportPage - unit - classificacao de futuro', () => {
     })
   })
 
-  it('cria novas transacoes sempre com categoria Geral', async () => {
+  it('cria novas transacoes com a categoria selecionada no formulario', async () => {
     setFinanceServiceMockData({
       categories: createReportCategoryMap({
         entrada: [{ id: 'cat-entrada-1', type: 'entrada', name: 'Receita' }],
@@ -378,9 +378,11 @@ describe('ReportPage - unit - classificacao de futuro', () => {
     fireEvent.click(await screen.findByRole('button', { name: /nova transa/i }))
     const modal = await screen.findByRole('dialog', { name: /nova transa/i })
 
-    expect(within(modal).getByLabelText('Categoria')).toHaveValue('Geral')
+    const categorySelect = within(modal).getByLabelText('Categoria')
+    expect(categorySelect).toHaveValue('Geral')
 
     fireEvent.change(within(modal).getByLabelText('Valor'), { target: { value: '150' } })
+    fireEvent.change(categorySelect, { target: { value: 'Fornecedor' } })
     fireEvent.change(within(modal).getByLabelText(/descr/i), { target: { value: 'Compra para revisar depois' } })
     fireEvent.click(within(modal).getByRole('button', { name: /salvar transa/i }))
 
@@ -390,7 +392,7 @@ describe('ReportPage - unit - classificacao de futuro', () => {
 
     const savedTransactions = financeServiceMock.saveTransactions.mock.calls[0]?.[0] as unknown as Transaction[]
     expect(savedTransactions).toHaveLength(1)
-    expect(savedTransactions[0].category).toBe('Geral')
-    expect(financeServiceMock.saveCategory).toHaveBeenCalledWith('Geral', 'saida')
+    expect(savedTransactions[0].category).toBe('Fornecedor')
+    expect(financeServiceMock.saveCategory).toHaveBeenCalledWith('Fornecedor', 'saida')
   })
 })

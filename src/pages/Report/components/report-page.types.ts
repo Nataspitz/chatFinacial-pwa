@@ -9,6 +9,7 @@ export interface CreateFormState {
   isMonthlyCost: boolean
   paymentMethod: PaymentMethod
   installmentCount: number
+  cashPlanningGoalId: string
 }
 
 export interface ExportFormState {

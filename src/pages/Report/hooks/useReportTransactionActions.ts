@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { isFinancialPeriodLocked } from '../../../services/financial-audit-lock'
+import { cashPlanningMovementsService } from '../../../services/cash-planning-movements.service'
 import { financeService } from '../../../services/finance.service'
 import {
   normalizeTransactionBySettings,
@@ -23,6 +24,7 @@ interface UseReportTransactionActionsParams {
   transactionSettings: TransactionSettings
   loadTransactions: () => Promise<void>
   loadCategories: () => Promise<void>
+  loadCashPlanningOptions: () => Promise<void>
   setError: (message: string) => void
   setToastMessage: (message: string) => void
   setCreateForm: React.Dispatch<React.SetStateAction<CreateFormState>>
@@ -38,6 +40,7 @@ export const useReportTransactionActions = ({
   transactionSettings,
   loadTransactions,
   loadCategories,
+  loadCashPlanningOptions,
   setError,
   setToastMessage,
   setCreateForm,
@@ -50,9 +53,15 @@ export const useReportTransactionActions = ({
   const [deleteCandidate, setDeleteCandidate] = useState<Transaction | null>(null)
   const [confirmCandidate, setConfirmCandidate] = useState<Transaction | null>(null)
   const [confirmingId, setConfirmingId] = useState<string | null>(null)
+  const [confirmCashPlanningGoalId, setConfirmCashPlanningGoalId] = useState('')
   const [refundCandidate, setRefundCandidate] = useState<Transaction | null>(null)
   const [refundingId, setRefundingId] = useState<string | null>(null)
   const [refundFeedback, setRefundFeedback] = useState('')
+  const [allocationCandidate, setAllocationCandidate] = useState<Transaction | null>(null)
+  const [allocationCashPlanningGoalId, setAllocationCashPlanningGoalId] = useState('')
+  const [allocationFeedback, setAllocationFeedback] = useState('')
+  const [isLoadingAllocation, setIsLoadingAllocation] = useState(false)
+  const [isSavingAllocation, setIsSavingAllocation] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editingDraft, setEditingDraft] = useState<Transaction | null>(null)
   const [isSavingEdit, setIsSavingEdit] = useState(false)
@@ -104,6 +113,7 @@ export const useReportTransactionActions = ({
       return
     }
     setConfirmCandidate(transaction)
+    setConfirmCashPlanningGoalId('')
     setError('')
   }
 
@@ -125,14 +135,24 @@ export const useReportTransactionActions = ({
       }
 
       if (isMonthlyCostOccurrenceEdit && originalTransaction) {
-        await financeService.updateMonthlyCostFromDate(originalTransaction, confirmedTransaction)
+        const persistedTransaction = await financeService.updateMonthlyCostFromDate(originalTransaction, confirmedTransaction)
+        await cashPlanningMovementsService.applyTransactionAllocation({
+          transaction: persistedTransaction,
+          goalId: confirmCashPlanningGoalId
+        })
         await loadTransactions()
       } else {
         await financeService.confirmTransaction(confirmedTransaction.id)
+        await cashPlanningMovementsService.applyTransactionAllocation({
+          transaction: confirmedTransaction,
+          goalId: confirmCashPlanningGoalId
+        })
         setTransactions((prev) => prev.map((item) => (item.id === confirmedTransaction.id ? confirmedTransaction : item)))
       }
 
       setConfirmCandidate(null)
+      setConfirmCashPlanningGoalId('')
+      await loadCashPlanningOptions()
       notifyFinancialDataUpdated()
       setError('')
       setToastMessage('Transação validada!')
@@ -170,11 +190,12 @@ export const useReportTransactionActions = ({
       type: transaction.type,
       amount: String(amountToDuplicate),
       date: getTodayDate(),
-      category: getDefaultTransactionCategory(),
+      category: transaction.category || getDefaultTransactionCategory(),
       description: transaction.description,
       isMonthlyCost: transaction.type === 'saida' ? transaction.isMonthlyCost : false,
       paymentMethod: transaction.paymentMethod,
-      installmentCount
+      installmentCount,
+      cashPlanningGoalId: ''
     })
     setIsCreateModalOpen(true)
     setIsMobileActionsDrawerOpen(false)
@@ -184,6 +205,50 @@ export const useReportTransactionActions = ({
     setRefundCandidate(transaction)
     setRefundFeedback('')
     setError('')
+  }
+
+  const handleAllocationStart = async (transaction: Transaction): Promise<void> => {
+    setAllocationCandidate(transaction)
+    setAllocationCashPlanningGoalId('')
+    setAllocationFeedback('')
+    setError('')
+
+    if (!transaction.isConfirmed) {
+      return
+    }
+
+    setIsLoadingAllocation(true)
+    try {
+      const allocation = await cashPlanningMovementsService.getTransactionAllocation(transaction.id)
+      setAllocationCashPlanningGoalId(allocation?.goalId ?? '')
+    } catch (allocationError) {
+      setAllocationFeedback(getErrorMessage(allocationError, 'Não foi possível carregar a repartição da transação.'))
+    } finally {
+      setIsLoadingAllocation(false)
+    }
+  }
+
+  const handleSaveAllocation = async (): Promise<void> => {
+    if (!allocationCandidate) return
+
+    setIsSavingAllocation(true)
+    setAllocationFeedback('')
+    try {
+      await cashPlanningMovementsService.saveTransactionAllocation(
+        allocationCandidate,
+        allocationCashPlanningGoalId || null
+      )
+      await Promise.all([loadTransactions(), loadCashPlanningOptions()])
+      setAllocationCandidate(null)
+      setAllocationCashPlanningGoalId('')
+      notifyFinancialDataUpdated()
+      setError('')
+      setToastMessage(allocationCashPlanningGoalId ? 'Repartição vinculada.' : 'Repartição removida.')
+    } catch (allocationError) {
+      setAllocationFeedback(getErrorMessage(allocationError, 'Não foi possível salvar a repartição da transação.'))
+    } finally {
+      setIsSavingAllocation(false)
+    }
   }
 
   const handleConfirmRefundTransaction = async (options: {
@@ -316,11 +381,21 @@ export const useReportTransactionActions = ({
     confirmingId,
     confirmCandidate,
     setConfirmCandidate,
+    confirmCashPlanningGoalId,
+    setConfirmCashPlanningGoalId,
     refundCandidate,
     setRefundCandidate,
     refundingId,
     refundFeedback,
     setRefundFeedback,
+    allocationCandidate,
+    setAllocationCandidate,
+    allocationCashPlanningGoalId,
+    setAllocationCashPlanningGoalId,
+    allocationFeedback,
+    setAllocationFeedback,
+    isLoadingAllocation,
+    isSavingAllocation,
     editingId,
     editingDraft,
     isSavingEdit,
@@ -330,6 +405,8 @@ export const useReportTransactionActions = ({
     handleConfirmTransaction,
     handleRefundStart,
     handleConfirmRefundTransaction,
+    handleAllocationStart,
+    handleSaveAllocation,
     handleEditStart,
     handleDuplicateTransaction,
     handleEditCancel: () => {
