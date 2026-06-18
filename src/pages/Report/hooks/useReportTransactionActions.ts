@@ -136,6 +136,7 @@ export const useReportTransactionActions = ({
 
       if (isMonthlyCostOccurrenceEdit && originalTransaction) {
         const persistedTransaction = await financeService.updateMonthlyCostFromDate(originalTransaction, confirmedTransaction)
+        await cashPlanningMovementsService.applyAutomaticRulesForIncome(persistedTransaction)
         await cashPlanningMovementsService.applyTransactionAllocation({
           transaction: persistedTransaction,
           goalId: confirmCashPlanningGoalId
@@ -143,6 +144,7 @@ export const useReportTransactionActions = ({
         await loadTransactions()
       } else {
         await financeService.confirmTransaction(confirmedTransaction.id)
+        await cashPlanningMovementsService.applyAutomaticRulesForIncome(confirmedTransaction)
         await cashPlanningMovementsService.applyTransactionAllocation({
           transaction: confirmedTransaction,
           goalId: confirmCashPlanningGoalId

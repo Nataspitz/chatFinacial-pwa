@@ -121,6 +121,11 @@ export const useReportCreateTransaction = ({
     setCreateFeedback('')
     try {
       await financeService.saveTransactions(normalizedTransactions)
+      await Promise.all(
+        normalizedTransactions
+          .filter((transaction) => transaction.type === 'entrada' && transaction.isConfirmed)
+          .map((transaction) => cashPlanningMovementsService.applyAutomaticRulesForIncome(transaction))
+      )
       if (createForm.cashPlanningGoalId) {
         await Promise.all(
           normalizedTransactions

@@ -23,7 +23,8 @@ export const CashPlanningSummaryCards = ({ summary }: CashPlanningSummaryCardsPr
     {
       title: 'Caixa livre real',
       value: formatCurrency(summary.realFreeCash),
-      description: 'Saldo menos reservas marcadas.'
+      description: 'Saldo menos reservas marcadas.',
+      featured: true
     },
     {
       title: 'Regras do mês',
@@ -42,7 +43,10 @@ export const CashPlanningSummaryCards = ({ summary }: CashPlanningSummaryCardsPr
   return (
     <section className={styles.summaryGrid} aria-label="Resumo do planejamento de caixa">
       {cards.map((card) => (
-        <article key={card.title} className={styles.summaryCard}>
+        <article
+          key={card.title}
+          className={`${styles.summaryCard} ${card.featured ? styles.summaryCardFeatured : ''}`.trim()}
+        >
           <span className={styles.summaryLabel}>{card.title}</span>
           <strong className={styles.summaryValue}>{card.value}</strong>
           <span className={styles.summaryCaption}>{card.description}</span>

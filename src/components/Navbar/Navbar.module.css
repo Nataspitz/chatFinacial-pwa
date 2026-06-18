@@ -1,108 +1,128 @@
 .sidebar {
-  width: 248px;
+  width: 260px;
   position: fixed;
   inset: 0 auto 0 0;
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
-  padding: var(--space-5) var(--space-4);
-  border-right: 1px solid var(--border-color);
-  background:
-    radial-gradient(120% 100% at 0% 0%, color-mix(in srgb, var(--brand-600) 22%, transparent), transparent 55%),
-    var(--bg-secondary);
+  gap: var(--space-8);
+  padding: 30px 24px;
+  border-right: 1px solid color-mix(in srgb, var(--border-color) 78%, #64748b);
+  background: #15191f;
   z-index: 10;
 }
 
 .brand {
   display: flex;
   align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-2);
+  gap: 14px;
+  min-width: 0;
 }
 
 .brandIcon {
   width: 40px;
   height: 40px;
-  border-radius: 12px;
+  flex: 0 0 40px;
+  border-radius: 9px;
   display: grid;
   place-items: center;
   font-weight: var(--font-weight-bold);
-  color: #fff;
-  background: linear-gradient(135deg, var(--brand-700), var(--brand-500));
-  box-shadow: var(--shadow-md);
+  color: #06101f;
+  background: #5b96ff;
   text-decoration: none;
 }
 
 .brandTitle {
   display: block;
-  font-size: var(--text-sm);
+  color: #dbe8ff;
+  font-size: 1.5rem;
+  line-height: 1;
+  letter-spacing: 0;
 }
 
 .brandUser {
-  margin-top: var(--space-1);
-  color: var(--text-secondary);
-  font-size: var(--text-xs);
+  margin-top: 7px;
+  color: #e2e8f0;
+  font-size: 0.87rem;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  max-width: 160px;
+  max-width: 170px;
 }
 
 .links {
   display: grid;
-  gap: var(--space-2);
+  gap: 16px;
 }
 
 .link {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-3);
-  border-radius: var(--radius-md);
+  gap: 14px;
+  min-height: 42px;
+  padding: 0 18px;
+  border-radius: 8px;
   text-decoration: none;
-  color: var(--text-primary);
+  color: #d7dce7;
   border: 1px solid transparent;
-  background: color-mix(in srgb, var(--bg-primary) 75%, transparent);
-  transition: border-color 0.2s ease, transform 0.15s ease;
+  background: transparent;
+  font-size: 0.86rem;
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.03em;
+  transition: background-color 0.2s ease, color 0.2s ease, transform 0.15s ease;
+}
+
+.link svg {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+  color: #c6ccd8;
 }
 
 .link:hover {
-  border-color: color-mix(in srgb, var(--brand-500) 36%, var(--border-color));
+  background: color-mix(in srgb, #252b36 80%, transparent);
   transform: translateY(-1px);
 }
 
 .active {
-  color: var(--brand-700);
-  border-color: color-mix(in srgb, var(--brand-500) 46%, var(--border-color));
-  background: color-mix(in srgb, var(--brand-100) 50%, var(--bg-secondary));
+  color: #c7d7ff;
+  border-color: color-mix(in srgb, #8fb0ff 24%, transparent);
+  background: #5d1fd1;
+  box-shadow: inset 4px 0 0 #a7c2ff;
 }
 
-[data-theme='dark'] .active {
-  color: var(--brand-200);
-  background: color-mix(in srgb, var(--brand-900) 60%, var(--bg-secondary));
+.active svg {
+  color: #c7d7ff;
 }
 
 .actions {
   margin-top: auto;
   display: grid;
-  gap: var(--space-2);
+  gap: 18px;
 }
 
 .actionButton {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-3);
-  border-radius: var(--radius-md);
-  border: 1px solid var(--border-color);
-  background: var(--bg-tertiary);
-  color: var(--text-primary);
+  gap: 14px;
+  min-height: 42px;
+  padding: 0 18px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: #d7dce7;
+  font: inherit;
+  font-size: 0.86rem;
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.03em;
 }
 
-.logoutButton {
-  color: #fff;
-  border-color: color-mix(in srgb, var(--danger-500) 45%, transparent);
-  background: linear-gradient(135deg, var(--danger-500), var(--brand-800));
+.actionButton svg {
+  width: 18px;
+  height: 18px;
+}
+
+.actionButton:hover {
+  background: color-mix(in srgb, #252b36 80%, transparent);
 }
 
 .mobileTopBar {

@@ -32,6 +32,7 @@ interface ExistingMovementRow {
   goal_id: string
   amount: number
   direction: 'IN' | 'OUT'
+  type?: string
 }
 
 interface ApplyTransactionAllocationParams {
@@ -100,6 +101,38 @@ const reverseMovement = (reservedAmount: number, movement: ExistingMovementRow):
     : reservedAmount + amount
 }
 
+const roundMoney = (value: number): number => Math.round(value * 100) / 100
+
+const getAverageMonthlyRevenue = async (
+  referenceMonth: string,
+  fallbackAmount: number
+): Promise<number> => {
+  const currentYear = Number(referenceMonth.slice(0, 4))
+  const start = `${currentYear}-01-01`
+
+  const { data, error } = await supabase
+    .from('financial_monthly_summaries')
+    .select('month_ref, total_entries')
+    .gte('month_ref', start)
+    .lt('month_ref', referenceMonth)
+    .order('month_ref', { ascending: false })
+    .limit(6)
+
+  if (error) {
+    return fallbackAmount
+  }
+
+  const revenues = ((data ?? []) as Array<{ total_entries?: number | string | null }>)
+    .map((row) => toFiniteNumber(row.total_entries, 0))
+    .filter((value) => value > 0)
+
+  if (revenues.length === 0) {
+    return fallbackAmount
+  }
+
+  return revenues.reduce((acc, value) => acc + value, 0) / revenues.length
+}
+
 export const cashPlanningMovementsService = {
   listTransactionAllocationOptions: async (): Promise<CashPlanningOption[]> => {
     const goals = await goalsService.getGoals()
@@ -113,6 +146,7 @@ export const cashPlanningMovementsService = {
       .from('cash_planning_movements')
       .select('id, goal_id, amount, direction')
       .eq('transaction_id', transactionId)
+      .eq('type', 'USED_BY_TRANSACTION')
       .maybeSingle()
 
     if (response.error) {
@@ -223,6 +257,7 @@ export const cashPlanningMovementsService = {
       .from('cash_planning_movements')
       .select('id, goal_id, amount, direction')
       .eq('transaction_id', transaction.id)
+      .eq('type', 'USED_BY_TRANSACTION')
       .maybeSingle()
 
     if (existingMovementResponse.error) {
@@ -308,6 +343,143 @@ export const cashPlanningMovementsService = {
         throw new Error(getSchemaErrorMessage())
       }
       throw movementResponse.error
+    }
+  },
+
+  applyAutomaticRulesForIncome: async (transaction: Transaction): Promise<void> => {
+    if (transaction.type !== 'entrada' || !transaction.isConfirmed) {
+      return
+    }
+
+    const transactionAmount = Math.max(0, toFiniteNumber(transaction.amount, 0))
+    const referenceMonth = getReferenceMonth(transaction.date)
+    if (transactionAmount <= 0 || !referenceMonth) {
+      return
+    }
+
+    const goals = (await goalsService.getGoals()).filter((goal) => (
+      goal.status === 'active'
+      && !goal.isSystem
+      && goal.countsAsReserved !== false
+      && Math.max(0, toFiniteNumber(goal.allocationValue, 0)) > 0
+    ))
+
+    if (goals.length === 0) {
+      return
+    }
+
+    const goalIds = goals.map((goal) => goal.id)
+    const existingForTransactionResponse = await supabase
+      .from('cash_planning_movements')
+      .select('goal_id')
+      .eq('transaction_id', transaction.id)
+      .eq('type', 'MONTHLY_RULE')
+
+    if (existingForTransactionResponse.error) {
+      if (isMissingCashPlanningSchemaError(existingForTransactionResponse.error)) {
+        throw new Error(getSchemaErrorMessage())
+      }
+      throw existingForTransactionResponse.error
+    }
+
+    const alreadyAppliedGoalIds = new Set(
+      ((existingForTransactionResponse.data ?? []) as Array<{ goal_id: string }>).map((row) => row.goal_id)
+    )
+
+    const monthlyMovementsResponse = await supabase
+      .from('cash_planning_movements')
+      .select('goal_id, amount')
+      .eq('type', 'MONTHLY_RULE')
+      .eq('reference_month', referenceMonth)
+      .in('goal_id', goalIds)
+
+    if (monthlyMovementsResponse.error) {
+      if (isMissingCashPlanningSchemaError(monthlyMovementsResponse.error)) {
+        throw new Error(getSchemaErrorMessage())
+      }
+      throw monthlyMovementsResponse.error
+    }
+
+    const appliedByGoal = new Map<string, number>()
+    ;((monthlyMovementsResponse.data ?? []) as Array<{ goal_id: string; amount: number | string }>).forEach((row) => {
+      appliedByGoal.set(row.goal_id, (appliedByGoal.get(row.goal_id) ?? 0) + toFiniteNumber(row.amount, 0))
+    })
+
+    const averageMonthlyRevenue = await getAverageMonthlyRevenue(referenceMonth, transactionAmount)
+
+    for (const goal of goals) {
+      if (alreadyAppliedGoalIds.has(goal.id)) {
+        continue
+      }
+
+      const allocationValue = Math.max(0, toFiniteNumber(goal.allocationValue, 0))
+      const monthlyTarget = goal.allocationType === 'percentage'
+        ? Number.POSITIVE_INFINITY
+        : allocationValue
+      const alreadyAppliedThisMonth = appliedByGoal.get(goal.id) ?? 0
+      const remainingMonthlyTarget = Number.isFinite(monthlyTarget)
+        ? Math.max(0, monthlyTarget - alreadyAppliedThisMonth)
+        : Number.POSITIVE_INFINITY
+
+      if (remainingMonthlyTarget <= 0) {
+        continue
+      }
+
+      const rawAmount = goal.allocationType === 'percentage'
+        ? transactionAmount * (allocationValue / 100)
+        : averageMonthlyRevenue > 0
+          ? transactionAmount * (allocationValue / averageMonthlyRevenue)
+          : allocationValue
+      const amount = roundMoney(Math.min(rawAmount, remainingMonthlyTarget))
+
+      if (amount <= 0) {
+        continue
+      }
+
+      const currentReserved = Math.max(0, toFiniteNumber(goal.reservedAmount, 0))
+      const targetAmount = Math.max(0, toFiniteNumber(goal.targetAmount, 0))
+      const nextReservedAmount = targetAmount > 0
+        ? Math.min(targetAmount, currentReserved + amount)
+        : currentReserved + amount
+      const effectiveAmount = roundMoney(nextReservedAmount - currentReserved)
+
+      if (effectiveAmount <= 0) {
+        continue
+      }
+
+      const updateGoalResponse = await supabase
+        .from('goals')
+        .update({ reserved_amount: nextReservedAmount })
+        .eq('id', goal.id)
+
+      if (updateGoalResponse.error) {
+        if (isMissingCashPlanningSchemaError(updateGoalResponse.error)) {
+          throw new Error(getSchemaErrorMessage())
+        }
+        throw updateGoalResponse.error
+      }
+
+      const movementResponse = await supabase
+        .from('cash_planning_movements')
+        .insert({
+          goal_id: goal.id,
+          type: 'MONTHLY_RULE',
+          amount: effectiveAmount,
+          direction: 'IN',
+          reference_month: referenceMonth,
+          transaction_id: transaction.id,
+          note: `Regra automatica: ${transaction.description || transaction.category || 'entrada'}`
+        })
+
+      if (movementResponse.error) {
+        if (isMissingCashPlanningSchemaError(movementResponse.error)) {
+          throw new Error(getSchemaErrorMessage())
+        }
+        throw movementResponse.error
+      }
+
+      appliedByGoal.set(goal.id, alreadyAppliedThisMonth + effectiveAmount)
+      goal.reservedAmount = nextReservedAmount
     }
   }
 }

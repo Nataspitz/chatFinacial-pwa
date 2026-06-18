@@ -6,9 +6,9 @@
 
 .content {
   flex: 1;
-  padding: var(--space-4);
+  padding: 24px;
   min-width: 0;
-  margin-left: 248px;
+  margin-left: 260px;
   padding-bottom: calc(var(--space-6) + env(safe-area-inset-bottom));
 }
 

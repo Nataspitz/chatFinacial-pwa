@@ -1,10 +1,12 @@
-import { FormEvent, KeyboardEvent, useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { PageTemplate } from '../../components/templates/PageTemplate/PageTemplate'
-import { ButtonLoading } from '../../components/ui'
 import { useAuth } from '../../contexts/AuthContext'
 import { handleChatMessage } from '../../features/chat/assistant'
 import type { AssistantChatSessionState, AssistantResponse } from '../../features/chat/assistant'
 import { AssistantResponseView } from './components/AssistantResponseView'
+import { ChatComposer } from './components/ChatComposer'
+import { ChatMessageBubble } from './components/ChatMessageBubble'
+import { ChatPromptActions } from './components/ChatPromptActions'
 import styles from './Chat.module.css'
 
 interface ChatMessage {
@@ -30,7 +32,7 @@ const buildMessage = (
 const formatMessageTime = (value: string): string =>
   new Intl.DateTimeFormat('pt-BR', { hour: '2-digit', minute: '2-digit' }).format(new Date(value))
 
-export const Chat = () => {
+export const Chat = (): JSX.Element => {
   const { user } = useAuth()
   const [messages, setMessages] = useState<ChatMessage[]>(() => [
     buildMessage(
@@ -83,77 +85,56 @@ export const Chat = () => {
     }
   }
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>): void => {
-    event.preventDefault()
-    void sendMessage(draft)
-  }
-
-  const handleTextareaKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>): void => {
-    if (event.key !== 'Enter' || event.shiftKey) return
-    event.preventDefault()
-    void sendMessage(draft)
-  }
-
   return (
     <PageTemplate className={styles.page}>
-      <section ref={listRef} className={styles.messages} aria-live="polite">
-        {messages.map((message) => (
-          <article
-            key={message.id}
-            className={
-              message.role === 'user'
-                ? `${styles.bubble} ${styles.user}`
-                : `${styles.bubble} ${styles.assistant}`
-            }
-          >
-            <div className={styles.metaRow}>
-              <span className={styles.role}>{message.role === 'user' ? 'Você' : 'Assistente'}</span>
-              <time className={styles.time} dateTime={message.createdAt}>
-                {formatMessageTime(message.createdAt)}
-              </time>
-            </div>
+      <section className={styles.chatPanel}>
+        <div ref={listRef} className={styles.messages} aria-live="polite">
+          {messages.map((message, index) => (
+            <ChatMessageBubble
+              key={message.id}
+              role={message.role}
+              createdAt={message.createdAt}
+              label={message.role === 'user' ? 'Você' : 'Assistente'}
+              time={formatMessageTime(message.createdAt)}
+              footer={
+                index === 0 && message.role === 'assistant' ? (
+                  <ChatPromptActions
+                    disabled={isSending}
+                    onSendMessage={(value, label) => void sendMessage(value, label)}
+                  />
+                ) : undefined
+              }
+            >
+              {message.role === 'assistant' && message.response ? (
+                <AssistantResponseView
+                  response={message.response}
+                  disabled={isSending}
+                  onSendMessage={(value, label) => void sendMessage(value, label)}
+                />
+              ) : (
+                <p className={styles.body}>{message.content}</p>
+              )}
+            </ChatMessageBubble>
+          ))}
 
-            {message.role === 'assistant' && message.response ? (
-              <AssistantResponseView
-                response={message.response}
-                disabled={isSending}
-                onSendMessage={(value, label) => void sendMessage(value, label)}
-              />
-            ) : (
-              <p className={styles.body}>{message.content}</p>
-            )}
-          </article>
-        ))}
+          {isSending ? (
+            <ChatMessageBubble role="assistant" createdAt={new Date().toISOString()} label="Assistente" time="agora">
+              <div className={styles.typing} aria-label="Assistente digitando">
+                <span />
+                <span />
+                <span />
+              </div>
+            </ChatMessageBubble>
+          ) : null}
+        </div>
 
-        {isSending ? (
-          <article className={`${styles.bubble} ${styles.assistant}`}>
-            <div className={styles.metaRow}>
-              <span className={styles.role}>Assistente</span>
-              <span className={styles.time}>agora</span>
-            </div>
-
-            <div className={styles.typing} aria-label="Assistente digitando">
-              <span />
-              <span />
-              <span />
-            </div>
-          </article>
-        ) : null}
-      </section>
-
-      <form className={styles.composer} onSubmit={handleSubmit}>
-        <textarea
-          className={styles.textarea}
-          placeholder="Digite aqui..."
+        <ChatComposer
           value={draft}
-          onChange={(event) => setDraft(event.target.value)}
-          onKeyDown={handleTextareaKeyDown}
-          rows={2}
+          isSending={isSending}
+          onChange={setDraft}
+          onSubmit={() => void sendMessage(draft)}
         />
-        <ButtonLoading type="submit" loading={isSending} disabled={!draft.trim()}>
-          Enviar
-        </ButtonLoading>
-      </form>
+      </section>
     </PageTemplate>
   )
 }
